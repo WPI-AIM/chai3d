@@ -85,8 +85,25 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_SOURCE_DIR}/bin/${O
 
 # OpenGL dependency
 find_package (OpenGL REQUIRED)
-include_directories (OPENGL_INCLUDE_DIR)
+find_package(catkin REQUIRED COMPONENTS
+  geometry_msgs
+  roscpp
+  rospy
+  sensor_msgs
+  tf
+  roslib
+)
 
+catkin_package(
+  INCLUDE_DIRS
+#  LIBRARIES geomagic_teleop
+#  CATKIN_DEPENDS geometry_msgs/PoseStamped roscpp rospy sensor_msgs/JointState sensor_msgs/Joy tf
+#  DEPENDS system_lib
+)
+include_directories (OPENGL_INCLUDE_DIR)
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
 # on non-Windows, DHD dependency
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES Windows)
   include_directories (${PROJECT_SOURCE_DIR}/external/DHD/include)
@@ -191,10 +208,12 @@ add_definitions (${PROJECT_DEFINITIONS} -DGLEW_STATIC -DAL_ALEXT_PROTOTYPES -DAL
 
 # static library
 add_library (chai3d STATIC ${source} ${source_eigen} ${source_gif} ${source_glew} ${source_3ds} ${source_jpeg} ${source_png} ${source_pugixml} ${source_openal} ${source_theora})
-
+# target_link_libraries( ${source}
+#   ${catkin_LIBRARIES}
+#)
 # library exports
 set (CHAI3D_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external/Eigen" "${PROJECT_SOURCE_DIR}/external/glew/include" "${OPENGL_INCLUDE_DIR}")
-set (CHAI3D_LIBRARIES chai3d ${OPENGL_LIBRARIES})
+set (CHAI3D_LIBRARIES chai3d ${OPENGL_LIBRARIES} ${catkin_LIBRARIES})
 set (CHAI3D_DEFINITIONS ${PROJECT_DEFINITIONS})
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES Windows)
   set (CHAI3D_LIBRARIES ${CHAI3D_LIBRARIES} drd)
