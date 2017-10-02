@@ -106,11 +106,12 @@ void DVRK_MTM::state_sub_cb(const std_msgs::StringConstPtr &msg){
 
 // TASK::Create an ENUM and check for all the good states
 bool DVRK_MTM::_is_mtm_available(){
-    if (strcmp("DVRK_READY", cur_state.data.c_str()) == 0 || strcmp("DVRK_EFFORT_CARTESIAN", cur_state.data.c_str()) == 0){
-        return true;
-    }
-    else
-        return false;
+//    if (strcmp("DVRK_READY", cur_state.data.c_str()) == 0 || strcmp("DVRK_EFFORT_CARTESIAN", cur_state.data.c_str()) == 0){
+//        return true;
+//    }
+//    else
+//        return false;
+    return true;
 }
 
 bool DVRK_MTM::set_mode(std::string str){
@@ -278,7 +279,7 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
 
     // *** INSERT YOUR CODE HERE ***
     mtm_device.init();
-    sleep(8.0);
+    //sleep(8.0);
     if(mtm_device._is_mtm_available()){
         m_deviceAvailable = true;
     }
@@ -582,9 +583,9 @@ bool cMyCustomDevice::getRotation(cMatrix3d& a_rotation)
     tf::Vector3 row1 = mtm_device.mat_ori.getRow(1);
     tf::Vector3 row2 = mtm_device.mat_ori.getRow(2);
 
-    r00 = row0.getX();  r01 = row1.getX();  r02 = row2.getX();
-    r10 = row0.getY();  r11 = row1.getY();  r12 = row2.getY();
-    r20 = row0.getZ();  r21 = row1.getZ();  r22 = row2.getZ();
+    r00 = row0.getX();  r01 = row0.getY();  r02 = row0.getZ();
+    r10 = row1.getX();  r11 = row1.getY();  r12 = row1.getZ();
+    r20 = row2.getX();  r21 = row2.getY();  r22 = row2.getZ();
 
     frame.set(r00, r01, r02, r10, r11, r12, r20, r21, r22);
 
