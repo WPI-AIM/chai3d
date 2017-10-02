@@ -513,8 +513,8 @@ bool cMyCustomDevice::getPosition(cVector3d& a_position)
     z = 0.0;    // z = getMyDevicePositionZ()
 
     x = mtm_device.cur_pose.pose.position.x;
-    y = mtm_device.cur_pose.pose.position.x;
-    z = mtm_device.cur_pose.pose.position.x;
+    y = mtm_device.cur_pose.pose.position.y;
+    z = mtm_device.cur_pose.pose.position.z;
 
     // store new position values
     a_position.set(x, y, z);
