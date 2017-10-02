@@ -52,6 +52,7 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "sensor_msgs/JointState.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 #include "geometry_msgs/Wrench.h"
 #include "string.h"
 #include "tf/tf.h"
@@ -73,21 +74,24 @@ public:
 
     bool _is_mtm_available();
     bool set_mode(std::string str);
+    bool set_force(double fx, double fy, double fz);
 
     geometry_msgs::PoseStamped cur_pose, pre_pose;
     sensor_msgs::JointState cur_joint, pre_joint;
     std_msgs::String cur_state;
-    geometry_msgs::Wrench cur_wrench;
+    geometry_msgs::Wrench cur_wrench, cmd_wrench;
     geometry_msgs::Quaternion gm_cur_ori;
     tf::Quaternion tf_cur_ori;
     tf::Matrix3x3 mat_ori, ori_corr;
 
     std::string arm_name;
     std::string _m_effort_mode = "DVRK_EFFORT_CARTESIAN";
+    float pos_offset[3];
 
 private:
     ros::NodeHandle *n;
     ros::Publisher force_pub;
+    ros::Publisher force_orientation_safety_pub;
     ros::Subscriber pose_sub;
     ros::Subscriber joint_sub;
     ros::Subscriber state_sub;
