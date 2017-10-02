@@ -62,6 +62,71 @@
 */
 ////////////////////////////////////////////////////////////////////////////////
 
+
+DVRK_MTM::DVRK_MTM(){
+}
+
+void DVRK_MTM::init(){
+    int argc;
+    char** argv;
+    ros::M_string s;
+    ros::init(s, "my_node");
+
+    n = new ros::NodeHandle;
+    spinner = new ros::AsyncSpinner(4);
+
+    n->param(std::string("arm"), arm_name, std::string("MTMR"));
+
+    pose_sub = n->subscribe("/dvrk/" + arm_name + "/position_cartesian_current", 10, &DVRK_MTM::pose_sub_cb, this);
+    state_sub = n->subscribe("/dvrk/" + arm_name + "/robot_state", 10, &DVRK_MTM::state_sub_cb, this);
+    joint_sub = n->subscribe("/dvrk/" + arm_name + "/position_joint_current", 10, &DVRK_MTM::joint_sub_cb, this);
+
+    state_pub = n->advertise<std_msgs::String>("/dvrk/" + arm_name + "/set_robot_state", 10);
+    force_pub = n->advertise<geometry_msgs::Wrench>("/dvrk/" + arm_name + "/set_wrench", 10);
+    spinner->start();
+    sleep(1);
+    set_mode(std::string("Home"));
+
+}
+
+void DVRK_MTM::joint_sub_cb(const sensor_msgs::JointStateConstPtr &msg){
+    pre_joint = cur_joint;
+    cur_joint = *msg;
+}
+void DVRK_MTM::pose_sub_cb(const geometry_msgs::PoseStampedConstPtr &msg){
+    pre_pose = cur_pose;
+    cur_pose = *msg;
+    tf::quaternionMsgToTF(cur_pose.pose.orientation, tf_cur_ori);
+    mat_ori.setRotation(tf_cur_ori);
+    //ROS_INFO("Here %f %f %f", msg->pose.position.x,msg->pose.position.y,msg->pose.position.z);
+}
+void DVRK_MTM::state_sub_cb(const std_msgs::StringConstPtr &msg){
+    cur_state = *msg;
+}
+
+// TASK::Create an ENUM and check for all the good states
+bool DVRK_MTM::_is_mtm_available(){
+    if (strcmp("DVRK_READY", cur_state.data.c_str()) == 0 || strcmp("DVRK_EFFORT_CARTESIAN", cur_state.data.c_str()) == 0){
+        return true;
+    }
+    else
+        return false;
+}
+
+bool DVRK_MTM::set_mode(std::string str){
+    std_msgs::String msg;
+    msg.data = str;
+    state_pub.publish(msg);
+    ros::spinOnce();
+    //sleep(0.5);
+    //ROS_INFO("Setting Robot State to %s", str.c_str());
+}
+
+DVRK_MTM::~DVRK_MTM(){
+    delete n;
+    delete spinner;
+}
+
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
@@ -95,13 +160,13 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
     //--------------------------------------------------------------------------
 
     // haptic device model (see file "CGenericHapticDevice.h")
-    m_specifications.m_model                         = C_HAPTIC_DEVICE_CUSTOM;
+    m_specifications.m_model                         = C_HAPTIC_DVRK_MTM;
 
     // name of the device manufacturer, research lab, university.
-    m_specifications.m_manufacturerName              = "My Name";
+    m_specifications.m_manufacturerName              = "Intuitive Surgical";
 
     // name of your device
-    m_specifications.m_modelName                     = "My Custom Device";
+    m_specifications.m_modelName                     = "MTM-R";
 
 
     //--------------------------------------------------------------------------
@@ -170,16 +235,16 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
     m_specifications.m_sensedGripper                 = true;
 
     // is you device actuated on the translation degrees of freedom?
-    m_specifications.m_actuatedPosition              = true;
+    m_specifications.m_actuatedPosition              = false;
 
     // is your device actuated on the rotation degrees of freedom?
-    m_specifications.m_actuatedRotation              = true;
+    m_specifications.m_actuatedRotation              = false;
 
     // is the gripper of your device actuated?
-    m_specifications.m_actuatedGripper               = true;
+    m_specifications.m_actuatedGripper               = false;
 
     // can the device be used with the left hand?
-    m_specifications.m_leftHand                      = true;
+    m_specifications.m_leftHand                      = false;
 
     // can the device be used with the right hand?
     m_specifications.m_rightHand                     = true;
@@ -212,9 +277,17 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
         
 
     // *** INSERT YOUR CODE HERE ***
+    mtm_device.init();
+    sleep(8.0);
+    if(mtm_device._is_mtm_available()){
+        m_deviceAvailable = true;
+    }
+    else{
+        ROS_WARN("%s not ready/available", mtm_device.arm_name.c_str());
+        m_deviceAvailable = false; // this value should become 'true' when the device is available.
+    }
     m_MyVariable = 0;
 
-    m_deviceAvailable = false; // this value should become 'true' when the device is available.
 }
 
 
@@ -269,6 +342,7 @@ bool cMyCustomDevice::open()
 
     // *** INSERT YOUR CODE HERE ***
     // result = openConnectionToMyDevice();
+    result = mtm_device._is_mtm_available();
 
 
     // update device status
@@ -356,6 +430,7 @@ bool cMyCustomDevice::calibrate(bool a_forceCalibration)
     // *** INSERT YOUR CODE HERE ***
 
     // error = calibrateMyDevice()
+    result = mtm_device.set_mode(mtm_device._m_effort_mode);
 
     return (result);
 }
@@ -389,7 +464,7 @@ unsigned int cMyCustomDevice::getNumDevices()
 
     // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
 
-    int numberOfDevices = 0;  // At least set to 1 if a device is available.
+    int numberOfDevices = 1;  // At least set to 1 if a device is available.
 
     // numberOfDevices = getNumberOfDevicesConnectedToTheComputer();
 
@@ -432,10 +507,13 @@ bool cMyCustomDevice::getPosition(cVector3d& a_position)
     double x,y,z;
 
     // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
-
     x = 0.0;    // x = getMyDevicePositionX()
     y = 0.0;    // y = getMyDevicePositionY()
     z = 0.0;    // z = getMyDevicePositionZ()
+
+    x = mtm_device.cur_pose.pose.position.x;
+    y = mtm_device.cur_pose.pose.position.x;
+    z = mtm_device.cur_pose.pose.position.x;
 
     // store new position values
     a_position.set(x, y, z);
@@ -494,9 +572,19 @@ bool cMyCustomDevice::getRotation(cMatrix3d& a_rotation)
 
     // if the device does not provide any rotation capabilities 
     // set the rotation matrix equal to the identity matrix.
+
+
     r00 = 1.0;  r01 = 0.0;  r02 = 0.0;
     r10 = 0.0;  r11 = 1.0;  r12 = 0.0;
     r20 = 0.0;  r21 = 0.0;  r22 = 1.0;
+
+    tf::Vector3 row0 = mtm_device.mat_ori.getRow(0);
+    tf::Vector3 row1 = mtm_device.mat_ori.getRow(1);
+    tf::Vector3 row2 = mtm_device.mat_ori.getRow(2);
+
+    r00 = row0.getX();  r01 = row1.getX();  r02 = row2.getX();
+    r10 = row0.getY();  r11 = row1.getY();  r12 = row2.getY();
+    r20 = row0.getZ();  r21 = row1.getZ();  r22 = row2.getZ();
 
     frame.set(r00, r01, r02, r10, r11, r12, r20, r21, r22);
 
