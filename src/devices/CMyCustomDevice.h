@@ -80,7 +80,7 @@ public:
     geometry_msgs::Wrench cur_wrench;
     geometry_msgs::Quaternion gm_cur_ori;
     tf::Quaternion tf_cur_ori;
-    tf::Matrix3x3 mat_ori;
+    tf::Matrix3x3 mat_ori, ori_corr;
 
     std::string arm_name;
     std::string _m_effort_mode = "DVRK_EFFORT_CARTESIAN";

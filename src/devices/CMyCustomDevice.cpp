@@ -84,8 +84,11 @@ void DVRK_MTM::init(){
     state_pub = n->advertise<std_msgs::String>("/dvrk/" + arm_name + "/set_robot_state", 10);
     force_pub = n->advertise<geometry_msgs::Wrench>("/dvrk/" + arm_name + "/set_wrench", 10);
     spinner->start();
-    sleep(1);
-    set_mode(std::string("Home"));
+    sleep(0.5);
+    //set_mode(std::string("Home"));
+    ori_corr.setValue( 0 , -1 , 0,
+                      1 , 0 , 0,
+                       0 , 0 , -1);
 
 }
 
@@ -98,6 +101,7 @@ void DVRK_MTM::pose_sub_cb(const geometry_msgs::PoseStampedConstPtr &msg){
     cur_pose = *msg;
     tf::quaternionMsgToTF(cur_pose.pose.orientation, tf_cur_ori);
     mat_ori.setRotation(tf_cur_ori);
+    mat_ori =  ori_corr * mat_ori;
     //ROS_INFO("Here %f %f %f", msg->pose.position.x,msg->pose.position.y,msg->pose.position.z);
 }
 void DVRK_MTM::state_sub_cb(const std_msgs::StringConstPtr &msg){
@@ -106,12 +110,11 @@ void DVRK_MTM::state_sub_cb(const std_msgs::StringConstPtr &msg){
 
 // TASK::Create an ENUM and check for all the good states
 bool DVRK_MTM::_is_mtm_available(){
-//    if (strcmp("DVRK_READY", cur_state.data.c_str()) == 0 || strcmp("DVRK_EFFORT_CARTESIAN", cur_state.data.c_str()) == 0){
-//        return true;
-//    }
-//    else
-//        return false;
-    return true;
+    if (strcmp("DVRK_READY", cur_state.data.c_str()) == 0 || strcmp("DVRK_EFFORT_CARTESIAN", cur_state.data.c_str()) == 0){
+        return true;
+    }
+    else
+        return false;
 }
 
 bool DVRK_MTM::set_mode(std::string str){
@@ -279,7 +282,7 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
 
     // *** INSERT YOUR CODE HERE ***
     mtm_device.init();
-    //sleep(8.0);
+    sleep(8.0);
     if(mtm_device._is_mtm_available()){
         m_deviceAvailable = true;
     }
@@ -512,9 +515,9 @@ bool cMyCustomDevice::getPosition(cVector3d& a_position)
     y = 0.0;    // y = getMyDevicePositionY()
     z = 0.0;    // z = getMyDevicePositionZ()
 
-    x = mtm_device.cur_pose.pose.position.x;
-    y = mtm_device.cur_pose.pose.position.y;
-    z = mtm_device.cur_pose.pose.position.z;
+    x = mtm_device.cur_pose.pose.position.y + 0.016;
+    y = -mtm_device.cur_pose.pose.position.x - 0.18;
+    z = mtm_device.cur_pose.pose.position.z + 0.26;
 
     // store new position values
     a_position.set(x, y, z);
@@ -579,13 +582,13 @@ bool cMyCustomDevice::getRotation(cMatrix3d& a_rotation)
     r10 = 0.0;  r11 = 1.0;  r12 = 0.0;
     r20 = 0.0;  r21 = 0.0;  r22 = 1.0;
 
-    tf::Vector3 row0 = mtm_device.mat_ori.getRow(0);
-    tf::Vector3 row1 = mtm_device.mat_ori.getRow(1);
-    tf::Vector3 row2 = mtm_device.mat_ori.getRow(2);
+    tf::Vector3 col0 = mtm_device.mat_ori.getColumn(2);
+    tf::Vector3 col1 = -mtm_device.mat_ori.getColumn(1);
+    tf::Vector3 col2 = -mtm_device.mat_ori.getColumn(0);
 
-    r00 = row0.getX();  r01 = row0.getY();  r02 = row0.getZ();
-    r10 = row1.getX();  r11 = row1.getY();  r12 = row1.getZ();
-    r20 = row2.getX();  r21 = row2.getY();  r22 = row2.getZ();
+    r00 = col0.getX();  r01 = col1.getX();  r02 = col2.getX();
+    r10 = col0.getY();  r11 = col1.getY();  r12 = col2.getY();
+    r20 = col0.getZ();  r21 = col1.getZ();  r22 = col2.getZ();
 
     frame.set(r00, r01, r02, r10, r11, r12, r20, r21, r22);
 
