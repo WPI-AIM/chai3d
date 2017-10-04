@@ -269,7 +269,6 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
 
     // error = calibrateMyDevice()
     result = mtm_device.set_mode(mtm_device._m_effort_mode);
-    result = true;
     return (result);
 }
 
