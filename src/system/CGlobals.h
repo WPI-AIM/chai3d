@@ -209,10 +209,11 @@
     //--------------------------------------------------------------------
     // HAPTIC DEVICES
     //--------------------------------------------------------------------
-    #define C_ENABLE_CUSTOM_DEVICE_SUPPORT
+    //#define C_ENABLE_CUSTOM_DEVICE_SUPPORT
     #define C_ENABLE_DELTA_DEVICE_SUPPORT
     #define C_ENABLE_PHANTOM_DEVICE_SUPPORT
     #define C_ENABLE_LEAP_DEVICE_SUPPORT
+    #define C_ENABLE_DVRK_DEVICE_SUPPORT
     // #define C_ENABLE_SIXENSE_DEVICE_SUPPORT
 
 #endif

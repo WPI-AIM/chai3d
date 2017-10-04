@@ -77,6 +77,7 @@
 #include "devices/CLeapDevices.h"
 #include "devices/CPhantomDevices.h"
 #include "devices/CSixenseDevices.h"
+#include "devices/CdVRKDevices.h"
 
 
 //---------------------------------------------------------------------------
