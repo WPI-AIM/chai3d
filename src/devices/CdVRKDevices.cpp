@@ -53,8 +53,6 @@
 namespace chai3d {
 //------------------------------------------------------------------------------
 
-static bool _my_var;
-
 //==============================================================================
 /*!
     Constructor of cDvrkDevice.
@@ -166,11 +164,9 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     //sleep(8.0);
     if(mtm_device._is_mtm_available()){
         m_deviceAvailable = true;
-        _my_var = true;
     }
     else{
         m_deviceAvailable = false; // this value should become 'true' when the device is available.
-        _my_var = false;
     }
     m_MyVariable = 0;
 
@@ -286,14 +282,24 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
 //==============================================================================
 unsigned int cDvrkDevice::getNumDevices()
 {
-    int numberOfDevices;
-    ros::M_string s;
+    int numberOfDevices = 0;
+    static ros::M_string s;
     ros::init(s, "chai_node");
+
     if (ros::master::check()){
-        numberOfDevices = 1;
-    }
-    else{
-        numberOfDevices = 0;
+        std::string arm, topic_check;
+        ros::param::get(std::string("arm_name"),arm);
+        if(arm.empty()){
+            arm = "MTMR";
+        }
+        topic_check = std::string("/dvrk/" + arm + "/home");
+        ros::master::V_TopicInfo topics;
+        ros::master::getTopics(topics);
+        for(int i = 0 ; i < topics.size() ; i++){
+            if(strcmp(topics[i].name.c_str(), topic_check.c_str()) == 0){
+               numberOfDevices = 1;
+            }
+        }
     }
     return (numberOfDevices);
 }
