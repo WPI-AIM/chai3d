@@ -92,6 +92,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   tf
   roslib
+  dvrk_chai3d
 )
 
 catkin_package(
