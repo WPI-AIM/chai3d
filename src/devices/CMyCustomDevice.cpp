@@ -3,25 +3,19 @@
     Software License Agreement (BSD License)
     Copyright (c) 2003-2016, CHAI3D.
     (www.chai3d.org)
-
     All rights reserved.
-
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
     are met:
-
     * Redistributions of source code must retain the above copyright
     notice, this list of conditions and the following disclaimer.
-
     * Redistributions in binary form must reproduce the above
     copyright notice, this list of conditions and the following
     disclaimer in the documentation and/or other materials provided
     with the distribution.
-
     * Neither the name of CHAI3D nor the names of its contributors may
     be used to endorse or promote products derived from this software
     without specific prior written permission.
-
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -33,8 +27,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
-
+    POSSIBILITY OF SUCH DAMAGE.
     \author    <http://www.chai3d.org>
     \author    Your name, institution, or company name.
     \version   3.2.0 $Rev: 1869 $
@@ -52,108 +45,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 /*
     INSTRUCTION TO IMPLEMENT YOUR OWN CUSTOM DEVICE:
-
-    Please review header file CMyCustomDevice.h for some initial 
+    Please review header file CMyCustomDevice.h for some initial
     guidelines about how to implement your own haptic device using this
     template.
-
     When ready, simply completed the next 11 documented steps described here
     below.
 */
 ////////////////////////////////////////////////////////////////////////////////
-
-
-DVRK_MTM::DVRK_MTM(){
-}
-
-void DVRK_MTM::init(){
-    int argc;
-    char** argv;
-    ros::M_string s;
-    ros::init(s, "my_node");
-
-    n = new ros::NodeHandle;
-    spinner = new ros::AsyncSpinner(4);
-
-    n->param(std::string("arm"), arm_name, std::string("MTMR"));
-
-    pose_sub = n->subscribe("/dvrk/" + arm_name + "/position_cartesian_current", 10, &DVRK_MTM::pose_sub_cb, this);
-    state_sub = n->subscribe("/dvrk/" + arm_name + "/robot_state", 10, &DVRK_MTM::state_sub_cb, this);
-    joint_sub = n->subscribe("/dvrk/" + arm_name + "/position_joint_current", 10, &DVRK_MTM::joint_sub_cb, this);
-
-    state_pub = n->advertise<std_msgs::String>("/dvrk/" + arm_name + "/set_robot_state", 10);
-    force_pub = n->advertise<geometry_msgs::Wrench>("/dvrk/" + arm_name + "/set_wrench_body", 10);
-    force_orientation_safety_pub = n->advertise<std_msgs::Bool>("/dvrk/" + arm_name + "/set_wrench_body_orientation_absolute",10);
-    spinner->start();
-    sleep(1);
-    //set_mode(std::string("Home"));
-    ori_corr.setValue( 0 ,-1 , 0,
-                       1 , 0 , 0,
-                       0 , 0 ,-1);
-
-    pos_offset[0] = 0.18;
-    pos_offset[1] = 0.016;
-    pos_offset[2] = 0.26;
-
-}
-
-void DVRK_MTM::joint_sub_cb(const sensor_msgs::JointStateConstPtr &msg){
-    pre_joint = cur_joint;
-    cur_joint = *msg;
-}
-void DVRK_MTM::pose_sub_cb(const geometry_msgs::PoseStampedConstPtr &msg){
-    pre_pose = cur_pose;
-    cur_pose = *msg;
-    cur_pose.pose.position.x += pos_offset[0];
-    cur_pose.pose.position.y += pos_offset[1];
-    cur_pose.pose.position.z += pos_offset[2];
-
-    tf::quaternionMsgToTF(cur_pose.pose.orientation, tf_cur_ori);
-    mat_ori.setRotation(tf_cur_ori);
-    mat_ori =  ori_corr * mat_ori;
-    //ROS_INFO("Here %f %f %f", msg->pose.position.x,msg->pose.position.y,msg->pose.position.z);
-}
-void DVRK_MTM::state_sub_cb(const std_msgs::StringConstPtr &msg){
-    cur_state = *msg;
-}
-
-// TASK::Create an ENUM and check for all the good states
-bool DVRK_MTM::_is_mtm_available(){
-//    if (strcmp("DVRK_READY", cur_state.data.c_str()) == 0 || strcmp("DVRK_EFFORT_CARTESIAN", cur_state.data.c_str()) == 0){
-//        return true;
-//    }
-//    else
-//        return false;
-    return true;
-}
-
-bool DVRK_MTM::set_mode(std::string str){
-    std_msgs::String msg;
-    msg.data = str;
-    state_pub.publish(msg);
-    ros::spinOnce();
-    if(strcmp(str.c_str(),_m_effort_mode.c_str()) == 0){
-        std_msgs::Bool check;
-        check.data = true;
-        force_orientation_safety_pub.publish(check);
-    }
-    //sleep(0.5);
-    //ROS_INFO("Setting Robot State to %s", str.c_str());
-}
-
-bool DVRK_MTM::set_force(double fx, double fy, double fz){
-    cmd_wrench.force.x = fx;
-    cmd_wrench.force.y = fy;
-    cmd_wrench.force.z = fz;
-
-    force_pub.publish(cmd_wrench);
-    ros::spinOnce();
-}
-
-DVRK_MTM::~DVRK_MTM(){
-    delete n;
-    delete spinner;
-}
 
 //------------------------------------------------------------------------------
 namespace chai3d {
@@ -175,7 +73,6 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 1:
-
         Here you should define the specifications of your device.
         These values only need to be estimates. Since haptic devices often perform
         differently depending of their configuration withing their workspace,
@@ -188,13 +85,13 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
     //--------------------------------------------------------------------------
 
     // haptic device model (see file "CGenericHapticDevice.h")
-    m_specifications.m_model                         = C_HAPTIC_DVRK_MTM;
+    m_specifications.m_model                         = C_HAPTIC_DEVICE_CUSTOM;
 
     // name of the device manufacturer, research lab, university.
-    m_specifications.m_manufacturerName              = "Intuitive Surgical";
+    m_specifications.m_manufacturerName              = "My Name";
 
     // name of your device
-    m_specifications.m_modelName                     = "MTM-R";
+    m_specifications.m_modelName                     = "My Custom Device";
 
 
     //--------------------------------------------------------------------------
@@ -231,14 +128,13 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
     ////////////////////////////////////////////////////////////////////////////
     /*
         DAMPING PROPERTIES:
-
-        Start with small values as damping terms can be high;y sensitive to 
+        Start with small values as damping terms can be high;y sensitive to
         the quality of your velocity signal and the spatial resolution of your
-        device. Try gradually increasing the values by using example "01-devices" 
+        device. Try gradually increasing the values by using example "01-devices"
         and by enabling viscosity with key command "2".
     */
     ////////////////////////////////////////////////////////////////////////////
-    
+
     // Maximum recommended linear damping factor Kv
     m_specifications.m_maxLinearDamping             = 20.0;   // [N/(m/s)]
 
@@ -263,16 +159,16 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
     m_specifications.m_sensedGripper                 = true;
 
     // is you device actuated on the translation degrees of freedom?
-    m_specifications.m_actuatedPosition              = false;
+    m_specifications.m_actuatedPosition              = true;
 
     // is your device actuated on the rotation degrees of freedom?
-    m_specifications.m_actuatedRotation              = false;
+    m_specifications.m_actuatedRotation              = true;
 
     // is the gripper of your device actuated?
-    m_specifications.m_actuatedGripper               = false;
+    m_specifications.m_actuatedGripper               = true;
 
     // can the device be used with the left hand?
-    m_specifications.m_leftHand                      = false;
+    m_specifications.m_leftHand                      = true;
 
     // can the device be used with the right hand?
     m_specifications.m_rightHand                     = true;
@@ -281,41 +177,27 @@ cMyCustomDevice::cMyCustomDevice(unsigned int a_deviceNumber)
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 2:
-
         Here, you shall  implement code which tells the application if your
         device is actually connected to your computer and can be accessed.
         In practice this may be consist in checking if your I/O board
         is active or if your drivers are available.
-
         If your device can be accessed, set:
         m_systemAvailable = true;
-
         Otherwise set:
         m_systemAvailable = false;
-
         Your actual code may look like:
-
         bool result = checkIfMyDeviceIsAvailable()
         m_systemAvailable = result;
-
         If want to support multiple devices, using the method argument
         a_deviceNumber to know which device to setup
-    */  
+    */
     ////////////////////////////////////////////////////////////////////////////
-        
+
 
     // *** INSERT YOUR CODE HERE ***
-    mtm_device.init();
-    //sleep(8.0);
-    if(mtm_device._is_mtm_available()){
-        m_deviceAvailable = true;
-    }
-    else{
-        ROS_WARN("%s not ready/available", mtm_device.arm_name.c_str());
-        m_deviceAvailable = false; // this value should become 'true' when the device is available.
-    }
     m_MyVariable = 0;
 
+    m_deviceAvailable = false; // this value should become 'true' when the device is available.
 }
 
 
@@ -337,7 +219,6 @@ cMyCustomDevice::~cMyCustomDevice()
 //==============================================================================
 /*!
     This method opens a connection to your device.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -352,16 +233,13 @@ bool cMyCustomDevice::open()
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 3:
-
         Here you shall implement to open a connection to your
         device. This may include opening a connection to an interface board
         for instance or a USB port.
-
         If the connection succeeds, set the variable 'result' to true.
         otherwise, set the variable 'result' to false.
-
-        Verify that your device is calibrated. If your device 
-        needs calibration then call method calibrate() for wich you will 
+        Verify that your device is calibrated. If your device
+        needs calibration then call method calibrate() for wich you will
         provide code in STEP 5 further below.
     */
     ////////////////////////////////////////////////////////////////////////////
@@ -370,7 +248,6 @@ bool cMyCustomDevice::open()
 
     // *** INSERT YOUR CODE HERE ***
     // result = openConnectionToMyDevice();
-    result = mtm_device._is_mtm_available();
 
 
     // update device status
@@ -390,7 +267,6 @@ bool cMyCustomDevice::open()
 //==============================================================================
 /*!
     This method closes the connection to your device.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -402,10 +278,8 @@ bool cMyCustomDevice::close()
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 4:
-
         Here you shall implement code that closes the connection to your
         device.
-
         If the operation fails, simply set the variable 'result' to C_ERROR   .
         If the connection succeeds, set the variable 'result' to C_SUCCESS.
     */
@@ -426,7 +300,6 @@ bool cMyCustomDevice::close()
 //==============================================================================
 /*!
     This method calibrates your device.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -438,16 +311,15 @@ bool cMyCustomDevice::calibrate(bool a_forceCalibration)
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 5:
-        
-        Here you shall implement code that handles a calibration procedure of the 
-        device. In practice this may include initializing the registers of the
-        encoder counters for instance. 
 
+        Here you shall implement code that handles a calibration procedure of the
+        device. In practice this may include initializing the registers of the
+        encoder counters for instance.
         If the device is already calibrated and  a_forceCalibration == false,
         the method may immediately return without further action.
         If a_forceCalibration == true, then the calibrartion procedure
         shall be executed even if the device has already been calibrated.
- 
+
         If the calibration procedure succeeds, the method returns C_SUCCESS,
         otherwise return C_ERROR.
     */
@@ -458,8 +330,7 @@ bool cMyCustomDevice::calibrate(bool a_forceCalibration)
     // *** INSERT YOUR CODE HERE ***
 
     // error = calibrateMyDevice()
-    //result = mtm_device.set_mode(mtm_device._m_effort_mode);
-    result = true;
+
     return (result);
 }
 
@@ -467,7 +338,6 @@ bool cMyCustomDevice::calibrate(bool a_forceCalibration)
 //==============================================================================
 /*!
     This method returns the number of devices available from this class of device.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -476,14 +346,11 @@ unsigned int cMyCustomDevice::getNumDevices()
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 6:
-
         Here you shall implement code that returns the number of available
         haptic devices of type "cMyCustomDevice" which are currently connected
         to your computer.
-
         In practice you will often have either 0 or 1 device. In which case
         the code here below is already implemented for you.
-
         If you have support more than 1 devices connected at the same time,
         then simply modify the code accordingly so that "numberOfDevices" takes
         the correct value.
@@ -492,7 +359,7 @@ unsigned int cMyCustomDevice::getNumDevices()
 
     // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
 
-    int numberOfDevices = 1;  // At least set to 1 if a device is available.
+    int numberOfDevices = 0;  // At least set to 1 if a device is available.
 
     // numberOfDevices = getNumberOfDevicesConnectedToTheComputer();
 
@@ -503,9 +370,7 @@ unsigned int cMyCustomDevice::getNumDevices()
 //==============================================================================
 /*!
     This method returns the position of your device. Units are meters [m].
-
     \param   a_position  Return value.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -517,17 +382,15 @@ bool cMyCustomDevice::getPosition(cVector3d& a_position)
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 7:
-
         Here you shall implement code that reads the position (X,Y,Z) from
         your haptic device. Read the values from your device and modify
         the local variable (x,y,z) accordingly.
         If the operation fails return an C_ERROR, C_SUCCESS otherwise
-
         Note:
         For consistency, units must be in meters.
         If your device is located in front of you, the x-axis is pointing
         towards you (the operator). The y-axis points towards your right
-        hand side and the z-axis points up towards the sky. 
+        hand side and the z-axis points up towards the sky.
     */
     ////////////////////////////////////////////////////////////////////////////
 
@@ -535,13 +398,10 @@ bool cMyCustomDevice::getPosition(cVector3d& a_position)
     double x,y,z;
 
     // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
+
     x = 0.0;    // x = getMyDevicePositionX()
     y = 0.0;    // y = getMyDevicePositionY()
     z = 0.0;    // z = getMyDevicePositionZ()
-
-    x = mtm_device.cur_pose.pose.position.y;
-    y = -mtm_device.cur_pose.pose.position.x;
-    z = mtm_device.cur_pose.pose.position.z;
 
     // store new position values
     a_position.set(x, y, z);
@@ -557,9 +417,7 @@ bool cMyCustomDevice::getPosition(cVector3d& a_position)
 //==============================================================================
 /*!
     This method returns the orientation frame of your device end-effector
-
     \param   a_rotation  Return value.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -571,19 +429,16 @@ bool cMyCustomDevice::getRotation(cMatrix3d& a_rotation)
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 8:
-
         Here you shall implement code which reads the orientation frame from
         your haptic device. The orientation frame is expressed by a 3x3
         rotation matrix. The 1st column of this matrix corresponds to the
         x-axis, the 2nd column to the y-axis and the 3rd column to the z-axis.
         The length of each column vector should be of length 1 and vectors need
         to be orthogonal to each other.
-
         Note:
         If your device is located in front of you, the x-axis is pointing
         towards you (the operator). The y-axis points towards your right
         hand side and the z-axis points up towards the sky.
-
         If your device has a stylus, make sure that you set the reference frame
         so that the x-axis corresponds to the axis of the stylus.
     */
@@ -598,21 +453,11 @@ bool cMyCustomDevice::getRotation(cMatrix3d& a_rotation)
 
     // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
 
-    // if the device does not provide any rotation capabilities 
+    // if the device does not provide any rotation capabilities
     // set the rotation matrix equal to the identity matrix.
-
-
     r00 = 1.0;  r01 = 0.0;  r02 = 0.0;
     r10 = 0.0;  r11 = 1.0;  r12 = 0.0;
     r20 = 0.0;  r21 = 0.0;  r22 = 1.0;
-
-    tf::Vector3 col0 = mtm_device.mat_ori.getColumn(2);
-    tf::Vector3 col1 = -mtm_device.mat_ori.getColumn(1);
-    tf::Vector3 col2 = -mtm_device.mat_ori.getColumn(0);
-
-    r00 = col0.getX();  r01 = col1.getX();  r02 = col2.getX();
-    r10 = col0.getY();  r11 = col1.getY();  r12 = col2.getY();
-    r20 = col0.getZ();  r21 = col1.getZ();  r22 = col2.getZ();
 
     frame.set(r00, r01, r02, r10, r11, r12, r20, r21, r22);
 
@@ -630,9 +475,7 @@ bool cMyCustomDevice::getRotation(cMatrix3d& a_rotation)
 //==============================================================================
 /*!
     This method returns the gripper angle in radian.
-
     \param   a_angle  Return value.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -646,7 +489,6 @@ bool cMyCustomDevice::getGripperAngleRad(double& a_angle)
         STEP 9:
         Here you may implement code which reads the position angle of your
         gripper. The result must be returned in radian.
-
         If the operation fails return an error code such as C_ERROR for instance.
     */
     ////////////////////////////////////////////////////////////////////////////
@@ -668,13 +510,11 @@ bool cMyCustomDevice::getGripperAngleRad(double& a_angle)
 
 //==============================================================================
 /*!
-    This method sends a force [N] and a torque [N*m] and gripper torque [N*m] 
+    This method sends a force [N] and a torque [N*m] and gripper torque [N*m]
     to your haptic device.
-
     \param   a_force  Force command.
     \param   a_torque  Torque command.
     \param   a_gripperForce  Gripper force command.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -688,22 +528,19 @@ bool cMyCustomDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 10:
-        
+
         Here you may implement code which sends a force (fx,fy,fz),
         torque (tx, ty, tz) and/or gripper force (gf) command to your haptic device.
-
-        If your device does not support one of more of the force, torque and 
-        gripper force capabilities, you can simply ignore them. 
-
+        If your device does not support one of more of the force, torque and
+        gripper force capabilities, you can simply ignore them.
         Note:
         For consistency, units must be in Newtons and Newton-meters
         If your device is placed in front of you, the x-axis is pointing
         towards you (the operator). The y-axis points towards your right
         hand side and the z-axis points up towards the sky.
-
         For instance: if the force = (1,0,0), the device should move towards
         the operator, if the force = (0,0,1), the device should move upwards.
-        A torque (1,0,0) would rotate the handle counter clock-wise around the 
+        A torque (1,0,0) would rotate the handle counter clock-wise around the
         x-axis.
     */
     ////////////////////////////////////////////////////////////////////////////
@@ -727,7 +564,7 @@ bool cMyCustomDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
     double gf = a_gripperForce;
 
     // *** INSERT YOUR CODE HERE ***
-      mtm_device.set_force(-fy, fx, fz);
+
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
     // setForceToGripper(fg);
@@ -740,11 +577,9 @@ bool cMyCustomDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
 
 //==============================================================================
 /*!
-    This method returns status of all user switches 
+    This method returns status of all user switches
     [__true__ = __ON__ / __false__ = __OFF__].
-
     \param  a_userSwitches  Return the 32-bit binary mask of the device buttons.
-
     \return __true__ if the operation succeeds, __false__ otherwise.
 */
 //==============================================================================
@@ -756,10 +591,9 @@ bool cMyCustomDevice::getUserSwitches(unsigned int& a_userSwitches)
     ////////////////////////////////////////////////////////////////////////////
     /*
         STEP 11:
-
-        Here you shall implement code that reads the status all user switches 
+        Here you shall implement code that reads the status all user switches
         on your device. For each user switch, set the associated bit on variable
-        a_userSwitches. If your device only has one user switch, then set 
+        a_userSwitches. If your device only has one user switch, then set
         a_userSwitches to 1, when the user switch is engaged, and 0 otherwise.
     */
     ////////////////////////////////////////////////////////////////////////////

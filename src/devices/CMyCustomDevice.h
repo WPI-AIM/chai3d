@@ -3,25 +3,19 @@
     Software License Agreement (BSD License)
     Copyright (c) 2003-2016, CHAI3D.
     (www.chai3d.org)
-
     All rights reserved.
-
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
     are met:
-
     * Redistributions of source code must retain the above copyright
     notice, this list of conditions and the following disclaimer.
-
     * Redistributions in binary form must reproduce the above
     copyright notice, this list of conditions and the following
     disclaimer in the documentation and/or other materials provided
     with the distribution.
-
     * Neither the name of CHAI3D nor the names of its contributors may
     be used to endorse or promote products derived from this software
     without specific prior written permission.
-
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -33,8 +27,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
-
+    POSSIBILITY OF SUCH DAMAGE.
     \author    <http://www.chai3d.org>
     \author    Your name, institution, or company name.
     \version   3.2.0 $Rev: 1875 $
@@ -48,58 +41,6 @@
 #if defined(C_ENABLE_CUSTOM_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
-#include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "sensor_msgs/JointState.h"
-#include "std_msgs/String.h"
-#include "std_msgs/Bool.h"
-#include "geometry_msgs/Wrench.h"
-#include "string.h"
-#include "tf/tf.h"
-#include "tf/LinearMath/Matrix3x3.h"
-
-#ifndef CDVRK_MTMH
-#define CDVRK_MTMH
-class DVRK_MTM{
-public:
-    DVRK_MTM();
-    ~DVRK_MTM();
-
-    bool home();
-
-    void state_sub_cb(const std_msgs::StringConstPtr &msg);
-    void pose_sub_cb(const geometry_msgs::PoseStampedConstPtr &msg);
-    void joint_sub_cb(const sensor_msgs::JointStateConstPtr &msg);
-    void init();
-
-    bool _is_mtm_available();
-    bool set_mode(std::string str);
-    bool set_force(double fx, double fy, double fz);
-
-    geometry_msgs::PoseStamped cur_pose, pre_pose;
-    sensor_msgs::JointState cur_joint, pre_joint;
-    std_msgs::String cur_state;
-    geometry_msgs::Wrench cur_wrench, cmd_wrench;
-    geometry_msgs::Quaternion gm_cur_ori;
-    tf::Quaternion tf_cur_ori;
-    tf::Matrix3x3 mat_ori, ori_corr;
-
-    std::string arm_name;
-    std::string _m_effort_mode = "DVRK_EFFORT_CARTESIAN";
-    float pos_offset[3];
-
-private:
-    ros::NodeHandle *n;
-    ros::Publisher force_pub;
-    ros::Publisher force_orientation_safety_pub;
-    ros::Subscriber pose_sub;
-    ros::Subscriber joint_sub;
-    ros::Subscriber state_sub;
-    ros::Publisher state_pub;
-    ros::AsyncSpinner *spinner;
-
-};
-#endif
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -109,7 +50,6 @@ namespace chai3d {
 //==============================================================================
 /*!
     \file       CMyCustomDevice.h
-
     \brief
     Implements support for custom haptic device.
 */
@@ -123,16 +63,13 @@ typedef std::shared_ptr<cMyCustomDevice> cMyCustomDevicePtr;
 //==============================================================================
 /*!
     \class      cMyCustomDevice
-    \ingroup    devices  
-
+    \ingroup    devices
     \brief
     This class is a interface to support custom haptic devices (template).
-
     \details
-    This class provides the basics to easily interface CHAI3D to your 
+    This class provides the basics to easily interface CHAI3D to your
     own custom haptic device. \n\n
-
-    Simply follow the 11 commented step in file CMyCustomDevice.cpp 
+    Simply follow the 11 commented step in file CMyCustomDevice.cpp
     and complete the code accordingly.
     Depending of the numbers of degrees of freedom of your device, not
     all methods need to be implemented. For instance, if your device
@@ -140,25 +77,23 @@ typedef std::shared_ptr<cMyCustomDevice> cMyCustomDevicePtr;
     the getRotation() method. Default values will be returned correctly
     if these are not implemented on your device. In the case of rotations
     for instance, the identity matrix is returned.\n\n
-
     You may also rename this class in which case you will also want to
     customize the haptic device handler to automatically detect your device.
     Please consult method update() of the cHapticDeviceHandler class
     that is located in file CHapticDeviceHandler.cpp .
     Simply see how the haptic device handler already looks for
     device of type cMyCustomDevice.\n\n
-
-    If you are encountering any problems with your implementation, check 
-    for instance file cDeltaDevices.cpp which implement supports for the 
+    If you are encountering any problems with your implementation, check
+    for instance file cDeltaDevices.cpp which implement supports for the
     Force Dimension series of haptic devices. In order to verify the implementation
     use the 01-device example to get started. Example 11-effects is a great
     demo to verify how basic haptic effects may behave with you haptic
     devices. If you do encounter vibrations or instabilities, try reducing
-    the maximum stiffness and/or damping values supported by your device. 
+    the maximum stiffness and/or damping values supported by your device.
     (see STEP-1 in file CMyCustomDevice.cpp).\n
-    
-    Make  sure that your device is also communicating fast enough with 
-    your computer. Ideally the communication period should take less 
+
+    Make  sure that your device is also communicating fast enough with
+    your computer. Ideally the communication period should take less
     than 1 millisecond in order to reach a desired update rate of at least 1000Hz.
     Problems can typically occur when using a slow serial port (RS232) for
     instance.\n
@@ -180,9 +115,6 @@ public:
 
     //! Shared cMyCustomDevice allocator.
     static cMyCustomDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cMyCustomDevice>(a_deviceNumber)); }
-
-    //! DVRK MTM Object
-    DVRK_MTM mtm_device;
 
 
     //--------------------------------------------------------------------------
@@ -210,7 +142,7 @@ public:
     virtual bool getGripperAngleRad(double& a_angle);
 
     //! This method returns the status of all user switches [__true__ = __ON__ / __false__ = __OFF__].
-    virtual bool getUserSwitches(unsigned int& a_userSwitches); 
+    virtual bool getUserSwitches(unsigned int& a_userSwitches);
 
     //! This method sends a force [N] and a torque [N*m] and gripper force [N] to the haptic device.
     virtual bool setForceAndTorqueAndGripperForce(const cVector3d& a_force, const cVector3d& a_torque, double a_gripperForce);
@@ -220,7 +152,7 @@ public:
     // PUBLIC STATIC METHODS:
     //--------------------------------------------------------------------------
 
-public: 
+public:
 
     //! This method returns the number of devices available from this class of device.
     static unsigned int getNumDevices();
@@ -233,9 +165,8 @@ public:
     ////////////////////////////////////////////////////////////////////////////
     /*
         INTERNAL VARIABLES:
-
         If you need to declare any local variables or methods for your device,
-        you may do it here below. 
+        you may do it here below.
     */
     ////////////////////////////////////////////////////////////////////////////
 

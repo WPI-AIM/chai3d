@@ -86,12 +86,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_SOURCE_DIR}/bin/${O
 # OpenGL dependency
 find_package (OpenGL REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
   roscpp
-  rospy
-  sensor_msgs
-  tf
-  roslib
   dvrk_chai3d
 )
 
@@ -209,9 +204,6 @@ add_definitions (${PROJECT_DEFINITIONS} -DGLEW_STATIC -DAL_ALEXT_PROTOTYPES -DAL
 
 # static library
 add_library (chai3d STATIC ${source} ${source_eigen} ${source_gif} ${source_glew} ${source_3ds} ${source_jpeg} ${source_png} ${source_pugixml} ${source_openal} ${source_theora})
-# target_link_libraries( ${source}
-#   ${catkin_LIBRARIES}
-#)
 # library exports
 set (CHAI3D_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external/Eigen" "${PROJECT_SOURCE_DIR}/external/glew/include" "${OPENGL_INCLUDE_DIR}")
 set (CHAI3D_LIBRARIES chai3d ${OPENGL_LIBRARIES} ${catkin_LIBRARIES})
