@@ -53,7 +53,7 @@
 namespace chai3d {
 //------------------------------------------------------------------------------
 
-
+static bool _my_var;
 
 //==============================================================================
 /*!
@@ -166,9 +166,11 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     //sleep(8.0);
     if(mtm_device._is_mtm_available()){
         m_deviceAvailable = true;
+        _my_var = true;
     }
     else{
         m_deviceAvailable = false; // this value should become 'true' when the device is available.
+        _my_var = false;
     }
     m_MyVariable = 0;
 
@@ -188,6 +190,7 @@ cDvrkDevice::~cDvrkDevice()
         mtm_device.set_force(0,0,0);
         close();
     }
+    ros::shutdown();
 }
 
 
@@ -215,6 +218,7 @@ bool cDvrkDevice::open()
     // update device status
     if (result)
     {
+        cPrint("MTM is available \n");
         m_deviceReady = true;
         return (C_SUCCESS);
     }
@@ -282,11 +286,15 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
 //==============================================================================
 unsigned int cDvrkDevice::getNumDevices()
 {
-
-    int numberOfDevices = 1;  // At least set to 1 if a device is available.
-
-    // numberOfDevices = getNumberOfDevicesConnectedToTheComputer();
-
+    int numberOfDevices;
+    ros::M_string s;
+    ros::init(s, "chai_node");
+    if (ros::master::check()){
+        numberOfDevices = 1;
+    }
+    else{
+        numberOfDevices = 0;
+    }
     return (numberOfDevices);
 }
 
