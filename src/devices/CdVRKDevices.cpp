@@ -49,19 +49,6 @@
 #if defined(C_ENABLE_DVRK_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/*
-    INSTRUCTION TO IMPLEMENT YOUR OWN CUSTOM DEVICE:
-
-    Please review header file cDvrkDevice.h for some initial
-    guidelines about how to implement your own haptic device using this
-    template.
-
-    When ready, simply completed the next 11 documented steps described here
-    below.
-*/
-////////////////////////////////////////////////////////////////////////////////
-
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
@@ -78,17 +65,6 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     // the connection to your device has not yet been established.
     m_deviceReady = false;
 
-
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 1:
-
-        Here you should define the specifications of your device.
-        These values only need to be estimates. Since haptic devices often perform
-        differently depending of their configuration withing their workspace,
-        simply use average values.
-    */
-    ////////////////////////////////////////////////////////////////////////////
 
     //--------------------------------------------------------------------------
     // NAME:
@@ -185,40 +161,13 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     m_specifications.m_rightHand                     = true;
 
 
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 2:
-
-        Here, you shall  implement code which tells the application if your
-        device is actually connected to your computer and can be accessed.
-        In practice this may be consist in checking if your I/O board
-        is active or if your drivers are available.
-
-        If your device can be accessed, set:
-        m_systemAvailable = true;
-
-        Otherwise set:
-        m_systemAvailable = false;
-
-        Your actual code may look like:
-
-        bool result = checkIfMyDeviceIsAvailable()
-        m_systemAvailable = result;
-
-        If want to support multiple devices, using the method argument
-        a_deviceNumber to know which device to setup
-    */  
-    ////////////////////////////////////////////////////////////////////////////
         
-
-    // *** INSERT YOUR CODE HERE ***
     mtm_device.init();
     //sleep(8.0);
     if(mtm_device._is_mtm_available()){
         m_deviceAvailable = true;
     }
     else{
-        ROS_WARN("%s not ready/available", mtm_device.arm_name.c_str());
         m_deviceAvailable = false; // this value should become 'true' when the device is available.
     }
     m_MyVariable = 0;
@@ -236,6 +185,7 @@ cDvrkDevice::~cDvrkDevice()
     // close connection to device
     if (m_deviceReady)
     {
+        mtm_device.set_force(0,0,0);
         close();
     }
 }
@@ -256,26 +206,8 @@ bool cDvrkDevice::open()
     // if system is already opened then return
     if (m_deviceReady) return (C_ERROR);
 
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 3:
-
-        Here you shall implement to open a connection to your
-        device. This may include opening a connection to an interface board
-        for instance or a USB port.
-
-        If the connection succeeds, set the variable 'result' to true.
-        otherwise, set the variable 'result' to false.
-
-        Verify that your device is calibrated. If your device 
-        needs calibration then call method calibrate() for wich you will 
-        provide code in STEP 5 further below.
-    */
-    ////////////////////////////////////////////////////////////////////////////
-
     bool result = C_ERROR; // this value will need to become "C_SUCCESS" for the device to be marked as ready.
 
-    // *** INSERT YOUR CODE HERE ***
     // result = openConnectionToMyDevice();
     result = mtm_device._is_mtm_available();
 
@@ -306,24 +238,13 @@ bool cDvrkDevice::close()
     // check if the system has been opened previously
     if (!m_deviceReady) return (C_ERROR);
 
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 4:
-
-        Here you shall implement code that closes the connection to your
-        device.
-
-        If the operation fails, simply set the variable 'result' to C_ERROR   .
-        If the connection succeeds, set the variable 'result' to C_SUCCESS.
-    */
-    ////////////////////////////////////////////////////////////////////////////
-
     bool result = C_SUCCESS; // if the operation fails, set value to C_ERROR.
 
     // *** INSERT YOUR CODE HERE ***
     // result = closeConnectionToMyDevice()
 
     // update status
+    mtm_device.set_force(0,0,0);
     m_deviceReady = false;
 
     return (result);
@@ -342,30 +263,12 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
     // check if the device is read. See step 3.
     if (!m_deviceReady) return (C_ERROR);
 
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 5:
-        
-        Here you shall implement code that handles a calibration procedure of the 
-        device. In practice this may include initializing the registers of the
-        encoder counters for instance. 
-
-        If the device is already calibrated and  a_forceCalibration == false,
-        the method may immediately return without further action.
-        If a_forceCalibration == true, then the calibrartion procedure
-        shall be executed even if the device has already been calibrated.
- 
-        If the calibration procedure succeeds, the method returns C_SUCCESS,
-        otherwise return C_ERROR.
-    */
-    ////////////////////////////////////////////////////////////////////////////
-
     bool result = C_SUCCESS;
 
     // *** INSERT YOUR CODE HERE ***
 
     // error = calibrateMyDevice()
-    //result = mtm_device.set_mode(mtm_device._m_effort_mode);
+    result = mtm_device.set_mode(mtm_device._m_effort_mode);
     result = true;
     return (result);
 }
@@ -380,24 +283,6 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
 //==============================================================================
 unsigned int cDvrkDevice::getNumDevices()
 {
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 6:
-
-        Here you shall implement code that returns the number of available
-        haptic devices of type "cDvrkDevice" which are currently connected
-        to your computer.
-
-        In practice you will often have either 0 or 1 device. In which case
-        the code here below is already implemented for you.
-
-        If you have support more than 1 devices connected at the same time,
-        then simply modify the code accordingly so that "numberOfDevices" takes
-        the correct value.
-    */
-    ////////////////////////////////////////////////////////////////////////////
-
-    // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
 
     int numberOfDevices = 1;  // At least set to 1 if a device is available.
 
@@ -421,30 +306,8 @@ bool cDvrkDevice::getPosition(cVector3d& a_position)
     // check if the device is read. See step 3.
     if (!m_deviceReady) return (C_ERROR);
 
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 7:
-
-        Here you shall implement code that reads the position (X,Y,Z) from
-        your haptic device. Read the values from your device and modify
-        the local variable (x,y,z) accordingly.
-        If the operation fails return an C_ERROR, C_SUCCESS otherwise
-
-        Note:
-        For consistency, units must be in meters.
-        If your device is located in front of you, the x-axis is pointing
-        towards you (the operator). The y-axis points towards your right
-        hand side and the z-axis points up towards the sky. 
-    */
-    ////////////////////////////////////////////////////////////////////////////
-
     bool result = C_SUCCESS;
     double x,y,z;
-
-    // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
-    x = 0.0;    // x = getMyDevicePositionX()
-    y = 0.0;    // y = getMyDevicePositionY()
-    z = 0.0;    // z = getMyDevicePositionZ()
 
     x = mtm_device.cur_pose.pose.position.y;
     y = -mtm_device.cur_pose.pose.position.x;
@@ -475,43 +338,11 @@ bool cDvrkDevice::getRotation(cMatrix3d& a_rotation)
     // check if the device is read. See step 3.
     if (!m_deviceReady) return (C_ERROR);
 
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 8:
-
-        Here you shall implement code which reads the orientation frame from
-        your haptic device. The orientation frame is expressed by a 3x3
-        rotation matrix. The 1st column of this matrix corresponds to the
-        x-axis, the 2nd column to the y-axis and the 3rd column to the z-axis.
-        The length of each column vector should be of length 1 and vectors need
-        to be orthogonal to each other.
-
-        Note:
-        If your device is located in front of you, the x-axis is pointing
-        towards you (the operator). The y-axis points towards your right
-        hand side and the z-axis points up towards the sky.
-
-        If your device has a stylus, make sure that you set the reference frame
-        so that the x-axis corresponds to the axis of the stylus.
-    */
-    ////////////////////////////////////////////////////////////////////////////
-
     bool result = C_SUCCESS;
 
     // variables that describe the rotation matrix
     double r00, r01, r02, r10, r11, r12, r20, r21, r22;
     cMatrix3d frame;
-    frame.identity();
-
-    // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
-
-    // if the device does not provide any rotation capabilities 
-    // set the rotation matrix equal to the identity matrix.
-
-
-    r00 = 1.0;  r01 = 0.0;  r02 = 0.0;
-    r10 = 0.0;  r11 = 1.0;  r12 = 0.0;
-    r20 = 0.0;  r21 = 0.0;  r22 = 1.0;
 
     tf::Vector3 col0 = mtm_device.mat_ori.getColumn(2);
     tf::Vector3 col1 = -mtm_device.mat_ori.getColumn(1);
@@ -592,29 +423,6 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
     // check if the device is read. See step 3.
     if (!m_deviceReady) return (C_ERROR);
 
-    ////////////////////////////////////////////////////////////////////////////
-    /*
-        STEP 10:
-        
-        Here you may implement code which sends a force (fx,fy,fz),
-        torque (tx, ty, tz) and/or gripper force (gf) command to your haptic device.
-
-        If your device does not support one of more of the force, torque and 
-        gripper force capabilities, you can simply ignore them. 
-
-        Note:
-        For consistency, units must be in Newtons and Newton-meters
-        If your device is placed in front of you, the x-axis is pointing
-        towards you (the operator). The y-axis points towards your right
-        hand side and the z-axis points up towards the sky.
-
-        For instance: if the force = (1,0,0), the device should move towards
-        the operator, if the force = (0,0,1), the device should move upwards.
-        A torque (1,0,0) would rotate the handle counter clock-wise around the 
-        x-axis.
-    */
-    ////////////////////////////////////////////////////////////////////////////
-
     bool result = C_SUCCESS;
 
     // store new force value.
@@ -633,7 +441,6 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
 
     double gf = a_gripperForce;
 
-    // *** INSERT YOUR CODE HERE ***
       mtm_device.set_force(-fy, fx, fz);
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
