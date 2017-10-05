@@ -292,7 +292,7 @@ unsigned int cDvrkDevice::getNumDevices()
         if(arm.empty()){
             arm = "MTMR";
         }
-        topic_check = std::string("/dvrk/" + arm + "/home");
+        topic_check = std::string("/dvrk/" + arm + "/status");
         ros::master::V_TopicInfo topics;
         ros::master::getTopics(topics);
         for(int i = 0 ; i < topics.size() ; i++){
@@ -322,9 +322,7 @@ bool cDvrkDevice::getPosition(cVector3d& a_position)
     bool result = C_SUCCESS;
     double x,y,z;
 
-    x = mtm_device.cur_pose.pose.position.y;
-    y = -mtm_device.cur_pose.pose.position.x;
-    z = mtm_device.cur_pose.pose.position.z;
+    mtm_device.get_cur_position(x,y,z);
 
     // store new position values
     a_position.set(x, y, z);
