@@ -1,5 +1,10 @@
 # Extended CHAI Library for dVRK
 ----------------------------------------
+## Original Authors:
+Conti, F. and Barbagli, F. and Balaniuk, R. 
+               and Halg, M. and Lu, C. and Morris, D. 
+               and Sentis, L. and Warren, J. and Khatib, O. 
+               and Salisbury, K.
 ## Extended Author:
 Adnan Munawar:
 amunawar@wpi.edu
