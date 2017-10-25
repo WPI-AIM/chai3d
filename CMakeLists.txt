@@ -87,7 +87,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_SOURCE_DIR}/bin/${O
 find_package (OpenGL REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  dvrk_chai3d
+  dvrk_arm
 )
 
 catkin_package(

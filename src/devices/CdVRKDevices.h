@@ -48,7 +48,7 @@
 #if defined(C_ENABLE_DVRK_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
-#include <dvrk_chai3d/MTMChai.h>
+#include <dvrk_arm/Arm.h>
 
 //-------------------------------------------------------------------
 
@@ -132,7 +132,7 @@ public:
     static cDvrkDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cDvrkDevice>(a_deviceNumber)); }
 
     //! DVRK MTM Object
-    DVRK_MTM mtm_device;
+    DVRK_Arm mtmr_device;
 
 
     //--------------------------------------------------------------------------

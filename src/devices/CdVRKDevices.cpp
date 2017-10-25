@@ -58,7 +58,7 @@ namespace chai3d {
     Constructor of cDvrkDevice.
 */
 //==============================================================================
-cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
+cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
 {
     // the connection to your device has not yet been established.
     m_deviceReady = false;
@@ -160,10 +160,22 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
 
 
         
-    mtm_device.init();
     //sleep(8.0);
-    if(mtm_device._is_mtm_available()){
+    if(mtmr_device._is_available()){
         m_deviceAvailable = true;
+        tf::Transform otrans, itrans, rot_trans;
+        rot_trans.setOrigin(tf::Vector3(0,0,0));
+        tf::Quaternion quat;
+        quat.setRPY(0, -M_PI/2, 0);
+        rot_trans.setRotation(quat);
+        sleep(1);
+        mtmr_device.get_cur_transform(otrans);
+        cPrint("OP %f %f %f \n",otrans.getOrigin().getX(),otrans.getOrigin().getY(),otrans.getOrigin().getZ());
+        itrans = rot_trans * otrans.inverse();
+        mtmr_device.affix_tip_frame(rot_trans.inverse());
+        mtmr_device.set_origin_frame(itrans);
+        mtmr_device.get_cur_transform(otrans);
+        cPrint("AP %f %f %f \n",otrans.getOrigin().getX(),otrans.getOrigin().getY(),otrans.getOrigin().getZ());
     }
     else{
         m_deviceAvailable = false; // this value should become 'true' when the device is available.
@@ -183,7 +195,8 @@ cDvrkDevice::~cDvrkDevice()
     // close connection to device
     if (m_deviceReady)
     {
-        mtm_device.set_force(0,0,0);
+        mtmr_device.set_force(0,0,0);
+        mtmr_device.set_moment(0,0,0);
         close();
     }
     ros::shutdown();
@@ -208,7 +221,8 @@ bool cDvrkDevice::open()
     bool result = C_ERROR; // this value will need to become "C_SUCCESS" for the device to be marked as ready.
 
     // result = openConnectionToMyDevice();
-    result = mtm_device._is_mtm_available();
+    result = mtmr_device._is_available();
+    mtmr_device.set_mode(mtmr_device._m_effort_mode);
 
 
     // update device status
@@ -244,7 +258,8 @@ bool cDvrkDevice::close()
     // result = closeConnectionToMyDevice()
 
     // update status
-    mtm_device.set_force(0,0,0);
+    mtmr_device.set_force(0,0,0);
+    mtmr_device.set_moment(0,0,0);
     m_deviceReady = false;
 
     return (result);
@@ -268,7 +283,7 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
     // *** INSERT YOUR CODE HERE ***
 
     // error = calibrateMyDevice()
-    result = mtm_device.set_mode(mtm_device._m_effort_mode);
+    //result = mtmr_device.set_mode(mtmr_device._m_effort_mode);
     return (result);
 }
 
@@ -322,7 +337,7 @@ bool cDvrkDevice::getPosition(cVector3d& a_position)
     bool result = C_SUCCESS;
     double x,y,z;
 
-    mtm_device.get_cur_position(x,y,z);
+    mtmr_device.get_cur_position(x,y,z);
 
     // store new position values
     a_position.set(x, y, z);
@@ -354,10 +369,11 @@ bool cDvrkDevice::getRotation(cMatrix3d& a_rotation)
     // variables that describe the rotation matrix
     double r00, r01, r02, r10, r11, r12, r20, r21, r22;
     cMatrix3d frame;
-
-    tf::Vector3 col0 = mtm_device.mat_ori.getColumn(2);
-    tf::Vector3 col1 = -mtm_device.mat_ori.getColumn(1);
-    tf::Vector3 col2 = -mtm_device.mat_ori.getColumn(0);
+    tf::Matrix3x3 rot_mat;
+    mtmr_device.get_cur_orientation(rot_mat);
+    tf::Vector3 col0 = rot_mat.getColumn(0);
+    tf::Vector3 col1 = rot_mat.getColumn(1);
+    tf::Vector3 col2 = rot_mat.getColumn(2);
 
     r00 = col0.getX();  r01 = col1.getX();  r02 = col2.getX();
     r10 = col0.getY();  r11 = col1.getY();  r12 = col2.getY();
@@ -452,7 +468,7 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
 
     double gf = a_gripperForce;
 
-      mtm_device.set_force(-fy, fx, fz);
+    mtmr_device.set_force(fx, fy, fz);
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
     // setForceToGripper(fg);
