@@ -1,3 +1,5 @@
 *~
 build/
 .user
+*lin-x86_64/
+*.user
