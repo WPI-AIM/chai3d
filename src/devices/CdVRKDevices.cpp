@@ -163,19 +163,21 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
     //sleep(8.0);
     if(mtmr_device._is_available()){
         m_deviceAvailable = true;
-        tf::Transform otrans, itrans, rot_trans;
-        rot_trans.setOrigin(tf::Vector3(0,0,0));
-        tf::Quaternion quat;
-        quat.setRPY(0, -M_PI/2, 0);
-        rot_trans.setRotation(quat);
-        sleep(1);
-        mtmr_device.get_cur_transform(otrans);
-        cPrint("OP %f %f %f \n",otrans.getOrigin().getX(),otrans.getOrigin().getY(),otrans.getOrigin().getZ());
-        itrans = rot_trans * otrans.inverse();
-        mtmr_device.affix_tip_frame(rot_trans.inverse());
-        mtmr_device.set_origin_frame(itrans);
-        mtmr_device.get_cur_transform(otrans);
-        cPrint("AP %f %f %f \n",otrans.getOrigin().getX(),otrans.getOrigin().getY(),otrans.getOrigin().getZ());
+        tf::Transform home_trans, tip_trans;
+        tf::Quaternion home_rot, tip_rot;
+
+        home_trans.setOrigin(tf::Vector3(-0.181025, -0.0163, -0.2620));
+        tip_trans.setOrigin(tf::Vector3(0,0,0));
+
+        tip_rot.setRPY(0, -M_PI/2, 0);
+        home_rot.setRPY(3.058663, -1.055021, -1.500306);
+
+        home_trans.setRotation(home_rot);
+        tip_trans.setRotation(tip_rot);
+
+        mtmr_device.set_origin_frame(tip_trans * home_trans.inverse());
+        mtmr_device.affix_tip_frame(tip_trans.inverse());
+
     }
     else{
         m_deviceAvailable = false; // this value should become 'true' when the device is available.
