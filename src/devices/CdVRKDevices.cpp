@@ -87,7 +87,7 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
 
     // the maximum amount of torque your device can provide arround its
     // rotation degrees of freedom.
-    m_specifications.m_maxAngularTorque              = 0.2;     // [N*m]
+    m_specifications.m_maxAngularTorque              = 0.1;     // [N*m]
 
 
     // the maximum amount of torque which can be provided by your gripper
@@ -197,8 +197,6 @@ cDvrkDevice::~cDvrkDevice()
     // close connection to device
     if (m_deviceReady)
     {
-        mtmr_device.set_force(0,0,0);
-        mtmr_device.set_moment(0,0,0);
         close();
     }
     ros::shutdown();
@@ -263,6 +261,7 @@ bool cDvrkDevice::close()
     mtmr_device.set_force(0,0,0);
     mtmr_device.set_moment(0,0,0);
     m_deviceReady = false;
+    result = mtmr_device.shutDown();
 
     return (result);
 }
@@ -471,6 +470,7 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
     double gf = a_gripperForce;
 
     mtmr_device.set_force(fx, fy, fz);
+    mtmr_device.set_moment(tx, ty, tz);
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
     // setForceToGripper(fg);
