@@ -169,14 +169,14 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
         home_trans.setOrigin(tf::Vector3(-0.181025, -0.0163, -0.2620));
         tip_trans.setOrigin(tf::Vector3(0,0,0));
 
-        tip_rot.setRPY(0, -M_PI/2, 0);
+        tip_rot.setRPY(0, M_PI/2, 0);
         home_rot.setRPY(3.058663, -1.055021, -1.500306);
 
         home_trans.setRotation(home_rot);
         tip_trans.setRotation(tip_rot);
 
-        mtmr_device.set_origin_frame(tip_trans * home_trans.inverse());
-        mtmr_device.affix_tip_frame(tip_trans.inverse());
+        mtmr_device.set_origin_frame(home_trans * tip_trans);
+        mtmr_device.affix_tip_frame(tip_trans);
 
     }
     else{
@@ -338,7 +338,7 @@ bool cDvrkDevice::getPosition(cVector3d& a_position)
     bool result = C_SUCCESS;
     double x,y,z;
 
-    mtmr_device.get_cur_position(x,y,z);
+    mtmr_device.measured_cp_pos(x,y,z);
 
     // store new position values
     a_position.set(x, y, z);
@@ -371,7 +371,7 @@ bool cDvrkDevice::getRotation(cMatrix3d& a_rotation)
     double r00, r01, r02, r10, r11, r12, r20, r21, r22;
     cMatrix3d frame;
     tf::Matrix3x3 rot_mat;
-    mtmr_device.get_cur_orientation(rot_mat);
+    mtmr_device.measured_cp_ori(rot_mat);
     tf::Vector3 col0 = rot_mat.getColumn(0);
     tf::Vector3 col1 = rot_mat.getColumn(1);
     tf::Vector3 col2 = rot_mat.getColumn(2);
@@ -470,7 +470,7 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
     double gf = a_gripperForce;
 
     mtmr_device.set_force(fx, fy, fz);
-    mtmr_device.set_moment(tx, ty, tz);
+    //mtmr_device.set_moment(tx, ty, tz);
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
     // setForceToGripper(fg);
