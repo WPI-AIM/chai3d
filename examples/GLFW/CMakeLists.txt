@@ -42,7 +42,7 @@
 include_directories (${GLFW_INCLUDE_DIRS})
 
 # build all targets
-foreach (example 01-mydevice 02-multi-devices 03-analytics 04-shapes 05-fonts 06-images 07-mouse-select 08-shaders 09-magnets 10-oring 11-effects 12-polygons 13-primitives 14-textures 15-paint 16-friction 17-shading 18-endoscope 19-space 20-map 21-object 22-chrome 23-tooth 24-turntable 25-sounds 26-video 27-multiframes 28-voxel-basic 29-voxel-isosurface 30-voxel-colormap 31-pointcloud)
+foreach (example 01-mydevice 02-multi-devices 03-analytics 04-shapes 04b-shapes 05-fonts 06-images 07-mouse-select 08-shaders 09-magnets 10-oring 11-effects 12-polygons 13-primitives 14-textures 15-paint 16-friction 17-shading 18-endoscope 19-space 20-map 21-object 22-chrome 23-tooth 24-turntable 25-sounds 26-video 27-multiframes 28-voxel-basic 29-voxel-isosurface 30-voxel-colormap 31-pointcloud)
 
   file (GLOB source ${example}/*.cpp)
   add_executable (${example} ${source})
