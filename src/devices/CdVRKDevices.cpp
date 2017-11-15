@@ -508,11 +508,22 @@ bool cDvrkDevice::getUserSwitches(unsigned int& a_userSwitches)
     ////////////////////////////////////////////////////////////////////////////
 
     // *** INSERT YOUR CODE HERE ***
-    bool state = mtmr_device.is_gripper_closed();
-    if(state)
-        a_userSwitches = 1;
+    int gripper_bit = 0;
+    int clutch_bit = 1;
+    int coag_bit = 2;
+    a_userSwitches = 0;
+    if(mtmr_device.is_gripper_pressed())
+        a_userSwitches |= (1<<gripper_bit);
     else
-        a_userSwitches = 0;
+        a_userSwitches &= ~(1<<gripper_bit);
+    if(mtmr_device.is_clutch_pressed())
+        a_userSwitches |= (1<<clutch_bit);
+    else
+        a_userSwitches &= ~(1<<clutch_bit);
+    if(mtmr_device.is_coag_pressed())
+        a_userSwitches |= (1<<coag_bit);
+    else
+        a_userSwitches &= ~(1<<coag_bit);
 
     return (C_SUCCESS);
 }
