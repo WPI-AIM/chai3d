@@ -144,7 +144,7 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
     m_specifications.m_sensedGripper                 = true;
 
     // is you device actuated on the translation degrees of freedom?
-    m_specifications.m_actuatedPosition              = false;
+    m_specifications.m_actuatedPosition              = true;
 
     // is your device actuated on the rotation degrees of freedom?
     m_specifications.m_actuatedRotation              = false;
@@ -508,7 +508,11 @@ bool cDvrkDevice::getUserSwitches(unsigned int& a_userSwitches)
     ////////////////////////////////////////////////////////////////////////////
 
     // *** INSERT YOUR CODE HERE ***
-    a_userSwitches = 0;
+    bool state = mtmr_device.is_gripper_closed();
+    if(state)
+        a_userSwitches = 1;
+    else
+        a_userSwitches = 0;
 
     return (C_SUCCESS);
 }
