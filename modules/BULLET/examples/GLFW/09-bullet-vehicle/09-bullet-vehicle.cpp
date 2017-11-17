@@ -808,6 +808,8 @@ void updateHaptics(void)
         hapticDevice->getRotation(rotDevice);
 
         // scale position of device
+        posDevice = cMul(camera->getLocalRot(), posDevice);
+        rotDevice = cMul(camera->getLocalRot(), rotDevice);
         posDevice.mul(workspaceScaleFactor);
 
         // read position of tool
@@ -836,9 +838,10 @@ void updateHaptics(void)
 
         // send forces to device
         bool _pressed;
-        if(hapticDevice->getUserSwitch(1,_pressed));
+        if(hapticDevice->getUserSwitch(1,_pressed));{
+        }
         if(!_pressed){
-        hapticDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
+        //hapticDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
         }
 
         if (linG < linGain)
