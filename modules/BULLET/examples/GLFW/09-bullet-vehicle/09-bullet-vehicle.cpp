@@ -739,7 +739,7 @@ void updateGraphics(void)
         double scale = 0.3;
         hapticDevice->getLinearVelocity(dev_vel);
         hapticDevice->getRotation(dev_rot_cur);
-        camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(cTranspose(cam_rot_last),dev_vel)));
+        camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(camera->getGlobalRot(),dev_vel)));
         camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
     }
     if(!_pressed){
