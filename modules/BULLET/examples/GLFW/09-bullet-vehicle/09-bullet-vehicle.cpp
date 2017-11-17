@@ -100,6 +100,8 @@ double linStiffness = 1800;
 double angStiffness = 30;
 
 cVector3d camPos(0,0,0);
+cVector3d dev_vel;
+cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
 
 
 //---------------------------------------------------------------------------
@@ -734,15 +736,15 @@ void updateGraphics(void)
     bool _pressed;
     hapticDevice->getUserSwitch(1, _pressed);
     if(_pressed){
-        cVector3d hvel, cpos;
-        cMatrix3d hrot, crot;
-        double scale = 0.1;
-        cpos = camera->getLocalPos();
-        crot = camera->getLocalRot();
-        hapticDevice->getLinearVelocity(hvel);
-        hapticDevice->getRotation(hrot);
-        camPos = (cpos + cMul(scale, hvel));
-        camera->setLocalPos(camPos);
+        double scale = 0.3;
+        hapticDevice->getLinearVelocity(dev_vel);
+        hapticDevice->getRotation(dev_rot_cur);
+        camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(cTranspose(cam_rot_last),dev_vel)));
+        camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
+    }
+    if(!_pressed){
+        cam_rot_last = camera->getGlobalRot();
+        hapticDevice->getRotation(dev_rot_last);
     }
 
 
@@ -833,7 +835,11 @@ void updateHaptics(void)
         torque = -angG * torque;
 
         // send forces to device
+        bool _pressed;
+        if(hapticDevice->getUserSwitch(1,_pressed));
+        if(!_pressed){
         hapticDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
+        }
 
         if (linG < linGain)
         {
