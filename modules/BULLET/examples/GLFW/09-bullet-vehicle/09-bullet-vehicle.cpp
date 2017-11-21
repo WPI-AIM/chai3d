@@ -821,20 +821,17 @@ void updateHaptics(void)
             }
             posDeviceClutched = dPosDevice;
             rotDeviceClutched = dRotDevice;
-            rotDeviceClutched = cMul(cTranspose(camera->getLocalRot()), dRotDevice);
         }
         else{
             if(!_firstClutchPress)
             {
                 posDeviceLast = posDevice;
                 rotDeviceLast = rotDevice;
-                rotDeviceLast = cMul(cTranspose(camera->getLocalRot()), rotDevice);
                 posDeviceLast.div(workspaceScaleFactor);
                 _firstClutchPress = true;
             }
             posDevice = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
-            rotDevice = cMul(camera->getLocalRot(),cMul(rotDeviceLast, cMul(camera->getLocalRot(),cMul(cTranspose(rotDeviceClutched), dRotDevice))));
-            //rotFinal = cMul(camera->getLocalRot(), rotDevice);
+            rotDevice = rotDeviceLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * dRotDevice * cTranspose(camera->getLocalRot());
             posDevice.mul(workspaceScaleFactor);
         }
 
