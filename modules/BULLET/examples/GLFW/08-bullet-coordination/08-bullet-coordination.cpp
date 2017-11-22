@@ -84,6 +84,8 @@ cBulletMesh* bulletMesh1;
 cBulletMesh* bulletMesh2;
 cBulletMesh* bulletTool;
 cBulletMesh* bulletCylinder;
+cBulletMultiMesh* bulletGear;
+cBulletMultiMesh* tool;
 
 // bullet static walls and ground
 cBulletStaticPlane* bulletInvisibleWall1;
@@ -157,6 +159,16 @@ int height = 0;
 // swap interval for the display context (vertical synchronization)
 int swapInterval = 1;
 
+// root resource path
+string resourceRoot;
+
+
+//---------------------------------------------------------------------------
+// DECLARED MACROS
+//---------------------------------------------------------------------------
+
+// convert to resource path
+#define RESOURCE_PATH(p)    (char*)((resourceRoot+string(p)).c_str())
 
 //---------------------------------------------------------------------------
 // DECLARED FUNCTIONS
@@ -179,7 +191,6 @@ void updateHaptics(void);
 
 // this function closes the application
 void close(void);
-
 
 //===========================================================================
 /*
@@ -401,23 +412,32 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     double size = 0.40;
 
+    bulletGear = new cBulletMultiMesh(bulletWorld);
+    bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
+    bulletGear->scale(0.0014);
+    bulletWorld->addChild(bulletGear);
+    bulletGear->buildContactTriangles(0.001);
+    bulletGear->setMass(0.3);
+    bulletGear->estimateInertia();
+    bulletGear->buildDynamicModel();
+
     // creat the meshes attached to the world
     bulletMesh1 = new cBulletMesh(bulletWorld);
-    cCreateRing(bulletMesh1,0.05,0.2);
+    cCreateRing(bulletMesh1,0.05,0.2,16);
     bulletWorld->addChild(bulletMesh1);
     bulletMesh2 = new cBulletMesh(bulletWorld);
-    cCreateRing(bulletMesh2, 0.05,0.2);
+    cCreateRing(bulletMesh2, 0.05,0.2,16);
     bulletWorld->addChild(bulletMesh2);
 
 
 
     // define some material properties for each cube
-    cMaterial mat0, mat1;
-    mat0.setRedIndian();
+    cMaterial mat0;
+    mat0.setStiffness(0.5 * maxStiffness);
+    mat0.setBlueRoyal();
     bulletMesh1->setMaterial(mat0);
-
-    mat1.setBlueRoyal();
-    bulletMesh2->setMaterial(mat1);
+    mat0.setYellowDarkKhaki();
+    bulletMesh2->setMaterial(mat0);
 
     // define some mass properties for each cube
     bulletMesh1->setMass(1.5);
@@ -484,11 +504,26 @@ int main(int argc, char* argv[])
 
     // create three objects that are added to the world
     //bulletTool = new cBulletCylinder(bulletWorld, 2.0 * size, 0.2 * size);
-    bulletTool = new cBulletMesh(bulletWorld);
     cMatrix3d rot;
+    rot.setAxisAngleRotationDeg(0,0,1,-90);
+    bulletCylinder = new cBulletMesh(bulletWorld);
+    cCreateRingSection(bulletCylinder, 0.03,0.01,0.3,180,true,16,16,cVector3d(-0.35,0,0),rot);
+    rot.setAxisAngleRotationDeg(1,0,0,-90);
+    bulletCylinder->setLocalRot(rot);
+
+    bulletTool = new cBulletMesh(bulletWorld);
     rot.setAxisAngleRotationDeg(0,1,0,90);
     cCreateCylinder(bulletTool, 0.6, 0.1, 16, 1, 1, true, true, cVector3d(0.0, 0.0, 0.0), rot);
-    bulletWorld->addChild(bulletTool);
+
+    // assign linear and angular damping
+
+    tool = new cBulletMultiMesh(bulletWorld);
+    tool->addMesh(bulletTool);
+    tool->addMesh(bulletCylinder);
+
+    //tool->loadFromFile(RESOURCE_PATH("../resources/models/dental/drill.obj"));
+    //tool->scale(0.007);
+    bulletWorld->addChild(tool);
 
     // define some material properties for the axes
     cMaterial matAxis;
@@ -497,23 +532,15 @@ int main(int argc, char* argv[])
     matAxis.setStaticFriction(0.5);
     matAxis.setRedDarkSalmon();
 
-    bulletTool->setMaterial(matAxis, true);
+    tool->setMaterial(matAxis, true);
 
-    // define a mass
-    bulletTool->setMass(0.01);
+    tool->setMass(0.01);
+    tool->buildContactTriangles(0.01);
+    tool->estimateInertia();
+    tool->buildDynamicModel();
+    tool->setDamping(1.0,1.0);
 
-    bulletTool->buildContactTriangles(0.001);
 
-    // estimate tool's inertia properties
-    bulletTool->estimateInertia();
-
-    // create dynamic model
-    bulletTool->buildDynamicModel();
-
-    //bulletTool->createAABBCollisionDetector(0.06);
-
-    // assign linear and angular damping
-    bulletTool->setDamping(1.0, 1.0);
 
     //-----------------------------------------------------------------------
     // START SIMULATION
@@ -829,8 +856,8 @@ void updateHaptics(void)
         posDevice.mul(workspaceScaleFactor);
 
         // read position of tool
-        cVector3d posTool = bulletTool->getLocalPos();
-        cMatrix3d rotTool = bulletTool->getLocalRot();
+        cVector3d posTool = tool->getLocalPos();
+        cMatrix3d rotTool = tool->getLocalRot();
 
         // compute position and angular error between tool and haptic device
         cVector3d deltaPos = (posDevice - posTool);
@@ -842,11 +869,11 @@ void updateHaptics(void)
         // compute force and torque to apply to tool
         cVector3d force, torque;
         force = linStiffness * deltaPos;
-        bulletTool->addExternalForce(force);
+        tool->addExternalForce(force);
 
         torque = cMul((angStiffness * angle), axis);
         rotTool.mul(torque);
-        bulletTool->addExternalTorque(torque);
+        tool->addExternalTorque(torque);
 
         // compute force and torque to apply to haptic device
         force = -linG * force;
