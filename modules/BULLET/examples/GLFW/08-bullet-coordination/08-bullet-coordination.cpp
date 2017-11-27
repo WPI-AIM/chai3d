@@ -85,6 +85,7 @@ cBulletMesh* bulletMesh2;
 cBulletMesh* bulletTool;
 cBulletMesh* bulletCylinder;
 cBulletMultiMesh* bulletGear;
+cBulletMultiMesh* bulletTorus;
 cBulletMultiMesh* tool;
 
 // bullet static walls and ground
@@ -421,48 +422,15 @@ int main(int argc, char* argv[])
     bulletGear->estimateInertia();
     bulletGear->buildDynamicModel();
 
-    // creat the meshes attached to the world
-    bulletMesh1 = new cBulletMesh(bulletWorld);
-    cCreateRing(bulletMesh1,0.05,0.2,16);
-    bulletWorld->addChild(bulletMesh1);
-    bulletMesh2 = new cBulletMesh(bulletWorld);
-    cCreateRing(bulletMesh2, 0.05,0.2,16);
-    bulletWorld->addChild(bulletMesh2);
-
-
-
-    // define some material properties for each cube
-    cMaterial mat0;
-    mat0.setStiffness(0.5 * maxStiffness);
-    mat0.setBlueRoyal();
-    bulletMesh1->setMaterial(mat0);
-    mat0.setYellowDarkKhaki();
-    bulletMesh2->setMaterial(mat0);
-
-    // define some mass properties for each cube
-    bulletMesh1->setMass(1.5);
-    bulletMesh2->setMass(1.5);
-
-    bulletMesh1->buildContactTriangles(0.001);
-    bulletMesh2->buildContactTriangles(0.001);
-
-    // estimate their inertia proiperties
-    bulletMesh1->estimateInertia();
-    bulletMesh2->estimateInertia();
-
-    bulletMesh1->createAABBCollisionDetector(0.001);
-    bulletMesh2->createAABBCollisionDetector(0.001);
-
-    // create dynamic models
-    bulletMesh1->buildDynamicModel();
-    bulletMesh2->buildDynamicModel();
-
-    // set position of each cube
-    bulletMesh1->setLocalPos(0.0, 0.5, 0.0);
-    bulletMesh2->setLocalPos(0.0, -0.5, 0.0);
-
-//    // rotate central cube 45 degrees around z-axis
-//    bulletBox0->rotateAboutGlobalAxisDeg(0,0,1, 45);
+    bulletTorus = new cBulletMultiMesh(bulletWorld);
+    bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
+    bulletTorus->scale(0.2);
+    bulletTorus->setLocalPos(cVector3d(0.3,0,0));
+    bulletWorld->addChild(bulletTorus);
+    bulletTorus->buildContactTriangles(0.001);
+    bulletTorus->setMass(0.8);
+    bulletTorus->estimateInertia();
+    bulletTorus->buildDynamicModel();
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -472,8 +440,8 @@ int main(int argc, char* argv[])
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double planeWidth = 1.0;
     bulletInvisibleWall1 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
-    bulletInvisibleWall2 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, -1.0, 0.0), -planeWidth);
-    bulletInvisibleWall3 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 1.0, 0.0), -planeWidth);
+    bulletInvisibleWall2 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, -1.0, 0.0), -1.5*planeWidth);
+    bulletInvisibleWall3 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 1.0, 0.0), -1.5*planeWidth);
     bulletInvisibleWall4 = new cBulletStaticPlane(bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
     bulletInvisibleWall5 = new cBulletStaticPlane(bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
 
