@@ -818,6 +818,7 @@ void updateHaptics(void)
         if(_pressed){
             if(_firstClutchPress){
                 _firstClutchPress = false;
+                posDeviceLast = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
             }
             posDeviceClutched = dPosDevice;
             rotDeviceClutched = dRotDevice;
@@ -825,15 +826,14 @@ void updateHaptics(void)
         else{
             if(!_firstClutchPress)
             {
-                posDeviceLast = posDevice;
                 rotDeviceLast = rotDevice;
-                posDeviceLast.div(workspaceScaleFactor);
                 _firstClutchPress = true;
             }
-            posDevice = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
             rotDevice = rotDeviceLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * dRotDevice * cTranspose(camera->getLocalRot());
-            posDevice.mul(workspaceScaleFactor);
         }
+
+        posDevice = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
+        posDevice.mul(workspaceScaleFactor);
 
         // read position of tool
         cVector3d posTool = bulletTool->getLocalPos();
