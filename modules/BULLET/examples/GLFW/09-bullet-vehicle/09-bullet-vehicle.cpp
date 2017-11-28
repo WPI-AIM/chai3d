@@ -819,6 +819,7 @@ void updateHaptics(void)
             if(_firstClutchPress){
                 _firstClutchPress = false;
                 posDeviceLast = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
+                rotDeviceLast = rotDevice;
             }
             posDeviceClutched = dPosDevice;
             rotDeviceClutched = dRotDevice;
@@ -829,10 +830,10 @@ void updateHaptics(void)
                 rotDeviceLast = rotDevice;
                 _firstClutchPress = true;
             }
-            rotDevice = rotDeviceLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * dRotDevice * cTranspose(camera->getLocalRot());
         }
 
         posDevice = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
+        rotDevice = rotDeviceLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * dRotDevice * cTranspose(camera->getLocalRot());
         posDevice.mul(workspaceScaleFactor);
 
         // read position of tool
