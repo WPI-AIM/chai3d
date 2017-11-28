@@ -473,36 +473,24 @@ int main(int argc, char* argv[])
     // create three objects that are added to the world
     //bulletTool = new cBulletCylinder(bulletWorld, 2.0 * size, 0.2 * size);
     cMatrix3d rot;
-    rot.setAxisAngleRotationDeg(0,0,1,-90);
-    bulletCylinder = new cBulletMesh(bulletWorld);
-    cCreateRingSection(bulletCylinder, 0.03,0.01,0.3,180,true,16,16,cVector3d(-0.35,0,0),rot);
-    rot.setAxisAngleRotationDeg(1,0,0,-90);
-    bulletCylinder->setLocalRot(rot);
-
-    bulletTool = new cBulletMesh(bulletWorld);
-    rot.setAxisAngleRotationDeg(0,1,0,90);
-    cCreateCylinder(bulletTool, 0.6, 0.1, 16, 1, 1, true, true, cVector3d(0.0, 0.0, 0.0), rot);
-
     // assign linear and angular damping
 
     tool = new cBulletMultiMesh(bulletWorld);
-    tool->addMesh(bulletTool);
-    tool->addMesh(bulletCylinder);
-
-    //tool->loadFromFile(RESOURCE_PATH("../resources/models/dental/drill.obj"));
-    //tool->scale(0.007);
+    tool->loadFromFile(RESOURCE_PATH("../resources/models/gear/hook.3ds"));
+    tool->scale(1);
+    rot.setAxisAngleRotationDeg(0,1,0,-90);
     bulletWorld->addChild(tool);
 
     // define some material properties for the axes
     cMaterial matAxis;
-    matAxis.setStiffness(0.5 * maxStiffness);
-    matAxis.setDynamicFriction(0.7);
-    matAxis.setStaticFriction(0.5);
+//    matAxis.setStiffness(0.5 * maxStiffness);
+//    matAxis.setDynamicFriction(0.7);
+//    matAxis.setStaticFriction(0.5);
     matAxis.setRedDarkSalmon();
 
     tool->setMaterial(matAxis, true);
 
-    tool->setMass(0.01);
+    tool->setMass(0.03);
     tool->buildContactTriangles(0.01);
     tool->estimateInertia();
     tool->buildDynamicModel();
