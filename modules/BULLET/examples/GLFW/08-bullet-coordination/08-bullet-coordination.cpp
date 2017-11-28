@@ -804,7 +804,7 @@ void updateHaptics(void)
     // update position and orientation of tool
     cVector3d posDevice, posSim, posSimLast, posDeviceClutched;
     cMatrix3d rotDevice, rotSim, rotSimLast, rotDeviceClutched;
-    bool _firstClutchPress = false;
+    bool _firstCamClutchPress = false, _firstPosClutchPress = false;
     hapticDevice->getRotation(rotDevice);
     rotDeviceClutched.identity();
     rotSimLast = rotDevice;
@@ -830,18 +830,31 @@ void updateHaptics(void)
         hapticDevice->getRotation(rotDevice);
 
         // send forces to device
-        bool _pressed;
-        hapticDevice->getUserSwitch(1,_pressed);
-        if(_pressed){
-            if(_firstClutchPress){
-                _firstClutchPress = false;
+        bool _cam_clutch_pressed;
+        hapticDevice->getUserSwitch(1,_cam_clutch_pressed);
+        if(_cam_clutch_pressed){
+            if(_firstCamClutchPress){
+                _firstCamClutchPress = false;
                 posSimLast = posSim / workspaceScaleFactor;
                 rotSimLast = rotSim;
             }
             posDeviceClutched = posDevice;
             rotDeviceClutched = rotDevice;
         }
-        else{_firstClutchPress = true;}
+        else{_firstCamClutchPress = true;}
+
+        bool _pos_clutch_pressed;
+        hapticDevice->getUserSwitch(0,_pos_clutch_pressed);
+        if(_pos_clutch_pressed){
+            if(_firstPosClutchPress){
+                _firstPosClutchPress = false;
+                posSimLast = posSim / workspaceScaleFactor;
+                rotSimLast = rotSim;
+            }
+            posDeviceClutched = posDevice;
+            rotDeviceClutched = rotDevice;
+        }
+        else{_firstPosClutchPress = true;}
 
         posSim = cAdd(posSimLast, cMul(camera->getLocalRot(), cSub(posDevice, posDeviceClutched)));
         rotSim = rotSimLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * rotDevice * cTranspose(camera->getLocalRot());
