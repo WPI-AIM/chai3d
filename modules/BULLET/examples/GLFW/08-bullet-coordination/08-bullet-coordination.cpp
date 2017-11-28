@@ -808,6 +808,7 @@ void updateHaptics(void)
     hapticDevice->getRotation(rotDevice);
     rotDeviceClutched.identity();
     rotDevice.identity();
+    rotDeviceLast.identity();
 
     // main haptic simulation loop
     while(simulationRunning)
@@ -841,13 +842,7 @@ void updateHaptics(void)
             posDeviceClutched = dPosDevice;
             rotDeviceClutched = dRotDevice;
         }
-        else{
-            if(!_firstClutchPress)
-            {
-                rotDeviceLast = rotDevice;
-                _firstClutchPress = true;
-            }
-        }
+        else{_firstClutchPress = true;}
 
         posDevice = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
         rotDevice = rotDeviceLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * dRotDevice * cTranspose(camera->getLocalRot());
