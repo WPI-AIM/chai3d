@@ -104,6 +104,10 @@ double angG;
 double linStiffness = 1000;
 double angStiffness = 30;
 
+cVector3d camPos(0,0,0);
+cVector3d dev_vel;
+cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
+
 
 //---------------------------------------------------------------------------
 // CHAI3D VARIABLES
@@ -747,7 +751,19 @@ void updateGraphics(void)
 
     // update position of label
     labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 15);
-
+    bool _pressed;
+    hapticDevice->getUserSwitch(1, _pressed);
+    if(_pressed){
+        double scale = 0.3;
+        hapticDevice->getLinearVelocity(dev_vel);
+        hapticDevice->getRotation(dev_rot_cur);
+        camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(camera->getGlobalRot(),dev_vel)));
+        camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
+    }
+    if(!_pressed){
+        cam_rot_last = camera->getGlobalRot();
+        hapticDevice->getRotation(dev_rot_last);
+    }
 
     /////////////////////////////////////////////////////////////////////
     // RENDER SCENE
@@ -785,6 +801,14 @@ void updateHaptics(void)
     cMatrix3d prevRotTool;
     prevRotTool.identity();
 
+    // update position and orientation of tool
+    cVector3d posDevice, dPosDevice, posDeviceLast, posDeviceClutched;
+    cMatrix3d rotDevice, dRotDevice, rotDeviceLast, rotDeviceClutched, rotFinal;
+    bool _firstClutchPress = false;
+    hapticDevice->getRotation(rotDevice);
+    rotDeviceClutched.identity();
+    rotDevice.identity();
+
     // main haptic simulation loop
     while(simulationRunning)
     {
@@ -802,13 +826,30 @@ void updateHaptics(void)
         // compute global reference frames for each object
         bulletWorld->computeGlobalPositions(true);
 
-        // update position and orientation of tool
-        cVector3d posDevice;
-        cMatrix3d rotDevice;
-        hapticDevice->getPosition(posDevice);
-        hapticDevice->getRotation(rotDevice);
+        hapticDevice->getPosition(dPosDevice);
+        hapticDevice->getRotation(dRotDevice);
 
-        // scale position of device
+        // send forces to device
+        bool _pressed;
+        hapticDevice->getUserSwitch(1,_pressed);
+        if(_pressed){
+            if(_firstClutchPress){
+                _firstClutchPress = false;
+                posDeviceLast = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
+            }
+            posDeviceClutched = dPosDevice;
+            rotDeviceClutched = dRotDevice;
+        }
+        else{
+            if(!_firstClutchPress)
+            {
+                rotDeviceLast = rotDevice;
+                _firstClutchPress = true;
+            }
+            rotDevice = rotDeviceLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * dRotDevice * cTranspose(camera->getLocalRot());
+        }
+
+        posDevice = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
         posDevice.mul(workspaceScaleFactor);
 
         // read position of tool
