@@ -86,6 +86,7 @@ cBulletMesh* bulletTool;
 cBulletMesh* bulletCylinder;
 cBulletMultiMesh* bulletGear;
 cBulletMultiMesh* bulletTorus;
+cBulletMultiMesh* bulletBase;
 cBulletMultiMesh* tool;
 
 // bullet static walls and ground
@@ -436,6 +437,16 @@ int main(int argc, char* argv[])
     bulletTorus->estimateInertia();
     bulletTorus->buildDynamicModel();
 
+    bulletBase = new cBulletMultiMesh(bulletWorld);
+    bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/gear/base.3ds"));
+    bulletBase->scale(0.3);
+    bulletBase->setLocalPos(cVector3d(-0.3,0,0));
+    bulletWorld->addChild(bulletBase);
+    bulletBase->buildContactTriangles(0.001);
+    bulletBase->setMass(2);
+    bulletBase->estimateInertia();
+    bulletBase->buildDynamicModel();
+
 
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS
@@ -481,7 +492,7 @@ int main(int argc, char* argv[])
 
     tool = new cBulletMultiMesh(bulletWorld);
     tool->loadFromFile(RESOURCE_PATH("../resources/models/gear/hook.3ds"));
-    tool->scale(1);
+    tool->scale(1.0);
     rot.setAxisAngleRotationDeg(0,1,0,-90);
     bulletWorld->addChild(tool);
 
@@ -494,7 +505,7 @@ int main(int argc, char* argv[])
 
     tool->setMaterial(matAxis, true);
 
-    tool->setMass(0.03);
+    tool->setMass(0.01);
     tool->buildContactTriangles(0.01);
     tool->estimateInertia();
     tool->buildDynamicModel();
