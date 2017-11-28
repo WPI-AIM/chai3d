@@ -785,13 +785,12 @@ void updateHaptics(void)
     prevRotTool.identity();
 
     // update position and orientation of tool
-    cVector3d posDevice, dPosDevice, posDeviceLast, posDeviceClutched;
-    cMatrix3d rotDevice, dRotDevice, rotDeviceLast, rotDeviceClutched;
+    cVector3d posDevice, posSim, posSimLast, posDeviceClutched;
+    cMatrix3d rotDevice, rotSim, rotSimLast, rotDeviceClutched;
     bool _firstClutchPress = false;
     hapticDevice->getRotation(rotDevice);
     rotDeviceClutched.identity();
-    rotDevice.identity();
-    rotDeviceLast.identity();
+    rotSimLast = rotDevice;
 
     // main haptic simulation loop
     while(simulationRunning)
@@ -810,8 +809,8 @@ void updateHaptics(void)
         // compute global reference frames for each object
         bulletWorld->computeGlobalPositions(true);
 
-        hapticDevice->getPosition(dPosDevice);
-        hapticDevice->getRotation(dRotDevice);
+        hapticDevice->getPosition(posDevice);
+        hapticDevice->getRotation(rotDevice);
 
         // send forces to device
         bool _pressed;
@@ -819,25 +818,25 @@ void updateHaptics(void)
         if(_pressed){
             if(_firstClutchPress){
                 _firstClutchPress = false;
-                posDeviceLast = posDevice / workspaceScaleFactor;
-                rotDeviceLast = rotDevice;
+                posSimLast = posSim / workspaceScaleFactor;
+                rotSimLast = rotSim;
             }
-            posDeviceClutched = dPosDevice;
-            rotDeviceClutched = dRotDevice;
+            posDeviceClutched = posDevice;
+            rotDeviceClutched = rotDevice;
         }
         else{_firstClutchPress = true;}
 
-        posDevice = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
-        rotDevice = rotDeviceLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * dRotDevice * cTranspose(camera->getLocalRot());
-        posDevice.mul(workspaceScaleFactor);
+        posSim = cAdd(posSimLast, cMul(camera->getLocalRot(), cSub(posDevice, posDeviceClutched)));
+        rotSim = rotSimLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * rotDevice * cTranspose(camera->getLocalRot());
+        posSim.mul(workspaceScaleFactor);
 
         // read position of tool
         cVector3d posTool = bulletTool->getLocalPos();
         cMatrix3d rotTool = bulletTool->getLocalRot();
 
         // compute position and angular error between tool and haptic device
-        cVector3d deltaPos = (posDevice - posTool);
-        cMatrix3d deltaRot = cMul(cTranspose(rotTool), rotDevice);
+        cVector3d deltaPos = (posSim - posTool);
+        cMatrix3d deltaRot = cMul(cTranspose(rotTool), rotSim);
         double angle;
         cVector3d axis;
         deltaRot.toAxisAngle(axis, angle);
