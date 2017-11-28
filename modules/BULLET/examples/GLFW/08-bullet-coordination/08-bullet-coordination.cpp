@@ -835,7 +835,7 @@ void updateHaptics(void)
         if(_pressed){
             if(_firstClutchPress){
                 _firstClutchPress = false;
-                posDeviceLast = cAdd(posDeviceLast, cMul(camera->getLocalRot(), cSub(dPosDevice, posDeviceClutched)));
+                posDeviceLast = posDevice / workspaceScaleFactor;
                 rotDeviceLast = rotDevice;
             }
             posDeviceClutched = dPosDevice;
