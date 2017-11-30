@@ -203,7 +203,7 @@ int main(int argc, char* argv[])
     cout << endl;
     cout << "-----------------------------------" << endl;
     cout << "CHAI3D" << endl;
-    cout << "Demo: 04-bullet-tool" << endl;
+    cout << "Demo: 09-bullet-vehicle" << endl;
     cout << "Copyright 2003-2016" << endl;
     cout << "-----------------------------------" << endl << endl << endl;
     cout << "Keyboard Options:" << endl << endl;
@@ -422,7 +422,6 @@ int main(int argc, char* argv[])
 
     // rotate central cube 45 degrees around z-axis
     bulletVehicle->rotateAboutGlobalAxisDeg(0,0,1, 45);
-
 
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS

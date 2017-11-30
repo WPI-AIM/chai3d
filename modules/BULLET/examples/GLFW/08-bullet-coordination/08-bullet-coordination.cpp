@@ -218,7 +218,7 @@ int main(int argc, char* argv[])
     cout << endl;
     cout << "-----------------------------------" << endl;
     cout << "CHAI3D" << endl;
-    cout << "Demo: 04-bullet-tool" << endl;
+    cout << "Demo: 08-bullet-coordination" << endl;
     cout << "Copyright 2003-2016" << endl;
     cout << "-----------------------------------" << endl << endl << endl;
     cout << "Keyboard Options:" << endl << endl;
