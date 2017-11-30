@@ -405,17 +405,27 @@ int main(int argc, char* argv[])
     double size = 0.40;
 
 //    // create three objects that are added to the world
+    cMaterial mat;
+    mat.setBlueAqua();
 
     bulletGripperL1 = new cBulletBox(bulletWorld, 0.5, 0.5, 0.5);
     bulletGripperL2 = new cBulletBox(bulletWorld, 0.5, 0.5, 0.5);
 
+    bulletGripperL1->setMaterial(mat);
+    mat.setRedFireBrick();
+    bulletGripperL2->setMaterial(mat);
+
     bulletWorld->addChild(bulletGripperL1);
     bulletWorld->addChild(bulletGripperL2);
 
-    bulletGripperL1->setMass(0.0);
-    bulletGripperL2->setMass(0.5);
+    bulletGripperL1->setDamping(1.0,1.0);
+    bulletGripperL2->setDamping(1.0,1.0);
+    bulletGripperL2->setFriction(1.0,1.0);
 
-    bulletGripperL1->setLocalPos(0.5,-0.5,0);
+    bulletGripperL1->setMass(0.0);
+    bulletGripperL2->setMass(5);
+
+    bulletGripperL1->setLocalPos(-0.5,0.0,0);
     //bulletGripperL2->setLocalPos(0.5, 0.5,0);
 
     bulletGripperL1->buildContactTriangles(0.001);
@@ -427,14 +437,16 @@ int main(int argc, char* argv[])
     bulletGripperL1->buildDynamicModel();
     bulletGripperL2->buildDynamicModel();
     btVector3 axisA, axisB, pvtA, pvtB;
-    axisA.setValue(0,1,0);
+    axisA.setValue(0,0,1);
     axisB = axisA;
-    pvtA.setValue(0,0.5,0);
-    pvtB = -pvtA;
+    pvtA.setValue(0,0,0);
+    pvtB.setValue(0,-1.0,0);
     btHingeConstraint *bulletHinge;
     bulletHinge = new btHingeConstraint(*bulletGripperL1->m_bulletRigidBody,
                                         *bulletGripperL2->m_bulletRigidBody,
                                         pvtA,pvtB,axisA,axisB);
+    //bulletHinge->setLimit(-1.0,1.0);
+    bulletHinge->enableAngularMotor(true, 1, 0.5);
     bulletWorld->m_bulletWorld->addConstraint(bulletHinge);
 
     //////////////////////////////////////////////////////////////////////////
