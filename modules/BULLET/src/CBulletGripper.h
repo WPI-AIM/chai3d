@@ -37,6 +37,7 @@ public:
 public:
     void set_gripper_angle(const double &angle);
     void set_surface_props(GripperSurfaceProperties &props);
+    void set_scale(double scale);
     void build();
 public:
     cBulletMultiMesh* bulletMeshGripperL2;

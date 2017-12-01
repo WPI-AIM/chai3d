@@ -67,6 +67,11 @@ void cBulletGripper::set_gripper_angle(const double &angle){
     bulletHinge->setMotorTarget(angle, 0.001);
 }
 
+void cBulletGripper::set_scale(double a_scale){
+    this->scale(a_scale);
+    bulletMeshGripperL2->scale(a_scale);
+}
+
 void cBulletGripper::set_surface_props(GripperSurfaceProperties &props){
 
     this->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
