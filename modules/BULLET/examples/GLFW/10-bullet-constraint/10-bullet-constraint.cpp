@@ -80,11 +80,10 @@ bool mirroredDisplay = false;
 cBulletWorld* bulletWorld;
 
 // bullet objects
-cBulletBox* bulletTool;
 cBulletBox* bulletGripperL1;
 cBulletBox* bulletGripperL2;
 btHingeConstraint *bulletHinge;
-cBulletGripper *gripper;
+cBulletGripper *bulletTool;
 
 // bullet static walls and ground
 cBulletStaticPlane* bulletInvisibleWall1;
@@ -451,9 +450,6 @@ int main(int argc, char* argv[])
 //    bulletHinge->setMaxMotorImpulse(0.1);
 //    bulletWorld->m_bulletWorld->addConstraint(bulletHinge);
 
-    gripper = new cBulletGripper(bulletWorld);
-    gripper->build();
-
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS
     //////////////////////////////////////////////////////////////////////////
@@ -490,28 +486,11 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // TOOL
     //////////////////////////////////////////////////////////////////////////
-
-    // create three objects that are added to the world
-    bulletTool = new cBulletBox(bulletWorld, 2.0 * size, 0.5 * size, 0.5 * size);
-    bulletWorld->addChild(bulletTool);
-
-    // define a mass
-    bulletTool->setMass(0.02);
-
-    // estimate tool's inertia properties
-    bulletTool->estimateInertia();
-
-    // create dynamic model
-    bulletTool->buildDynamicModel();
-
-    // set material
-    cMaterial toolMat;
-    toolMat.setGrayDark();
-    bulletTool->setMaterial(toolMat);
-
-    // assign linear and angular damping
-    bulletTool->setDamping(1.0, 1.0);
-
+    bulletTool = new cBulletGripper(bulletWorld);
+    bulletTool->build();
+    cMatrix3d rotMat;
+    rotMat.setAxisAngleRotationDeg(0.0,0.0,1.0,180);
+    //bulletTool->setLocalRot(rotMat);
 
     //-----------------------------------------------------------------------
     // START SIMULATION
