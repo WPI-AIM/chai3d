@@ -44,18 +44,19 @@ void cBulletGripper::build(){
 
     axisA.setValue(0.0,0.0,1.0);
     axisB = -axisA;
-    pvtA.setValue(0.2,0.2,0.0);
-    pvtB.setValue(0.2,0.2,0.0);
+    pvtA.setValue(0.2,0.1,0.0);
+    pvtB.setValue(0.2,0.1,0.0);
     bulletHinge = new btHingeConstraint(*this->m_bulletRigidBody,
                                         *bulletMeshGripperL2->m_bulletRigidBody,
-                                        pvtA, pvtB, axisA, axisB);
+                                        pvtA, pvtB, axisA, axisB, true);
 
     m_dynamicWorld->m_bulletWorld->addConstraint(bulletHinge, true);
     bulletHinge->enableMotor(true);
-    bulletHinge->setLimit(1.57, 3.14);
+    bulletHinge->setMaxMotorImpulse(0.3);
+    bulletHinge->setLimit(2.2, 3.139);
 }
 
 void cBulletGripper::set_gripper_angle(const double &angle){
-    bulletHinge->setMotorTarget(angle,0.001);
+    bulletHinge->setMotorTarget(angle, 0.001);
 }
 }

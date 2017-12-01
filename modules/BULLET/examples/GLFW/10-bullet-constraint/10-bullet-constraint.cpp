@@ -28,7 +28,7 @@
     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
     COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    BUT NOT LIMITED TO, PROCUREMENT OF SUBSTsITUTE GOODS OR SERVICES;
     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
@@ -100,6 +100,8 @@ double linG;
 double angG;
 double linStiffness = 1800;
 double angStiffness = 30;
+
+double grip_angle = 3.0;
 
 cVector3d camPos(0,0,0);
 cVector3d dev_vel;
@@ -706,6 +708,18 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         angStiffness = angStiffness + 1;
         printf("angular stiffness:  %f\n", angStiffness);
     }
+    // option - open gripper
+    else if (a_key == GLFW_KEY_S)
+    {
+        grip_angle -= 0.01;
+        printf("gripper angle:  %f\n", grip_angle);
+    }
+    // option - open close gripper
+    else if (a_key == GLFW_KEY_D)
+    {
+        grip_angle += 0.01;
+        printf("gripper angle:  %f\n", grip_angle);
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -821,6 +835,8 @@ void updateHaptics(void)
 
         hapticDevice->getPosition(posDevice);
         hapticDevice->getRotation(rotDevice);
+
+        bulletTool->set_gripper_angle(grip_angle);
 
         // send forces to device
         bool _cam_clutch_pressed;
