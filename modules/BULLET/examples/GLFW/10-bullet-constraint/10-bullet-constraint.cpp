@@ -452,7 +452,7 @@ int main(int argc, char* argv[])
 //    bulletWorld->m_bulletWorld->addConstraint(bulletHinge);
 
     gripper = new cBulletGripper(bulletWorld);
-    gripper->buildDynamicModel();
+    gripper->build();
 
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS

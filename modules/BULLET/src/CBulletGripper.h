@@ -14,10 +14,7 @@ public:
 
 public:
     void set_gripper_angle(const double &angle);
-    virtual void buildDynamicModel();
-    virtual void setLocalPos(const cVector3d& a_position);
-    virtual void setLocalRot(const cMatrix3d& a_rotation);
-    virtual void updatePositionFromDynamics();
+    void build();
 public:
     cBulletMultiMesh* bulletMeshGripperL1;
     cBulletMultiMesh* bulletMeshGripperL2;
