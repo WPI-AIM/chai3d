@@ -16,12 +16,12 @@ public:
     void set_gripper_angle(const double &angle);
     void build();
 public:
-    cBulletMultiMesh* bulletMeshGripperL1;
     cBulletMultiMesh* bulletMeshGripperL2;
     btHingeConstraint* bulletHinge;
 
 private:
     btVector3 axisA, axisB, pvtA, pvtB;
+    cMaterial mat;
 };
 
 }

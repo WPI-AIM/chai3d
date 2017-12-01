@@ -19,9 +19,9 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld):cBulletMultiMesh(bulle
     bulletMeshGripperL2->loadFromFile(RESOURCE_PATH("../resources/models/gripper/gripper_L1.3ds"));
     bulletMeshGripperL2->scale(0.1);
     bulletMeshGripperL2->setLocalPos(0.0,0.2,0.0);
-    cMatrix3d mat;
-    mat.setAxisAngleRotationDeg(1,0,0,180);
-    bulletMeshGripperL2->setLocalRot(mat);
+    cMatrix3d rotMat;
+    rotMat.setAxisAngleRotationDeg(1,0,0,180);
+    bulletMeshGripperL2->setLocalRot(rotMat);
 }
 
 void cBulletGripper::build(){
@@ -54,6 +54,12 @@ void cBulletGripper::build(){
     bulletHinge->enableMotor(true);
     bulletHinge->setMaxMotorImpulse(0.3);
     bulletHinge->setLimit(2.2, 3.139);
+
+
+    mat.setBlueLightSteel();
+    setMaterial(mat);
+    mat.setBlueMidnight();
+    bulletMeshGripperL2->setMaterial(mat);
 }
 
 void cBulletGripper::set_gripper_angle(const double &angle){

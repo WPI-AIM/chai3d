@@ -80,9 +80,8 @@ bool mirroredDisplay = false;
 cBulletWorld* bulletWorld;
 
 // bullet objects
-cBulletBox* bulletGripperL1;
-cBulletBox* bulletGripperL2;
-btHingeConstraint *bulletHinge;
+cBulletBox* bulletBox1;
+cBulletBox* bulletBox2;
 cBulletGripper *bulletTool;
 
 // bullet static walls and ground
@@ -407,51 +406,6 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     double size = 0.40;
 
-//    // create three objects that are added to the world
-//    cMaterial mat;
-//    mat.setBlueAqua();
-
-//    bulletGripperL1 = new cBulletBox(bulletWorld, 0.5, 0.5, 0.5);
-//    bulletGripperL2 = new cBulletBox(bulletWorld, 0.5, 0.5, 0.5);
-
-//    bulletGripperL1->setMaterial(mat);
-//    mat.setRedFireBrick();
-//    bulletGripperL2->setMaterial(mat);
-
-//    bulletWorld->addChild(bulletGripperL1);
-//    bulletWorld->addChild(bulletGripperL2);
-
-//    bulletGripperL1->setDamping(1.0,1.0);
-//    bulletGripperL2->setDamping(1.0,1.0);
-//    bulletGripperL2->setFriction(1.0,1.0);
-
-//    bulletGripperL1->setMass(0.0);
-//    bulletGripperL2->setMass(5);
-
-//    bulletGripperL1->setLocalPos(-0.5,0.0,0);
-//    //bulletGripperL2->setLocalPos(0.5, 0.5,0);
-
-//    bulletGripperL1->buildContactTriangles(0.001);
-//    bulletGripperL2->buildContactTriangles(0.001);
-
-//    bulletGripperL1->estimateInertia();
-//    bulletGripperL2->estimateInertia();
-
-//    bulletGripperL1->buildDynamicModel();
-//    bulletGripperL2->buildDynamicModel();
-//    btVector3 axisA, axisB, pvtA, pvtB;
-//    axisA.setValue(0,0,1);
-//    axisB = axisA;
-//    pvtA.setValue(0,0,0);
-//    pvtB.setValue(0,-1.0,0);
-//    bulletHinge = new btHingeConstraint(*bulletGripperL1->m_bulletRigidBody,
-//                                        *bulletGripperL2->m_bulletRigidBody,
-//                                        pvtA,pvtB,axisA,axisB);
-//    bulletHinge->setLimit(-1.0,1.0);
-//    bulletHinge->enableMotor(true);
-//    bulletHinge->setMaxMotorImpulse(0.1);
-//    bulletWorld->m_bulletWorld->addConstraint(bulletHinge);
-
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS
     //////////////////////////////////////////////////////////////////////////
@@ -480,10 +434,30 @@ int main(int argc, char* argv[])
 
     // define some material properties and apply to mesh
     cMaterial matGround;
-    matGround.setWhite();
+    matGround.setGreenChartreuse();
     matGround.m_emission.setGrayLevel(0.3);
     bulletGround->setMaterial(matGround);
 
+    cMaterial mat;
+    mat.setRedCrimson();
+    bulletBox1 = new cBulletBox(bulletWorld, 0.25,0.25,0.25);
+    bulletBox1->setLocalPos(-0.5,0.0,0.0);
+    bulletWorld->addChild(bulletBox1);
+    bulletBox1->setMass(0.5);
+    bulletBox1->buildContactTriangles(0.001);
+    bulletBox1->estimateInertia();
+    bulletBox1->buildDynamicModel();
+    bulletBox1->setMaterial(mat);
+
+    mat.setYellowPeachPuff();
+    bulletBox2 = new cBulletBox(bulletWorld, 0.25,0.25,0.25);
+    bulletBox2->setLocalPos(0.5,0.0,0.0);
+    bulletWorld->addChild(bulletBox2);
+    bulletBox2->setMass(0.5);
+    bulletBox2->buildContactTriangles(0.001);
+    bulletBox2->estimateInertia();
+    bulletBox2->buildDynamicModel();
+    bulletBox2->setMaterial(mat);
 
     //////////////////////////////////////////////////////////////////////////
     // TOOL
