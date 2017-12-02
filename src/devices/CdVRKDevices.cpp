@@ -422,7 +422,8 @@ bool cDvrkDevice::getGripperAngleRad(double& a_angle)
     // *** INSERT YOUR CODE HERE, MODIFY CODE below ACCORDINGLY ***
 
     // return gripper angle in radian
-    a_angle = 0.0;  // a_angle = getGripperAngleInRadianFromMyDevice();
+    // a_angle = getGripperAngleInRadianFromMyDevice();
+    mtmr_device.measured_gripper_angle(a_angle);
 
     // estimate gripper velocity
     estimateGripperVelocity(a_angle);
