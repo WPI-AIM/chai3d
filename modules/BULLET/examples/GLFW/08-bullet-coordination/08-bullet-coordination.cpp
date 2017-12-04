@@ -82,12 +82,12 @@ cBulletWorld* bulletWorld;
 // bullet objects
 cBulletMesh* bulletMesh1;
 cBulletMesh* bulletMesh2;
-cBulletMesh* bulletTool;
 cBulletMesh* bulletCylinder;
 cBulletMultiMesh* bulletGear;
 cBulletMultiMesh* bulletTorus;
 cBulletMultiMesh* bulletBase;
-cBulletMultiMesh* tool;
+//cBulletMultiMesh* bulletTool;
+cBulletGripper* bulletTool;
 
 // bullet static walls and ground
 cBulletStaticPlane* bulletInvisibleWall1;
@@ -104,10 +104,14 @@ double linG;
 double angG;
 double linStiffness = 1000;
 double angStiffness = 30;
+double grip_angle = 3.0;
 
 cVector3d camPos(0,0,0);
 cVector3d dev_vel;
 cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
+// Default switch index for clutches
+int cam_clutch = 1;
+int pos_clutch = 0;
 
 
 //---------------------------------------------------------------------------
@@ -386,6 +390,13 @@ int main(int argc, char* argv[])
     // retrieve information about the current haptic device
     cHapticDeviceInfo hapticDeviceInfo = hapticDevice->getSpecifications();
 
+    if (strcmp(hapticDeviceInfo.m_modelName.c_str(), "MTM-R") == 0 ||
+        strcmp(hapticDeviceInfo.m_modelName.c_str(), "MTM-L") == 0)
+    {
+        cam_clutch = 2;
+        pos_clutch = 1;
+    }
+
 
     //--------------------------------------------------------------------------
     // WIDGETS
@@ -417,6 +428,7 @@ int main(int argc, char* argv[])
     // 3 BULLET BLOCKS
     //////////////////////////////////////////////////////////////////////////
     double size = 0.40;
+    cMaterial meshMat;
 
     bulletGear = new cBulletMultiMesh(bulletWorld);
     bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
@@ -426,6 +438,8 @@ int main(int argc, char* argv[])
     bulletGear->setMass(0.3);
     bulletGear->estimateInertia();
     bulletGear->buildDynamicModel();
+    meshMat.setPinkDeep();
+    bulletGear->setMaterial(meshMat);
 
     bulletTorus = new cBulletMultiMesh(bulletWorld);
     bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
@@ -436,6 +450,8 @@ int main(int argc, char* argv[])
     bulletTorus->setMass(0.8);
     bulletTorus->estimateInertia();
     bulletTorus->buildDynamicModel();
+    meshMat.setOrangeTomato();
+    bulletTorus->setMaterial(meshMat);
 
     bulletBase = new cBulletMultiMesh(bulletWorld);
     bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/gear/base.3ds"));
@@ -446,6 +462,8 @@ int main(int argc, char* argv[])
     bulletBase->setMass(2);
     bulletBase->estimateInertia();
     bulletBase->buildDynamicModel();
+    meshMat.setBlueNavy();
+    bulletBase->setMaterial(meshMat);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -476,7 +494,7 @@ int main(int argc, char* argv[])
 
     // define some material properties and apply to mesh
     cMaterial matGround;
-    matGround.setBlueDodger();
+    matGround.setGreenChartreuse();
     matGround.m_emission.setGrayLevel(0.3);
     bulletGround->setMaterial(matGround);
 
@@ -490,28 +508,29 @@ int main(int argc, char* argv[])
     cMatrix3d rot;
     // assign linear and angular damping
 
-    tool = new cBulletMultiMesh(bulletWorld);
-    tool->loadFromFile(RESOURCE_PATH("../resources/models/gear/hook.3ds"));
-    tool->scale(1.0);
-    rot.setAxisAngleRotationDeg(0,1,0,-90);
-    bulletWorld->addChild(tool);
+//    bulletTool = new cBulletMultiMesh(bulletWorld);
+//    bulletTool->loadFromFile(RESOURCE_PATH("../resources/models/gear/hook.3ds"));
+//    bulletTool->scale(1.0);
+//    rot.setAxisAngleRotationDeg(0,1,0,-90);
+//    bulletWorld->addChild(bulletTool);
 
-    // define some material properties for the axes
-    cMaterial matAxis;
-//    matAxis.setStiffness(0.5 * maxStiffness);
-//    matAxis.setDynamicFriction(0.7);
-//    matAxis.setStaticFriction(0.5);
-    matAxis.setRedDarkSalmon();
+//    // define some material properties for the axes
+//    cMaterial matAxis;
+////    matAxis.setStiffness(0.5 * maxStiffness);
+////    matAxis.setDynamicFriction(0.7);
+////    matAxis.setStaticFriction(0.5);
+//    matAxis.setRedDarkSalmon();
 
-    tool->setMaterial(matAxis, true);
+//    bulletTool->setMaterial(matAxis, true);
 
-    tool->setMass(0.01);
-    tool->buildContactTriangles(0.01);
-    tool->estimateInertia();
-    tool->buildDynamicModel();
-    tool->setDamping(1.0,1.0);
+//    bulletTool->setMass(0.01);
+//    bulletTool->buildContactTriangles(0.01);
+//    bulletTool->estimateInertia();
+//    bulletTool->buildDynamicModel();
+//    bulletTool->setDamping(1.0,1.0);
 
-
+    bulletTool = new cBulletGripper(bulletWorld);
+    bulletTool->build();
 
     //-----------------------------------------------------------------------
     // START SIMULATION
@@ -727,6 +746,18 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         angStiffness = angStiffness + 1;
         printf("angular stiffness:  %f\n", angStiffness);
     }
+    // option - open gripper
+    else if (a_key == GLFW_KEY_S)
+    {
+        grip_angle -= 0.01;
+        printf("gripper angle:  %f\n", grip_angle);
+    }
+    // option - open close gripper
+    else if (a_key == GLFW_KEY_D)
+    {
+        grip_angle += 0.01;
+        printf("gripper angle:  %f\n", grip_angle);
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -763,7 +794,7 @@ void updateGraphics(void)
     // update position of label
     labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 15);
     bool _pressed;
-    hapticDevice->getUserSwitch(1, _pressed);
+    hapticDevice->getUserSwitch(cam_clutch, _pressed);
     if(_pressed){
         double scale = 0.3;
         hapticDevice->getLinearVelocity(dev_vel);
@@ -834,6 +865,7 @@ void updateHaptics(void)
         simClock.reset();
         simClock.start();
 
+        bulletTool->set_gripper_angle(grip_angle);
         // compute global reference frames for each object
         bulletWorld->computeGlobalPositions(true);
 
@@ -842,7 +874,7 @@ void updateHaptics(void)
 
         // send forces to device
         bool _cam_clutch_pressed;
-        hapticDevice->getUserSwitch(1,_cam_clutch_pressed);
+        hapticDevice->getUserSwitch(cam_clutch,_cam_clutch_pressed);
         if(_cam_clutch_pressed){
             if(_firstCamClutchPress){
                 _firstCamClutchPress = false;
@@ -855,7 +887,7 @@ void updateHaptics(void)
         else{_firstCamClutchPress = true;}
 
         bool _pos_clutch_pressed;
-        hapticDevice->getUserSwitch(0,_pos_clutch_pressed);
+        hapticDevice->getUserSwitch(pos_clutch,_pos_clutch_pressed);
         if(_pos_clutch_pressed){
             if(_firstPosClutchPress){
                 _firstPosClutchPress = false;
@@ -872,8 +904,8 @@ void updateHaptics(void)
         posSim.mul(workspaceScaleFactor);
 
         // read position of tool
-        cVector3d posTool = tool->getLocalPos();
-        cMatrix3d rotTool = tool->getLocalRot();
+        cVector3d posTool = bulletTool->getLocalPos();
+        cMatrix3d rotTool = bulletTool->getLocalRot();
 
         // compute position and angular error between tool and haptic device
         cVector3d deltaPos = (posSim - posTool);
@@ -885,11 +917,11 @@ void updateHaptics(void)
         // compute force and torque to apply to tool
         cVector3d force, torque;
         force = linStiffness * deltaPos;
-        tool->addExternalForce(force);
+        bulletTool->addExternalForce(force);
 
         torque = cMul((angStiffness * angle), axis);
         rotTool.mul(torque);
-        tool->addExternalTorque(torque);
+        bulletTool->addExternalTorque(torque);
 
         // compute force and torque to apply to haptic device
         force = -linG * force;
