@@ -871,6 +871,8 @@ void updateHaptics(void)
         simClock.reset();
         simClock.start();
 
+        hapticDevice->getGripperAngleRad(grip_angle);
+        grip_angle = 3.0 - grip_angle;
         bulletTool->set_gripper_angle(grip_angle);
         // compute global reference frames for each object
         bulletWorld->computeGlobalPositions(true);
