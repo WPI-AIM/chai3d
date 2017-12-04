@@ -390,13 +390,6 @@ int main(int argc, char* argv[])
     // retrieve information about the current haptic device
     cHapticDeviceInfo hapticDeviceInfo = hapticDevice->getSpecifications();
 
-    if (strcmp(hapticDeviceInfo.m_modelName.c_str(), "MTM-R") == 0 ||
-        strcmp(hapticDeviceInfo.m_modelName.c_str(), "MTM-L") == 0)
-    {
-        cam_clutch = 2;
-        pos_clutch = 1;
-    }
-
 
     //--------------------------------------------------------------------------
     // WIDGETS
@@ -419,6 +412,15 @@ int main(int argc, char* argv[])
 
     // clamp the force output gain to the max device stiffness
     linGain = cMin(linGain, maxStiffness / linStiffness);
+
+    if (strcmp(hapticDeviceInfo.m_modelName.c_str(), "MTM-R") == 0 ||
+        strcmp(hapticDeviceInfo.m_modelName.c_str(), "MTM-L") == 0)
+    {
+        workspaceScaleFactor = 10.0;
+        cam_clutch = 2;
+        pos_clutch = 1;
+        linGain = linGain/3;
+    }
 
     // set some gravity
     bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
@@ -851,6 +853,10 @@ void updateHaptics(void)
     rotDeviceClutched.identity();
     rotSimLast = rotDevice;
 
+    cVector3d deltaPos_prev, deltaPos, errorV;
+    cMatrix3d deltaRot;
+    deltaPos.set(0,0,0);
+
     // main haptic simulation loop
     while(simulationRunning)
     {
@@ -908,15 +914,18 @@ void updateHaptics(void)
         cMatrix3d rotTool = bulletTool->getLocalRot();
 
         // compute position and angular error between tool and haptic device
-        cVector3d deltaPos = (posSim - posTool);
-        cMatrix3d deltaRot = cMul(cTranspose(rotTool), rotSim);
+        deltaPos_prev = deltaPos;
+        deltaPos = (posSim - posTool);
+        deltaRot = cMul(cTranspose(rotTool), rotSim);
         double angle;
         cVector3d axis;
         deltaRot.toAxisAngle(axis, angle);
 
+        errorV = (deltaPos - deltaPos_prev) / nextSimInterval;
+        double linDamping = 5;
         // compute force and torque to apply to tool
         cVector3d force, torque;
-        force = linStiffness * deltaPos;
+        force = linStiffness * deltaPos + linDamping * errorV;
         bulletTool->addExternalForce(force);
 
         torque = cMul((angStiffness * angle), axis);
