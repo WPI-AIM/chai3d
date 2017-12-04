@@ -2,9 +2,9 @@
 #include <string.h>
 
 // root resource path
-std::string resourceRoot;
+std::string resourceRootGripper;
 // convert to resource path
-#define RESOURCE_PATH(p)    (char*)((resourceRoot+std::string(p)).c_str())
+#define RESOURCE_PATH(p)    (char*)((resourceRootGripper+std::string(p)).c_str())
 
 namespace chai3d {
 
@@ -25,7 +25,7 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld):cBulletMultiMesh(bulle
 }
 
 void cBulletGripper::build(){
-    setMass(0.03);
+    setMass(0.05);
     buildContactTriangles(0.001);
     setShowFrame(true);
     estimateInertia();
@@ -33,7 +33,7 @@ void cBulletGripper::build(){
     m_dynamicWorld->addChild(this);
 
 
-    bulletMeshGripperL2->setMass(0.03);
+    bulletMeshGripperL2->setMass(0.05);
     bulletMeshGripperL2->buildContactTriangles(0.001);
     bulletMeshGripperL2->setShowFrame(true);
     bulletMeshGripperL2->estimateInertia();
@@ -55,6 +55,7 @@ void cBulletGripper::build(){
 
     GripperSurfaceProperties props;
     props.set_default();
+    props.lin_damping = 0.5;
     set_surface_props(props);
 
     mat.setBlueLightSteel();
@@ -68,8 +69,7 @@ void cBulletGripper::set_gripper_angle(const double &angle){
 }
 
 void cBulletGripper::set_scale(double a_scale){
-    this->scale(a_scale);
-    bulletMeshGripperL2->scale(a_scale);
+    // Do nothing for now
 }
 
 void cBulletGripper::set_surface_props(GripperSurfaceProperties &props){

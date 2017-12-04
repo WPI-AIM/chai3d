@@ -16,7 +16,7 @@ public:
         rolling_friction = 0.0;
     }
     void set_default(){
-        lin_damping = 1.0;
+        lin_damping = 0.2;
         ang_damping = 1.0;
         friction = 0.5;
         rolling_friction = 0.5;
