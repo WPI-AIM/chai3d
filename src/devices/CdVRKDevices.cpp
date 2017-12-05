@@ -52,14 +52,27 @@
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
-
+bool cDvrkDevice::s_mtmR_open = false;
+bool cDvrkDevice::s_mtmL_open = false;
+bool cDvrkDevice::s_mtmR_present = false;
+bool cDvrkDevice::s_mtmL_present = false;
 //==============================================================================
 /*!
     Constructor of cDvrkDevice.
 */
 //==============================================================================
-cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
+cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
 {
+    if(s_mtmR_present && !s_mtmR_open){
+        mtm_device = std::shared_ptr<DVRK_Arm>(new DVRK_Arm("MTMR"));
+        s_mtmR_open = true;
+        s_mtmL_open = false;
+    }
+    else if(s_mtmL_present && !s_mtmL_open){
+        mtm_device = std::shared_ptr<DVRK_Arm>(new DVRK_Arm("MTML"));
+        s_mtmL_open = true;
+        s_mtmR_open = false;
+    }
     // the connection to your device has not yet been established.
     m_deviceReady = false;
 
@@ -75,7 +88,12 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
     m_specifications.m_manufacturerName              = "Intuitive Surgical";
 
     // name of your device
+    if(s_mtmR_open){
     m_specifications.m_modelName                     = "MTM-R";
+    }
+    else if(s_mtmL_open){
+    m_specifications.m_modelName                     = "MTM-L";
+    }
 
 
     //--------------------------------------------------------------------------
@@ -152,31 +170,48 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber): mtmr_device("MTMR")
     // is the gripper of your device actuated?
     m_specifications.m_actuatedGripper               = false;
 
+    if(s_mtmR_present){
     // can the device be used with the left hand?
     m_specifications.m_leftHand                      = false;
-
     // can the device be used with the right hand?
     m_specifications.m_rightHand                     = true;
+    }
+    else if(s_mtmL_present){
+    // can the device be used with the left hand?
+    m_specifications.m_leftHand                      = true;
+    // can the device be used with the right hand?
+    m_specifications.m_rightHand                     = false;
+    }
+
+
 
 
         
     //sleep(8.0);
-    if(mtmr_device._is_available()){
+    if(mtm_device->_is_available()){
         m_deviceAvailable = true;
         tf::Transform home_trans, tip_trans;
         tf::Quaternion home_rot, tip_rot;
-
+        if(s_mtmR_present){
         home_trans.setOrigin(tf::Vector3(-0.181025, -0.0163, -0.2620));
         tip_trans.setOrigin(tf::Vector3(0,0,0));
 
         tip_rot.setRPY(0, M_PI/2, 0);
         home_rot.setRPY(3.058663, -1.055021, -1.500306);
+        }
+        else if((s_mtmL_present)){
+            home_trans.setOrigin(tf::Vector3(-0.181025, -0.0163, -0.2620));
+            tip_trans.setOrigin(tf::Vector3(0,0,0));
+
+            tip_rot.setRPY(0, M_PI/2, 0);
+            home_rot.setRPY(3.058663, -1.055021, -1.500306);
+        }
 
         home_trans.setRotation(home_rot);
         tip_trans.setRotation(tip_rot);
 
-        mtmr_device.set_origin_frame(home_trans * tip_trans);
-        mtmr_device.affix_tip_frame(tip_trans);
+        mtm_device->set_origin_frame(home_trans * tip_trans);
+        mtm_device->affix_tip_frame(tip_trans);
 
     }
     else{
@@ -221,8 +256,8 @@ bool cDvrkDevice::open()
     bool result = C_ERROR; // this value will need to become "C_SUCCESS" for the device to be marked as ready.
 
     // result = openConnectionToMyDevice();
-    result = mtmr_device._is_available();
-    mtmr_device.set_mode(mtmr_device._m_effort_mode);
+    result = mtm_device->_is_available();
+    mtm_device->set_mode(mtm_device->_m_effort_mode);
 
 
     // update device status
@@ -258,10 +293,10 @@ bool cDvrkDevice::close()
     // result = closeConnectionToMyDevice()
 
     // update status
-    mtmr_device.set_force(0,0,0);
-    mtmr_device.set_moment(0,0,0);
+    mtm_device->set_force(0,0,0);
+    mtm_device->set_moment(0,0,0);
     m_deviceReady = false;
-    result = mtmr_device.shutDown();
+    result = mtm_device->shutDown();
 
     return (result);
 }
@@ -299,21 +334,28 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
 unsigned int cDvrkDevice::getNumDevices()
 {
     int numberOfDevices = 0;
+    s_mtmR_present = false;
+    s_mtmL_present = false;
+    s_mtmR_open = false;
+    s_mtmL_open = false;
     static ros::M_string s;
     ros::init(s, "chai_node");
-
     if (ros::master::check()){
-        std::string arm, topic_check;
-        ros::param::get(std::string("arm_name"),arm);
-        if(arm.empty()){
-            arm = "MTMR";
-        }
-        topic_check = std::string("/dvrk/" + arm + "/status");
+        std::string armR, armL, checkR, checkL;
+        armR = "MTMR";
+        armL = "MTML";
+        checkR = std::string("/dvrk/" + armR + "/status");
+        checkL = std::string("/dvrk/" + armL + "/status");
         ros::master::V_TopicInfo topics;
         ros::master::getTopics(topics);
         for(int i = 0 ; i < topics.size() ; i++){
-            if(strcmp(topics[i].name.c_str(), topic_check.c_str()) == 0){
-               numberOfDevices = 1;
+            if(strcmp(topics[i].name.c_str(), checkR.c_str()) == 0){
+               numberOfDevices += 1;
+               s_mtmR_present = true;
+            }
+            if(strcmp(topics[i].name.c_str(), checkL.c_str()) == 0){
+               numberOfDevices +=1;
+               s_mtmL_present = true;
             }
         }
     }
@@ -338,7 +380,7 @@ bool cDvrkDevice::getPosition(cVector3d& a_position)
     bool result = C_SUCCESS;
     double x,y,z;
 
-    mtmr_device.measured_cp_pos(x,y,z);
+    mtm_device->measured_cp_pos(x,y,z);
 
     // store new position values
     a_position.set(x, y, z);
@@ -371,7 +413,7 @@ bool cDvrkDevice::getRotation(cMatrix3d& a_rotation)
     double r00, r01, r02, r10, r11, r12, r20, r21, r22;
     cMatrix3d frame;
     tf::Matrix3x3 rot_mat;
-    mtmr_device.measured_cp_ori(rot_mat);
+    mtm_device->measured_cp_ori(rot_mat);
     tf::Vector3 col0 = rot_mat.getColumn(0);
     tf::Vector3 col1 = rot_mat.getColumn(1);
     tf::Vector3 col2 = rot_mat.getColumn(2);
@@ -423,7 +465,7 @@ bool cDvrkDevice::getGripperAngleRad(double& a_angle)
 
     // return gripper angle in radian
     // a_angle = getGripperAngleInRadianFromMyDevice();
-    mtmr_device.measured_gripper_angle(a_angle);
+    mtm_device->measured_gripper_angle(a_angle);
 
     // estimate gripper velocity
     estimateGripperVelocity(a_angle);
@@ -470,7 +512,7 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
 
     double gf = a_gripperForce;
 
-    mtmr_device.set_force(fx, fy, fz);
+    mtm_device->set_force(fx, fy, fz);
     //mtmr_device.set_moment(tx, ty, tz);
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
@@ -508,20 +550,20 @@ bool cDvrkDevice::getUserSwitches(unsigned int& a_userSwitches)
     */
     ////////////////////////////////////////////////////////////////////////////
 
-    // *** INSERT YOUR CODE HERE ***
+    // *** INSERT YOUR CODE HERE **
+    a_userSwitches = 0;
     int gripper_bit = 0;
     int clutch_bit = 1;
     int coag_bit = 2;
-    a_userSwitches = 0;
-    if(mtmr_device.is_gripper_pressed())
+    if(mtm_device->is_gripper_pressed())
         a_userSwitches |= (1<<gripper_bit);
     else
         a_userSwitches &= ~(1<<gripper_bit);
-    if(mtmr_device.is_clutch_pressed())
+    if(mtm_device->is_clutch_pressed())
         a_userSwitches |= (1<<clutch_bit);
     else
         a_userSwitches &= ~(1<<clutch_bit);
-    if(mtmr_device.is_coag_pressed())
+    if(mtm_device->is_coag_pressed())
         a_userSwitches |= (1<<coag_bit);
     else
         a_userSwitches &= ~(1<<coag_bit);

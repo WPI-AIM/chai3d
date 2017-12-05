@@ -132,7 +132,8 @@ public:
     static cDvrkDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cDvrkDevice>(a_deviceNumber)); }
 
     //! DVRK MTM Object
-    DVRK_Arm mtmr_device;
+    typedef std::shared_ptr<DVRK_Arm> DVRK_ArmPtr;
+    DVRK_ArmPtr mtm_device;
 
 
     //--------------------------------------------------------------------------
@@ -193,6 +194,10 @@ protected:
 
     //! A short description of my variable
     int m_MyVariable;
+
+private:
+    static bool s_mtmR_present, s_mtmR_open;
+    static bool s_mtmL_present, s_mtmL_open;
 };
 
 //------------------------------------------------------------------------------
