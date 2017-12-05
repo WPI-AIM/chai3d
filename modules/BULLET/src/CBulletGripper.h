@@ -7,6 +7,9 @@
 
 namespace chai3d {
 
+class cBulletGripper;
+typedef std::shared_ptr<cBulletGripper> cBulletGripperPtr;
+
 struct GripperSurfaceProperties{
 public:
     GripperSurfaceProperties(){
