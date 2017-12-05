@@ -192,15 +192,15 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
         m_deviceAvailable = true;
         tf::Transform home_trans, tip_trans;
         tf::Quaternion home_rot, tip_rot;
-        if(s_mtmR_present){
-        home_trans.setOrigin(tf::Vector3(-0.181025, -0.0163, -0.2620));
-        tip_trans.setOrigin(tf::Vector3(0,0,0));
-
-        tip_rot.setRPY(0, M_PI/2, 0);
-        home_rot.setRPY(3.058663, -1.055021, -1.500306);
-        }
-        else if((s_mtmL_present)){
+        if(s_mtmR_open){
             home_trans.setOrigin(tf::Vector3(-0.181025, -0.0163, -0.2620));
+            tip_trans.setOrigin(tf::Vector3(0,0,0));
+
+            tip_rot.setRPY(0, M_PI/2, 0);
+            home_rot.setRPY(3.058663, -1.055021, -1.500306);
+        }
+        else if((s_mtmL_open)){
+            home_trans.setOrigin(tf::Vector3(0.181025, -0.0163, -0.2620));
             tip_trans.setOrigin(tf::Vector3(0,0,0));
 
             tip_rot.setRPY(0, M_PI/2, 0);
