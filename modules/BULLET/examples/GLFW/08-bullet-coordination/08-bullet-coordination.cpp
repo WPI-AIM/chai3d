@@ -112,9 +112,6 @@ cCamera* camera;
 // a light source to illuminate the objects in the world
 cSpotLight *light;
 
-// workspace scale factor
-double workspaceScaleFactor = 30.0;
-
 // a label to display the rates [Hz] at which the simulation is running
 cLabel* labelRates;
 
@@ -205,11 +202,15 @@ public:
         linGain = 0.05;
         angGain = 0.03;
         linStiffness = 1000;
-        angStiffness = 30;
-        controller_damping = 5.0;
-        deltaPos.set(0,0,0);
-        deltaPos_prev.set(0,0,0);
-        errorV.set(0,0,0);
+        angStiffness = 15;
+        cont_lin_damping = 5.0;
+        cont_ang_damping = 3.0;
+        dPos.set(0,0,0);
+        dPos_last.set(0,0,0);
+        ddPos.set(0,0,0);
+        dRot.identity();
+        dRot_last.identity();
+        ddRot.identity();
         int cam_clutch = 1;
         int pos_clutch = 0;
         _camTrigger = false;
@@ -218,8 +219,8 @@ public:
 
     cVector3d posSim, posSimLast;
     cMatrix3d rotSim, rotSimLast;
-    cVector3d deltaPos, deltaPos_prev, errorV;
-    cMatrix3d deltaRot;
+    cVector3d dPos, dPos_last, ddPos;
+    cMatrix3d dRot, dRot_last, ddRot;
     double workspaceScaleFactor;
     double linGain;
     double angGain;
@@ -227,7 +228,8 @@ public:
     double angG;
     double linStiffness;
     double angStiffness;
-    double controller_damping;
+    double cont_lin_damping;
+    double cont_ang_damping;
     int cam_clutch;
     int pos_clutch;
     bool _camTrigger;
@@ -252,9 +254,6 @@ public:
 ToolGripper::ToolGripper(){
     posTool.set(0,0,0);
     rotTool.identity();
-    deltaPos_prev.set(0,0,0);
-    deltaPos_prev.set(0,0,0);
-    deltaRot.identity();
 }
 
 void ToolGripper::set_sim_params(cHapticDeviceInfo &a_hInfo){
@@ -1046,26 +1045,31 @@ void updateHaptics(void)
             coordPtr->bulletTools[i].rotSim = coordPtr->bulletTools[i].rotSimLast * camera->getLocalRot() *
                     (cTranspose(coordPtr->hapticDevices[i].rotDeviceClutched) * coordPtr->hapticDevices[i].rotDevice )*
                     cTranspose(camera->getLocalRot());
-            coordPtr->bulletTools[i].posSim.mul(workspaceScaleFactor);
+            coordPtr->bulletTools[i].posSim.mul(coordPtr->bulletTools[i].workspaceScaleFactor);
 
             // read position of tool
             coordPtr->bulletTools[i].measured_pos();
             coordPtr->bulletTools[i].measured_rot();
-            coordPtr->bulletTools[i].deltaPos_prev = coordPtr->bulletTools[i].deltaPos;
-            coordPtr->bulletTools[i].deltaPos = coordPtr->bulletTools[i].posSim - coordPtr->bulletTools[i].posTool;
-            coordPtr->bulletTools[i].deltaRot = cTranspose(coordPtr->bulletTools[i].rotTool) * coordPtr->bulletTools[i].rotSim;
-            double angle;
-            cVector3d axis;
-            coordPtr->bulletTools[i].deltaRot.toAxisAngle(axis, angle);
+            coordPtr->bulletTools[i].dPos_last = coordPtr->bulletTools[i].dPos;
+            coordPtr->bulletTools[i].dRot_last = coordPtr->bulletTools[i].dRot;
+            coordPtr->bulletTools[i].dPos = coordPtr->bulletTools[i].posSim - coordPtr->bulletTools[i].posTool;
+            coordPtr->bulletTools[i].dRot = cTranspose(coordPtr->bulletTools[i].rotTool) * coordPtr->bulletTools[i].rotSim;
+            double angle, dangle;
+            cVector3d axis, daxis;
+            coordPtr->bulletTools[i].dRot.toAxisAngle(axis, angle);
 
-            coordPtr->bulletTools[i].errorV = (coordPtr->bulletTools[i].deltaPos -
-                                                 coordPtr->bulletTools[i].deltaPos_prev) / nextSimInterval;
+            coordPtr->bulletTools[i].ddPos = (coordPtr->bulletTools[i].dPos -
+                                                 coordPtr->bulletTools[i].dPos_last) / nextSimInterval;
+            coordPtr->bulletTools[i].ddRot = (cTranspose(coordPtr->bulletTools[i].dRot)*
+                                                 coordPtr->bulletTools[i].dRot_last);
+            coordPtr->bulletTools[i].ddRot.toAxisAngle(daxis, dangle);
             cVector3d force, torque;
-            force = coordPtr->bulletTools[i].linStiffness * coordPtr->bulletTools[i].deltaPos +
-                    coordPtr->bulletTools[i].controller_damping * coordPtr->bulletTools[i].errorV;
+            force = coordPtr->bulletTools[i].linStiffness * coordPtr->bulletTools[i].dPos +
+                    coordPtr->bulletTools[i].cont_lin_damping * coordPtr->bulletTools[i].ddPos;
             coordPtr->bulletTools[i].apply_force(force);
 
             torque = (coordPtr->bulletTools[i].angStiffness * angle) * axis;
+                    //(3.0 * dangle * daxis ) / nextSimInterval;
             //coordPtr->bulletTools[i].rotTool * torque;
             coordPtr->bulletTools[i].apply_torque(torque);
             force = - coordPtr->bulletTools[i].linG * force;
