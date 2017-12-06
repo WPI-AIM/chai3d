@@ -180,6 +180,7 @@ void updateHaptics(void);
 // this function closes the application
 void close(void);
 
+const int MAX_DEVICES = 10;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,8 +358,8 @@ class Coordination{
     void open_devices();
     void close_devices();
     cHapticDeviceHandler *device_handler;
-    std::vector<ToolGripper> bulletTools;
-    std::vector<Device> hapticDevices;
+    ToolGripper bulletTools[MAX_DEVICES];
+    Device hapticDevices[MAX_DEVICES];
     uint m_num_devices;
     cBulletWorld* m_bullet_world;
 };
@@ -369,8 +370,6 @@ Coordination::Coordination(cBulletWorld* a_bullet_world){
     device_handler = new cHapticDeviceHandler();
     m_num_devices = device_handler->getNumDevices();
     std::cerr << "Num of devices " << m_num_devices << std::endl;
-    bulletTools.resize(m_num_devices);
-    hapticDevices.resize(m_num_devices);
     for (uint i = 0; i < m_num_devices; i++){
         retrieve_device_handle(i);
         create_bullet_gripper(i);
@@ -987,26 +986,25 @@ void updateHaptics(void)
 
 
     for(int i = 0 ; i < coordPtr->m_num_devices ; i++){
-    coordPtr->hapticDevices[i].measured_rot();
-    coordPtr->hapticDevices[i].rotDeviceClutched.identity();
-    coordPtr->bulletTools[i].rotSimLast = coordPtr->hapticDevices[i].rotDevice;
+        coordPtr->hapticDevices[i].measured_rot();
+        coordPtr->hapticDevices[i].rotDeviceClutched.identity();
+        coordPtr->bulletTools[i].rotSimLast = coordPtr->hapticDevices[i].rotDevice;
     }
 
     // main haptic simulation loop
     while(simulationRunning)
     {
-        // signal frequency counter
-        freqCounterHaptics.signal(1);
-
         // retrieve simulation time and compute next interval
         double time = simClock.getCurrentTimeSeconds();
-        double nextSimInterval = 0.001;//cClamp(time, 0.00001, 0.0002);
-
-        // reset clock
-        simClock.reset();
-        simClock.start();
-        // compute global reference frames for each object
+        double nextSimInterval = 0.0001;//cClamp(time, 0.00001, 0.0002);
         for(int i = 0 ; i < coordPtr->m_num_devices ; i++){
+
+
+            // reset clock
+            simClock.reset();
+            simClock.start();
+            // compute global reference frames for each object
+
             bulletWorld->computeGlobalPositions(true);
             coordPtr->bulletTools[i].tool->set_gripper_angle(
                         3 - coordPtr->hapticDevices[i].measured_gripper_angle());
@@ -1015,30 +1013,30 @@ void updateHaptics(void)
             coordPtr->hapticDevices[i].measured_rot();
 
             //if(i == 0){
-                if(coordPtr->hapticDevices[i].button_pressed(coordPtr->bulletTools[i].cam_clutch)){
-                    if(coordPtr->bulletTools[i]._camTrigger){
-                        coordPtr->bulletTools[i]._camTrigger = false;
-                        coordPtr->bulletTools[i].posSimLast = coordPtr->bulletTools[i].posSim / coordPtr->bulletTools[i].workspaceScaleFactor;
-                        coordPtr->bulletTools[i].rotSimLast = coordPtr->bulletTools[i].rotSim;
-                    }
-                    coordPtr->hapticDevices[i].posDeviceClutched = coordPtr->hapticDevices[i].posDevice;
-                    coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
+            if(coordPtr->hapticDevices[i].button_pressed(coordPtr->bulletTools[i].cam_clutch)){
+                if(coordPtr->bulletTools[i]._camTrigger){
+                    coordPtr->bulletTools[i]._camTrigger = false;
+                    coordPtr->bulletTools[i].posSimLast = coordPtr->bulletTools[i].posSim / coordPtr->bulletTools[i].workspaceScaleFactor;
+                    coordPtr->bulletTools[i].rotSimLast = coordPtr->bulletTools[i].rotSim;
                 }
-                else{
-                    coordPtr->bulletTools[i]._camTrigger = true;
+                coordPtr->hapticDevices[i].posDeviceClutched = coordPtr->hapticDevices[i].posDevice;
+                coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
+            }
+            else{
+                coordPtr->bulletTools[i]._camTrigger = true;
+            }
+            if(coordPtr->hapticDevices[i].button_pressed(coordPtr->bulletTools[i].pos_clutch)){
+                if(coordPtr->bulletTools[i]._posTrigger){
+                    coordPtr->bulletTools[i]._posTrigger = false;
+                    coordPtr->bulletTools[i].posSimLast = coordPtr->bulletTools[i].posSim / coordPtr->bulletTools[i].workspaceScaleFactor;
+                    coordPtr->bulletTools[i].rotSimLast = coordPtr->bulletTools[i].rotSim;
                 }
-                if(coordPtr->hapticDevices[i].button_pressed(coordPtr->bulletTools[i].pos_clutch)){
-                    if(coordPtr->bulletTools[i]._posTrigger){
-                        coordPtr->bulletTools[i]._posTrigger = false;
-                        coordPtr->bulletTools[i].posSimLast = coordPtr->bulletTools[i].posSim / coordPtr->bulletTools[i].workspaceScaleFactor;
-                        coordPtr->bulletTools[i].rotSimLast = coordPtr->bulletTools[i].rotSim;
-                    }
-                    coordPtr->hapticDevices[i].posDeviceClutched = coordPtr->hapticDevices[i].posDevice;
-                    coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
-                }
-                else{
-                   coordPtr->bulletTools[i]._posTrigger = true;
-                }
+                coordPtr->hapticDevices[i].posDeviceClutched = coordPtr->hapticDevices[i].posDevice;
+                coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
+            }
+            else{
+                coordPtr->bulletTools[i]._posTrigger = true;
+            }
             //}
             coordPtr->bulletTools[i].posSim = coordPtr->bulletTools[i].posSimLast +
                     (camera->getLocalRot() * (coordPtr->hapticDevices[i].posDevice - coordPtr->hapticDevices[i].posDeviceClutched));
@@ -1059,9 +1057,9 @@ void updateHaptics(void)
             coordPtr->bulletTools[i].dRot.toAxisAngle(axis, angle);
 
             coordPtr->bulletTools[i].ddPos = (coordPtr->bulletTools[i].dPos -
-                                                 coordPtr->bulletTools[i].dPos_last) / nextSimInterval;
+                                              coordPtr->bulletTools[i].dPos_last) / nextSimInterval;
             coordPtr->bulletTools[i].ddRot = (cTranspose(coordPtr->bulletTools[i].dRot)*
-                                                 coordPtr->bulletTools[i].dRot_last);
+                                              coordPtr->bulletTools[i].dRot_last);
             coordPtr->bulletTools[i].ddRot.toAxisAngle(daxis, dangle);
             cVector3d force, torque;
             force = coordPtr->bulletTools[i].linStiffness * coordPtr->bulletTools[i].dPos +
@@ -1069,7 +1067,7 @@ void updateHaptics(void)
             coordPtr->bulletTools[i].apply_force(force);
 
             torque = (coordPtr->bulletTools[i].angStiffness * angle) * axis;
-                    //(3.0 * dangle * daxis ) / nextSimInterval;
+            //(3.0 * dangle * daxis ) / nextSimInterval;
             //coordPtr->bulletTools[i].rotTool * torque;
             coordPtr->bulletTools[i].apply_torque(torque);
             force = - coordPtr->bulletTools[i].linG * force;
@@ -1094,8 +1092,11 @@ void updateHaptics(void)
             {
                 coordPtr->bulletTools[i].angG = coordPtr->bulletTools[i].angGain;
             }
+
         }
         bulletWorld->updateDynamics(nextSimInterval);
+        // signal frequency counter
+        freqCounterHaptics.signal(1);
     }
     // exit haptics thread
     simulationFinished = true;
