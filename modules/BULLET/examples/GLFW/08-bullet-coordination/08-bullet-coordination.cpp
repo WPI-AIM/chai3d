@@ -33,7 +33,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
+    POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
     \author    Francois Conti
@@ -58,7 +58,7 @@ using namespace std;
 
 // stereo Mode
 /*
-    C_STEREO_DISABLED:            Stereo is disabled 
+    C_STEREO_DISABLED:            Stereo is disabled
     C_STEREO_ACTIVE:              Active stereo for OpenGL NVDIA QUADRO cards
     C_STEREO_PASSIVE_LEFT_RIGHT:  Passive stereo where L/R images are rendered next to each other
     C_STEREO_PASSIVE_TOP_BOTTOM:  Passive stereo where L/R images are rendered above each other
@@ -201,9 +201,11 @@ public:
     Sim(){
         workspaceScaleFactor = 30.0;
         linGain = 0.05;
+        linG = 0.0;
+        angG = 0.0;
         angGain = 0.03;
         linStiffness = 1000;
-        angStiffness = 15;
+        angStiffness = 30;
         cont_lin_damping = 5.0;
         cont_ang_damping = 3.0;
         dPos.set(0,0,0);
@@ -216,6 +218,8 @@ public:
         int pos_clutch = 0;
         _camTrigger = false;
         _posTrigger = false;
+        posSimLast.set(0.0,0.0,0.0);
+        rotSimLast.identity();
     }
 
     cVector3d posSim, posSimLast;
@@ -241,7 +245,7 @@ public:
 class ToolGripper: public Sim, public DataExchange{
 public:
     ToolGripper();
-    ~ToolGripper(){ delete tool;}
+    ~ToolGripper();
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual void apply_force(cVector3d force);
@@ -254,6 +258,9 @@ public:
 
 ToolGripper::ToolGripper(){
 }
+ToolGripper::~ToolGripper(){
+
+}
 
 void ToolGripper::set_sim_params(cHapticDeviceInfo &a_hInfo){
     double maxStiffness	= a_hInfo.m_maxLinearStiffness / workspaceScaleFactor;
@@ -264,7 +271,7 @@ void ToolGripper::set_sim_params(cHapticDeviceInfo &a_hInfo){
     if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") == 0 ||
         strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") == 0)
     {
-        workspaceScaleFactor = 30.0;
+        workspaceScaleFactor = 10.0;
         linGain = linGain/3;
         pos_clutch = 1;
         cam_clutch = 2;
@@ -558,7 +565,7 @@ int main(int argc, char* argv[])
     // define the direction of the light beam
     light->setDir(0,0,-1.0);
 
-    // set uniform concentration level of light 
+    // set uniform concentration level of light
     light->setSpotExponent(0.0);
 
     // enable this light source to generate shadows
@@ -627,7 +634,7 @@ int main(int argc, char* argv[])
     bulletBase->setLocalPos(cVector3d(-0.3,0,0));
     bulletWorld->addChild(bulletBase);
     bulletBase->buildContactTriangles(0.001);
-    bulletBase->setMass(2);
+    bulletBase->setMass(10);
     bulletBase->estimateInertia();
     bulletBase->buildDynamicModel();
     meshMat.setBlueNavy();
@@ -929,17 +936,19 @@ void updateGraphics(void)
     // update position of label
     labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 15);
     bool _pressed;
-    coordPtr->hapticDevices[0].hDevice->getUserSwitch(coordPtr->bulletTools[0].cam_clutch, _pressed);
-    if(_pressed){
-        double scale = 0.3;
-        dev_vel = coordPtr->hapticDevices[0].measured_vel();
-        dev_rot_cur = coordPtr->hapticDevices[0].measured_rot();
-        camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(camera->getGlobalRot(),dev_vel)));
-        camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
-    }
-    if(!_pressed){
-        cam_rot_last = camera->getGlobalRot();
-        dev_rot_last = coordPtr->hapticDevices[0].measured_rot();
+    if (coordPtr->m_num_devices > 0){
+        coordPtr->hapticDevices[0].hDevice->getUserSwitch(coordPtr->bulletTools[0].cam_clutch, _pressed);
+        if(_pressed){
+            double scale = 0.3;
+            dev_vel = coordPtr->hapticDevices[0].measured_vel();
+            coordPtr->hapticDevices[0].hDevice->getRotation(dev_rot_cur);
+            camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(camera->getGlobalRot(),dev_vel)));
+            camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
+        }
+        if(!_pressed){
+            cam_rot_last = camera->getGlobalRot();
+            coordPtr->hapticDevices[0].hDevice->getRotation(dev_rot_last);
+        }
     }
 
     /////////////////////////////////////////////////////////////////////
@@ -979,6 +988,7 @@ void updateHaptics(void)
 
 
     for(int i = 0 ; i < coordPtr->m_num_devices ; i++){
+        coordPtr->hapticDevices[i].posDeviceClutched.set(0.0,0.0,0.0);
         coordPtr->hapticDevices[i].measured_rot();
         coordPtr->hapticDevices[i].rotDeviceClutched.identity();
         coordPtr->bulletTools[i].rotSimLast = coordPtr->hapticDevices[i].rotDevice;
@@ -987,10 +997,12 @@ void updateHaptics(void)
     // main haptic simulation loop
     while(simulationRunning)
     {
+        // signal frequency counter
+        freqCounterHaptics.signal(1);
         // retrieve simulation time and compute next interval
         double time = simClock.getCurrentTimeSeconds();
         double nextSimInterval = 0.0005;//cClamp(time, 0.00001, 0.0002);
-        bulletWorld->computeGlobalPositions(true);
+
         for(int i = 0 ; i < coordPtr->m_num_devices ; i++){
 
 
@@ -1001,10 +1013,11 @@ void updateHaptics(void)
 
 
             coordPtr->bulletTools[i].tool->set_gripper_angle(
-                        3 - coordPtr->hapticDevices[i].measured_gripper_angle());
+                        3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
+            bulletWorld->computeGlobalPositions(true);
 
-            coordPtr->hapticDevices[i].measured_pos();
-            coordPtr->hapticDevices[i].measured_rot();
+            coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
+            coordPtr->hapticDevices[i].rotDevice = coordPtr->hapticDevices[i].measured_rot();
 
             //if(i == 0){
             if(coordPtr->hapticDevices[i].button_pressed(coordPtr->bulletTools[i].cam_clutch)){
@@ -1064,12 +1077,17 @@ void updateHaptics(void)
             //(3.0 * dangle * daxis ) / nextSimInterval;
             //coordPtr->bulletTools[i].rotTool * torque;
             coordPtr->bulletTools[i].apply_torque(torque);
-//            force = - coordPtr->bulletTools[i].linG * force;
-//            torque = -coordPtr->bulletTools[i].angG * torque;
+            force = - coordPtr->bulletTools[i].linG * force;
+            torque = -coordPtr->bulletTools[i].angG * torque;
             force.set(0,0,0);
             torque.set(0,0,0);
 
-            coordPtr->hapticDevices[i].apply_wrench(force, torque);
+//            std::cerr << coordPtr->hapticDevices[i].posDeviceClutched.x() << " " <<
+//                         coordPtr->hapticDevices[i].posDeviceClutched.y() << " " <<
+//                         coordPtr->hapticDevices[i].posDeviceClutched.z() << " " <<
+//                         std::endl;
+
+            //coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
             if (coordPtr->bulletTools[i].linG < coordPtr->bulletTools[i].linGain)
             {
@@ -1088,12 +1106,10 @@ void updateHaptics(void)
             {
                 coordPtr->bulletTools[i].angG = coordPtr->bulletTools[i].angGain;
             }
+
         }
         bulletWorld->updateDynamics(nextSimInterval);
-        // signal frequency counter
-        freqCounterHaptics.signal(1);
     }
     // exit haptics thread
     simulationFinished = true;
 }
-
