@@ -221,7 +221,7 @@ public:
         posSimLast.set(0.0,0.0,0.0);
         rotSimLast.identity();
     }
-
+    void set_sim_params(cHapticDeviceInfo &a_hInfo);
     cVector3d posSim, posSimLast;
     cMatrix3d rotSim, rotSimLast;
     cVector3d dPos, dPos_last, ddPos;
@@ -240,29 +240,8 @@ public:
     bool _camTrigger;
     bool _posTrigger;
 };
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class ToolGripper: public Sim, public DataExchange{
-public:
-    ToolGripper();
-    ~ToolGripper();
-    virtual cVector3d measured_pos();
-    virtual cMatrix3d measured_rot();
-    virtual void apply_force(cVector3d force);
-    virtual void apply_torque(cVector3d torque);
-    cBulletGripper* tool;
-    cVector3d posTool;
-    cMatrix3d rotTool;
-    void set_sim_params(cHapticDeviceInfo& a_hInfo);
-};
-
-ToolGripper::ToolGripper(){
-}
-ToolGripper::~ToolGripper(){
-
-}
-
-void ToolGripper::set_sim_params(cHapticDeviceInfo &a_hInfo){
+void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
     double maxStiffness	= a_hInfo.m_maxLinearStiffness / workspaceScaleFactor;
 
     // clamp the force output gain to the max device stiffness
@@ -276,6 +255,26 @@ void ToolGripper::set_sim_params(cHapticDeviceInfo &a_hInfo){
         pos_clutch = 1;
         cam_clutch = 2;
     }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class ToolGripper: public Sim, public DataExchange{
+public:
+    ToolGripper();
+    ~ToolGripper();
+    virtual cVector3d measured_pos();
+    virtual cMatrix3d measured_rot();
+    virtual void apply_force(cVector3d force);
+    virtual void apply_torque(cVector3d torque);
+    cBulletGripper* tool;
+    cVector3d posTool;
+    cMatrix3d rotTool;
+};
+
+ToolGripper::ToolGripper(){
+}
+ToolGripper::~ToolGripper(){
+
 }
 
 cVector3d ToolGripper::measured_pos(){
@@ -357,6 +356,12 @@ class Coordination{
     void create_bullet_gripper(uint dev_num);
     void open_devices();
     void close_devices();
+
+    double increment_lin_gains(double a_gain);
+    double increment_ang_gains(double a_gain);
+    double increment_lin_stifnesses(double a_stiffness);
+    double increment_ang_stiffnesses(double a_stiffness);
+
     cHapticDeviceHandler *device_handler;
     ToolGripper bulletTools[MAX_DEVICES];
     Device hapticDevices[MAX_DEVICES];
@@ -398,6 +403,72 @@ void Coordination::close_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         hapticDevices[i].hDevice->close();
     }
+}
+
+
+double Coordination::increment_lin_gains(double a_gain){
+    for (int i = 0 ; i < m_num_devices ; i++){
+        if (bulletTools[i].linGain + a_gain <= 0)
+        {
+            bulletTools[i].linGain = 0.0;
+        }
+        else{
+            bulletTools[i].linGain += a_gain;
+        }
+    }
+    //Set the return value to the gain of the last device
+    if(m_num_devices > 0){
+        a_gain = bulletTools[m_num_devices-1].linGain;
+    }
+    return a_gain;
+}
+
+double Coordination::increment_ang_gains(double a_gain){
+    for (int i = 0 ; i < m_num_devices ; i++){
+        if (bulletTools[i].angGain + a_gain <=0){
+            bulletTools[i].angGain = 0.0;
+        }
+        else{
+            bulletTools[i].angGain += a_gain;
+        }
+    }
+    //Set the return value to the gain of the last device
+    if(m_num_devices > 0){
+        a_gain = bulletTools[m_num_devices-1].angGain;
+    }
+    return a_gain;
+}
+
+double Coordination::increment_lin_stifnesses(double a_stiffness){
+    for (int i = 0 ; i < m_num_devices ; i++){
+        if (bulletTools[i].linStiffness + a_stiffness <=0){
+            bulletTools[i].linStiffness = 0.0;
+        }
+        else{
+            bulletTools[i].linStiffness += a_stiffness;
+        }
+    }
+    //Set the return value to the stiffness of the last device
+    if(m_num_devices > 0){
+        a_stiffness = bulletTools[m_num_devices-1].linStiffness;
+    }
+    return a_stiffness;
+}
+
+double Coordination::increment_ang_stiffnesses(double a_stiffness){
+    for (int i = 0 ; i < m_num_devices ; i++){
+        if (bulletTools[i].angStiffness + a_stiffness <=0){
+            bulletTools[i].angStiffness = 0.0;
+        }
+        else{
+            bulletTools[i].angStiffness += a_stiffness;
+        }
+    }
+    //Set the return value to the stiffness of the last device
+    if(m_num_devices > 0){
+        a_stiffness = bulletTools[m_num_devices-1].angStiffness;
+    }
+    return a_stiffness;
 }
 
 std::shared_ptr<Coordination> coordPtr;
@@ -827,69 +898,53 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         printf("gravity OFF:\n");
     }
 
-//    // option - decrease linear haptic gain
-//    else if (a_key == GLFW_KEY_3)
-//    {
-//        coordPtr->linGain = linGain - 0.05;
-//        if (linGain < 0)
-//            linGain = 0;
-//        printf("linear haptic gain:  %f\n", linGain);
-//    }
+    // option - decrease linear haptic gain
+    else if (a_key == GLFW_KEY_3)
+    {
+        printf("linear haptic gain:  %f\n", coordPtr->increment_lin_gains(-0.05));
+    }
 
-//    // option - increase linear haptic gain
-//    else if (a_key == GLFW_KEY_4)
-//    {
-//        linGain = linGain + 0.05;
-//        printf("linear haptic gain:  %f\n", linGain);
-//    }
+    // option - increase linear haptic gain
+    else if (a_key == GLFW_KEY_4)
+    {
+        printf("linear haptic gain:  %f\n", coordPtr->increment_lin_gains(0.05));
+    }
 
-//    // option - decrease angular haptic gain
-//    else if (a_key == GLFW_KEY_5)
-//    {
-//        angGain = angGain - 0.005;
-//        if (angGain < 0)
-//            angGain = 0;
-//        printf("angular haptic gain:  %f\n", angGain);
-//    }
+    // option - decrease angular haptic gain
+    else if (a_key == GLFW_KEY_5)
+    {
+        printf("angular haptic gain:  %f\n", coordPtr->increment_ang_gains(-0.05));
+    }
 
-//    // option - increase angular haptic gain
-//    else if (a_key == GLFW_KEY_6)
-//    {
-//        angGain = angGain + 0.005;
-//        printf("angular haptic gain:  %f\n", angGain);
-//    }
+    // option - increase angular haptic gain
+    else if (a_key == GLFW_KEY_6)
+    {
+        printf("angular haptic gain:  %f\n", coordPtr->increment_ang_gains(0.05));
+    }
 
-//    // option - decrease linear stiffness
-//    else if (a_key == GLFW_KEY_7)
-//    {
-//        linStiffness = linStiffness - 50;
-//        if (linStiffness < 0)
-//            linStiffness = 0;
-//        printf("linear stiffness:  %f\n", linStiffness);
-//    }
+    // option - decrease linear stiffness
+    else if (a_key == GLFW_KEY_7)
+    {
+        printf("linear stiffness:  %f\n", coordPtr->increment_lin_stifnesses(-50));
+    }
 
-//    // option - increase linear stiffness
-//    else if (a_key == GLFW_KEY_8)
-//    {
-//        linStiffness = linStiffness + 50;
-//        printf("linear stiffness:  %f\n", linStiffness);
-//    }
+    // option - increase linear stiffness
+    else if (a_key == GLFW_KEY_8)
+    {
+        printf("linear stiffness:  %f\n", coordPtr->increment_lin_stifnesses(50));
+    }
 
-//    // option - decrease angular stiffness
-//    else if (a_key == GLFW_KEY_9)
-//    {
-//        angStiffness = angStiffness - 1;
-//        if (angStiffness < 0)
-//            angStiffness = 0;
-//        printf("angular stiffness:  %f\n", angStiffness);
-//    }
+    // option - decrease angular stiffness
+    else if (a_key == GLFW_KEY_9)
+    {
+        printf("angular stiffness:  %f\n", coordPtr->increment_ang_stiffnesses(-1));
+    }
 
-//    // option - increase angular stiffness
-//    else if (a_key == GLFW_KEY_0)
-//    {
-//        angStiffness = angStiffness + 1;
-//        printf("angular stiffness:  %f\n", angStiffness);
-//    }
+    // option - increase angular stiffness
+    else if (a_key == GLFW_KEY_0)
+    {
+        printf("angular stiffness:  %f\n", coordPtr->increment_ang_stiffnesses(1));
+    }
 //    // option - open gripper
 //    else if (a_key == GLFW_KEY_S)
 //    {
