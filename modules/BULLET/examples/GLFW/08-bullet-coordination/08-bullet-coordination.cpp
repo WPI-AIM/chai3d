@@ -367,6 +367,10 @@ class Coordination{
     Device hapticDevices[MAX_DEVICES];
     uint m_num_devices;
     cBulletWorld* m_bullet_world;
+
+    // bool to enable the rotation of tool be in camera frame. i.e. Orienting the camera
+    // re-orients the tool.
+    bool _useCamFrameRot;
 };
 
 Coordination::Coordination(cBulletWorld* a_bullet_world){
@@ -379,6 +383,7 @@ Coordination::Coordination(cBulletWorld* a_bullet_world){
         retrieve_device_handle(i);
         create_bullet_gripper(i);
     }
+    _useCamFrameRot = true;
 }
 
 bool Coordination::retrieve_device_handle(uint dev_num){
@@ -945,6 +950,14 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     {
         printf("angular stiffness:  %f\n", coordPtr->increment_ang_stiffnesses(1));
     }
+    else if (a_key == GLFW_KEY_C){
+        coordPtr->_useCamFrameRot = true;
+        printf("Gripper Rotation w.r.t Camera Frame:\n");
+    }
+    else if (a_key == GLFW_KEY_W){
+        coordPtr->_useCamFrameRot = false;
+        printf("Gripper Rotation w.r.t World Frame:\n");
+    }
 //    // option - open gripper
 //    else if (a_key == GLFW_KEY_S)
 //    {
@@ -1102,9 +1115,14 @@ void updateHaptics(void)
             //}
             coordPtr->bulletTools[i].posSim = coordPtr->bulletTools[i].posSimLast +
                     (camera->getLocalRot() * (coordPtr->hapticDevices[i].posDevice - coordPtr->hapticDevices[i].posDeviceClutched));
-            coordPtr->bulletTools[i].rotSim = coordPtr->bulletTools[i].rotSimLast * camera->getLocalRot() *
+            if (!coordPtr->_useCamFrameRot){
+                coordPtr->bulletTools[i].rotSim = coordPtr->bulletTools[i].rotSimLast * camera->getLocalRot() *
                     cTranspose(coordPtr->hapticDevices[i].rotDeviceClutched) * coordPtr->hapticDevices[i].rotDevice *
                     cTranspose(camera->getLocalRot());
+            }
+            else{
+                coordPtr->bulletTools[i].rotSim = coordPtr->hapticDevices[i].rotDevice;
+            }
             coordPtr->bulletTools[i].posSim.mul(coordPtr->bulletTools[i].workspaceScaleFactor);
 
             // read position of tool
