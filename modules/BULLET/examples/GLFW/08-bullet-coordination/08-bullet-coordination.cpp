@@ -1130,7 +1130,7 @@ void updateHaptics(void)
 
             torque = (coordPtr->bulletTools[i].angStiffness * angle) * axis;
             //(3.0 * dangle * daxis ) / nextSimInterval;
-            //coordPtr->bulletTools[i].rotTool * torque;
+            coordPtr->bulletTools[i].rotTool.mul(torque);
             coordPtr->bulletTools[i].apply_torque(torque);
             force = - coordPtr->bulletTools[i].linG * force;
             torque = -coordPtr->bulletTools[i].angG * torque;
