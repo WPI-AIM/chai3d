@@ -214,8 +214,8 @@ public:
         dRot.identity();
         dRot_last.identity();
         ddRot.identity();
-        int cam_clutch = 1;
-        int pos_clutch = 0;
+        cam_clutch = 1;
+        pos_clutch = 0;
         _camTrigger = false;
         _posTrigger = false;
         posSimLast.set(0.0,0.0,0.0);
