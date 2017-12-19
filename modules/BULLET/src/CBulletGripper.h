@@ -77,7 +77,7 @@ public:
 class cBulletWorld;
 class cBulletGripper:public cBulletMultiMesh{
 public:
-    cBulletGripper(cBulletWorld *bulletWorld);
+    cBulletGripper(cBulletWorld *bulletWorld, std::string gripper_name = "Gripper");
     ~cBulletGripper(){}
 
 public:
