@@ -392,7 +392,10 @@ bool Coordination::retrieve_device_handle(uint dev_num){
 }
 
 void Coordination::create_bullet_gripper(uint dev_num){
-    bulletTools[dev_num].tool = new cBulletGripper(m_bullet_world);
+    std::ostringstream dev_str;
+    dev_str << (dev_num + 1);
+    std::string gripper_name = "Gripper" + dev_str.str();
+    bulletTools[dev_num].tool = new cBulletGripper(m_bullet_world, gripper_name);
     bulletTools[dev_num].set_sim_params(hapticDevices[dev_num].hInfo);
     bulletTools[dev_num].tool->build();
     m_bullet_world->addChild(bulletTools[dev_num].tool);
