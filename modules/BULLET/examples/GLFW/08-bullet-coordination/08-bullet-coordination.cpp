@@ -35,9 +35,9 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE.
 
-    \author    <http://www.chai3d.org>
-    \author    Francois Conti
-    \version   3.2.0 $Rev: 1869 $
+    \author    <http://www.aimlab.wpi.edu>
+    \author    Adnan Munawar
+    \version   3.2.1 $Rev: 1869 $
 */
 //===========================================================================
 
@@ -691,6 +691,7 @@ int main(int argc, char* argv[])
     bulletGear->buildDynamicModel();
     meshMat.setPinkDeep();
     bulletGear->setMaterial(meshMat);
+    bulletGear->m_bulletRigidBody->setFriction(1);
 
     bulletTorus = new cBulletMultiMesh(bulletWorld);
     bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
@@ -715,6 +716,7 @@ int main(int argc, char* argv[])
     bulletBase->buildDynamicModel();
     meshMat.setBlueNavy();
     bulletBase->setMaterial(meshMat);
+    bulletBase->m_bulletRigidBody->setFriction(1);
 
     coordPtr = std::make_shared<Coordination>(bulletWorld);
     usleep(100);
@@ -751,6 +753,7 @@ int main(int argc, char* argv[])
     matGround.setGreenChartreuse();
     matGround.m_emission.setGrayLevel(0.3);
     bulletGround->setMaterial(matGround);
+    bulletGround->m_bulletRigidBody->setFriction(1);
 
     //-----------------------------------------------------------------------
     // START SIMULATION

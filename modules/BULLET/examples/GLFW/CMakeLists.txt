@@ -43,7 +43,7 @@ find_package (GLFW REQUIRED)
 include_directories (${GLFW_INCLUDE_DIRS})
 
 # build all targets
-foreach (example 01-bullet-cube 02-bullet-pool 03-bullet-mesh 04-bullet-tool 05-bullet-dental 06-bullet-exploration 07-bullet-articulation 08-bullet-coordination 09-bullet-vehicle)
+foreach (example 01-bullet-cube 02-bullet-pool 03-bullet-mesh 04-bullet-tool 05-bullet-dental 06-bullet-exploration 07-bullet-articulation 08-bullet-coordination 09-bullet-vehicle 10-bullet-gripper)
 
   file (GLOB source ${example}/*.cpp)
   add_executable (${example} ${source})

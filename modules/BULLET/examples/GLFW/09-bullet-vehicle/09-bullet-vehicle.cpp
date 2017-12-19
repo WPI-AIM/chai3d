@@ -36,7 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti
+    \author    Adnan Munawar
     \version   3.2.0 $Rev: 1869 $
 */
 //===========================================================================
@@ -858,7 +858,7 @@ void updateHaptics(void)
         force = linStiffness * deltaPos;
         bulletTool->addExternalForce(force);
 
-        torque = cMul((angStiffness * angle), axis);
+        torque = angStiffness * angle *axis;
         rotTool.mul(torque);
         bulletTool->addExternalTorque(torque);
 

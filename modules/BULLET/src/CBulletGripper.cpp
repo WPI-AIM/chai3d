@@ -60,7 +60,7 @@ void cBulletGripper::build(){
 
     mat.setBlueLightSteel();
     setMaterial(mat);
-    mat.setBlueMidnight();
+    mat.setBlueMediumSlate();
     bulletMeshGripperL2->setMaterial(mat);
 }
 
