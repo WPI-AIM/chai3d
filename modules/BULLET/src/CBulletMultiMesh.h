@@ -36,8 +36,8 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti
-    \version   3.2.0 $Rev: 2015 $
+    \author    Francois Conti, Adnan Munawar
+    \version   3.2.1 $Rev: 2017 $
 */
 //==============================================================================
 
@@ -84,7 +84,11 @@ class cBulletMultiMesh : public cMultiMesh, public cBulletGenericObject
 public:
 
     //! Constructor of cBulletMultiMesh.
-    cBulletMultiMesh(cBulletWorld* a_world) : cBulletGenericObject(a_world), cMultiMesh() {}
+    cBulletMultiMesh(cBulletWorld* a_world, std::string object_name = "") : cBulletGenericObject(a_world), cMultiMesh() {
+        if(!object_name.empty()){
+            rosObjPtr.reset(new Object(object_name));
+        }
+    }
 
     //! Destructor of cBulletMultiMesh.
     virtual ~cBulletMultiMesh() {};

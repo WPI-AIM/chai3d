@@ -36,7 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti
+    \author    Francois Conti, Adnan Munawar
     \version   3.2.0 $Rev: 2161 $
 */
 //==============================================================================
@@ -163,6 +163,12 @@ void cBulletMesh::updatePositionFromDynamics()
 
         // orthogonalize frame
         m_localRot.orthogonalize();
+
+        // update Transform data for rosObj
+        if(rosObjPtr.get() != nullptr){
+            rosObjPtr->cur_position(pos[0],pos[1],pos[2]);
+            rosObjPtr->cur_orientation(q.getX(), q.getY(), q.getZ(), q.getW());
+        }
     }
 }
 

@@ -88,6 +88,7 @@ find_package (OpenGL REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   dvrk_arm
+  chai_env
 )
 
 catkin_package(

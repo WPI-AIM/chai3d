@@ -681,7 +681,7 @@ int main(int argc, char* argv[])
     double size = 0.40;
     cMaterial meshMat;
 
-    bulletGear = new cBulletMultiMesh(bulletWorld);
+    bulletGear = new cBulletMultiMesh(bulletWorld, "Gear");
     bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
     bulletGear->scale(0.0014);
     bulletWorld->addChild(bulletGear);
@@ -693,7 +693,7 @@ int main(int argc, char* argv[])
     bulletGear->setMaterial(meshMat);
     bulletGear->m_bulletRigidBody->setFriction(1);
 
-    bulletTorus = new cBulletMultiMesh(bulletWorld);
+    bulletTorus = new cBulletMultiMesh(bulletWorld, "Torus");
     bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
     bulletTorus->scale(0.2);
     bulletTorus->setLocalPos(cVector3d(0.3,0,0));
@@ -705,7 +705,7 @@ int main(int argc, char* argv[])
     meshMat.setOrangeTomato();
     bulletTorus->setMaterial(meshMat);
 
-    bulletBase = new cBulletMultiMesh(bulletWorld);
+    bulletBase = new cBulletMultiMesh(bulletWorld, "Base");
     bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/gear/base.3ds"));
     bulletBase->scale(0.3);
     bulletBase->setLocalPos(cVector3d(-0.3,0,0));

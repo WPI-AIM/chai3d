@@ -49,6 +49,7 @@
 //------------------------------------------------------------------------------
 #include "btBulletDynamicsCommon.h"
 //------------------------------------------------------------------------------
+#include "chai_env/Object.h"
 
 //------------------------------------------------------------------------------
 namespace chai3d {
@@ -216,6 +217,8 @@ public:
     //! Bullet motion state.
     btDefaultMotionState* m_bulletMotionState;
 
+    //! ROS CHAI Env
+    std::shared_ptr<Object> rosObjPtr;
 
     //--------------------------------------------------------------------------
     // PROTECTED METHODS:
