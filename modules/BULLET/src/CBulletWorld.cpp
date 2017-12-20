@@ -150,6 +150,26 @@ void cBulletWorld::updateDynamics(double a_interval)
     // sanity check
     if (a_interval <= 0) { return; }
 
+    // apply wrench from ROS
+    list<cBulletGenericObject*>::iterator i;
+
+    for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
+    {
+        cBulletGenericObject* nextItem = *i;
+        if(nextItem->rosObjPtr.get() != nullptr){
+            cVector3d force, torque;
+            force.set(nextItem->rosObjPtr->m_wrenchCmd.Fx,
+                      nextItem->rosObjPtr->m_wrenchCmd.Fy,
+                      nextItem->rosObjPtr->m_wrenchCmd.Fz);
+            torque.set(nextItem->rosObjPtr->m_wrenchCmd.Nx,
+                       nextItem->rosObjPtr->m_wrenchCmd.Ny,
+                       nextItem->rosObjPtr->m_wrenchCmd.Nz);
+
+            nextItem->addExternalForce(force);
+            nextItem->addExternalTorque(torque);
+        }
+    }
+
     // integrate simulation during an certain interval
     m_bulletWorld->stepSimulation(a_interval, m_integrationMaxIterations, m_integrationTimeStep);
 
