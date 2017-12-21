@@ -112,6 +112,9 @@ cBulletGenericObject::~cBulletGenericObject()
 void cBulletGenericObject::setMass(const double a_mass)
 {
     m_mass = a_mass;
+    if(m_rosObjPtr.get() != nullptr){
+        m_rosObjPtr->set_mass(a_mass);
+    }
 }
 
 
@@ -125,6 +128,11 @@ void cBulletGenericObject::setMass(const double a_mass)
 void cBulletGenericObject::setInertia(const cVector3d& a_inertia)
 {
     m_inertia = a_inertia;
+    if(m_rosObjPtr.get() != nullptr){
+        m_rosObjPtr->set_principal_intertia(a_inertia(0),
+                                            a_inertia(1),
+                                            a_inertia(2));
+    }
 }
 
 
@@ -163,6 +171,12 @@ void cBulletGenericObject::estimateInertia()
         m_inertia(0) = inertia[0];
         m_inertia(1) = inertia[1];
         m_inertia(2) = inertia[2];
+
+        if(m_rosObjPtr.get() != nullptr){
+            m_rosObjPtr->set_principal_intertia(m_inertia(0),
+                                                m_inertia(1),
+                                                m_inertia(2));
+        }
     }
 }
 
@@ -180,6 +194,10 @@ void cBulletGenericObject::setStatic(bool a_static)
     if (m_bulletRigidBody)
     {
         m_bulletRigidBody->activate(!a_static);
+
+        if(m_rosObjPtr.get() != nullptr){
+            m_rosObjPtr->set_mass(0);
+        }
     }
 }
 
