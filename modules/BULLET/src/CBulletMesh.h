@@ -84,10 +84,8 @@ class cBulletMesh : public cMesh, public cBulletGenericObject
 public:
 
     //! Constructor of cBulletMesh.
-    cBulletMesh(cBulletWorld* a_world, std::string object_name = "") : cBulletGenericObject(a_world), cMesh() {
-        if(!object_name.empty()){
-            rosObjPtr.reset(new Object(object_name));
-        }
+    cBulletMesh(cBulletWorld* a_world, std::string a_objName = "") : cBulletGenericObject(a_world, a_objName), cMesh() {
+
     }
 
     //! Destructor of cBulletMesh.

@@ -100,7 +100,11 @@ class cBulletGenericObject
 public:
 
     //! Constructor of cBulletGenericBody.
-    cBulletGenericObject(cBulletWorld* a_world) { initialize(a_world); }
+    cBulletGenericObject(cBulletWorld* a_world, std::string a_objName="") {
+        if(!a_objName.empty()){
+            m_rosObjPtr.reset(new Object(a_objName));
+        }
+        initialize(a_world); }
 
     //! Destructor of cBulletGenericBody.
     virtual ~cBulletGenericObject();
@@ -218,7 +222,7 @@ public:
     btDefaultMotionState* m_bulletMotionState;
 
     //! ROS CHAI Env
-    std::shared_ptr<Object> rosObjPtr;
+    std::shared_ptr<Object> m_rosObjPtr;
 
     //--------------------------------------------------------------------------
     // PROTECTED METHODS:
