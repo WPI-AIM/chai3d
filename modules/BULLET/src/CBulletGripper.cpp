@@ -50,7 +50,7 @@ std::string resourceRootGripper;
 
 namespace chai3d {
 
-cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string gripper_name):cBulletMultiMesh(bulletWorld, gripper_name){
+cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperName):cBulletMultiMesh(bulletWorld, a_gripperName){
 
 
     loadFromFile(RESOURCE_PATH("../resources/models/gripper/gripper_L1.3ds"));

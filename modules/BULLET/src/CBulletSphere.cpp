@@ -62,7 +62,7 @@ namespace chai3d {
 */
 //==============================================================================
 cBulletSphere::cBulletSphere(cBulletWorld* a_world,
-    const double& a_radius) : cBulletMesh(a_world) 
+    const double& a_radius, std::string a_objName) : cBulletMesh(a_world, a_objName)
 { 
     // set dimensions
     m_radius = cAbs(a_radius);
