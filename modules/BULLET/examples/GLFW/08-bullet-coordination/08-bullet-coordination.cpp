@@ -88,12 +88,9 @@ cBulletMultiMesh* bulletTorus;
 cBulletMultiMesh* bulletBase;
 
 // bullet static walls and ground
-cBulletStaticPlane* bulletInvisibleWall1;
-cBulletStaticPlane* bulletInvisibleWall2;
-cBulletStaticPlane* bulletInvisibleWall3;
-cBulletStaticPlane* bulletInvisibleWall4;
-cBulletStaticPlane* bulletInvisibleWall5;
 cBulletStaticPlane* bulletGround;
+
+cBulletStaticPlane* bulletBoxWall[5];
 
 cVector3d camPos(0,0,0);
 cVector3d dev_vel;
@@ -731,11 +728,28 @@ int main(int argc, char* argv[])
 
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double planeWidth = 1.0;
-    bulletInvisibleWall1 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
-    bulletInvisibleWall2 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, -1.0, 0.0), -1.5*planeWidth);
-    bulletInvisibleWall3 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 1.0, 0.0), -1.5*planeWidth);
-    bulletInvisibleWall4 = new cBulletStaticPlane(bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
-    bulletInvisibleWall5 = new cBulletStaticPlane(bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
+    bulletBoxWall[0] = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
+    bulletBoxWall[1] = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, -1.0, 0.0), -1.5*planeWidth);
+    bulletBoxWall[2] = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 1.0, 0.0), -1.5*planeWidth);
+    bulletBoxWall[3] = new cBulletStaticPlane(bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
+    bulletBoxWall[4] = new cBulletStaticPlane(bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
+
+    for (int i = 0 ; i < 5 ; i++){
+        cVector3d worldZ;
+        worldZ.set(0,0,1);
+        cVector3d planeOri = cCross(bulletBoxWall[i]->getPlaneNormal(), worldZ);
+        cMatrix3d planeRot;
+        planeRot.setAxisAngleRotationDeg(planeOri, 90);
+        worldZ.set(0,0,1);
+        bulletWorld->addChild(bulletBoxWall[i]);
+        cCreatePlane(bulletBoxWall[i], 2.0, 3.0,
+                     bulletBoxWall[i]->getPlaneConstant() * bulletBoxWall[i]->getPlaneNormal(),
+                     planeRot);
+        cMaterial matPlane;
+        matPlane.setBlueSky();
+        bulletBoxWall[i]->setMaterial(matPlane);
+        bulletBoxWall[i]->setTransparencyLevel(0.5, true, true);
+    }
 
 
     //////////////////////////////////////////////////////////////////////////
