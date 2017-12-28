@@ -1088,18 +1088,13 @@ void updateHaptics(void)
         // signal frequency counter
         freqCounterHaptics.signal(1);
         // retrieve simulation time and compute next interval
-        double time = simClock.getCurrentTimeSeconds();
+        double dt = simClock.getCurrentTimeSeconds();
         double nextSimInterval = 0.0005;//cClamp(time, 0.00001, 0.0002);
-
+        // reset clock
+        simClock.reset();
+        simClock.start();
+        // compute global reference frames for each object
         for(int i = 0 ; i < coordPtr->m_num_devices ; i++){
-
-
-            // reset clock
-            simClock.reset();
-            simClock.start();
-            // compute global reference frames for each object
-
-
             coordPtr->bulletTools[i].tool->set_gripper_angle(
                         3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
             bulletWorld->computeGlobalPositions(true);
@@ -1184,7 +1179,7 @@ void updateHaptics(void)
 
             if (coordPtr->bulletTools[i].linG < coordPtr->bulletTools[i].linGain)
             {
-                coordPtr->bulletTools[i].linG = coordPtr->bulletTools[i].linG + 0.1 * time * coordPtr->bulletTools[i].linGain;
+                coordPtr->bulletTools[i].linG = coordPtr->bulletTools[i].linG + 0.1 * dt * coordPtr->bulletTools[i].linGain;
             }
             else
             {
@@ -1193,7 +1188,7 @@ void updateHaptics(void)
 
             if (coordPtr->bulletTools[i].angG < coordPtr->bulletTools[i].angGain)
             {
-                coordPtr->bulletTools[i].angG = coordPtr->bulletTools[i].angG + 0.1 * time * coordPtr->bulletTools[i].angGain;
+                coordPtr->bulletTools[i].angG = coordPtr->bulletTools[i].angG + 0.1 * dt * coordPtr->bulletTools[i].angGain;
             }
             else
             {
