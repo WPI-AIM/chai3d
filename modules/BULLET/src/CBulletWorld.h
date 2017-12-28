@@ -142,6 +142,9 @@ public:
     //! This method updates the position and orientation from Bullet models to CHAI3D models.
     void updatePositionFromDynamics(void);
 
+    //! This method returns the current simulation time
+    double getSimulationTime(void);
+
 
     //--------------------------------------------------------------------------
     // PUBLIC MEMBERS:
