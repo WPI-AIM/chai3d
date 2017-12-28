@@ -111,6 +111,8 @@ cSpotLight *light;
 
 // a label to display the rates [Hz] at which the simulation is running
 cLabel* labelRates;
+cLabel* labelTimes;
+cPrecisionClock clockWorld;
 
 
 //---------------------------------------------------------------------------
@@ -664,8 +666,11 @@ int main(int argc, char* argv[])
 
     // create a label to display the haptic and graphic rate of the simulation
     labelRates = new cLabel(font);
+    labelTimes = new cLabel(font);
     labelRates->m_fontColor.setBlack();
+    labelTimes->m_fontColor.setBlack();
     camera->m_frontLayer->addChild(labelRates);
+    camera->m_frontLayer->addChild(labelTimes);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -1018,11 +1023,14 @@ void updateGraphics(void)
     /////////////////////////////////////////////////////////////////////
 
     // update haptic and graphic rate data
+    labelTimes->setText("Wall Time: " + cStr(clockWorld.getCurrentTimeSeconds(),2) + " s" +
+                        + " / "+" Simulation Time: " + cStr(bulletWorld->getSimulationTime(),2) + " s");
     labelRates->setText(cStr(freqCounterGraphics.getFrequency(), 0) + " Hz / " +
         cStr(freqCounterHaptics.getFrequency(), 0) + " Hz");
 
     // update position of label
-    labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 15);
+    labelTimes->setLocalPos((int)(0.5 * (width - labelTimes->getWidth())), 30);
+    labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 10);
     bool _pressed;
     if (coordPtr->m_num_devices > 0){
         coordPtr->hapticDevices[0].hDevice->getUserSwitch(coordPtr->bulletTools[0].cam_clutch, _pressed);
@@ -1071,6 +1079,7 @@ void updateHaptics(void)
     // simulation clock
     cPrecisionClock simClock;
     simClock.start(true);
+    clockWorld.start(true);
 
     // update position and orientation of tool
 
