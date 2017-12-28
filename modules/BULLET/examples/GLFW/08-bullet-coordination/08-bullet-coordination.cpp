@@ -1089,7 +1089,7 @@ void updateHaptics(void)
         freqCounterHaptics.signal(1);
         // retrieve simulation time and compute next interval
         double dt = simClock.getCurrentTimeSeconds();
-        double nextSimInterval = 0.0005;//cClamp(time, 0.00001, 0.0002);
+        double nextSimInterval = dt;//cClamp(time, 0.00001, 0.0002);
         // reset clock
         simClock.reset();
         simClock.start();
