@@ -609,7 +609,7 @@ int main(int argc, char* argv[])
     bulletWorld->addChild(camera);
 
     // position and orient the camera
-    camera->set(cVector3d(2.5, 0.0, 0.3),    // camera position (eye)
+    camera->set(cVector3d(3.0, 0.0, 0.3),    // camera position (eye)
                 cVector3d(0.0, 0.0,-0.5),    // lookat position (target)
                 cVector3d(0.0, 0.0, 1.0));   // direction of the "up" vector
 
