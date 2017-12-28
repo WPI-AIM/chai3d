@@ -145,7 +145,7 @@ cVector3d cBulletWorld::getGravity()
     \param  a_interval  Time increment.
 */
 //==============================================================================
-void cBulletWorld::updateDynamics(double a_interval)
+void cBulletWorld::updateDynamics(double a_interval, double wall_clock)
 {
     // sanity check
     if (a_interval <= 0) { return; }
@@ -168,6 +168,7 @@ void cBulletWorld::updateDynamics(double a_interval)
             nextItem->addExternalForce(force);
             nextItem->addExternalTorque(torque);
             nextItem->m_rosObjPtr->set_time_stamp(m_simulationTime);
+            nextItem->m_rosObjPtr->set_wall_time(wall_clock);
         }
     }
 

@@ -1184,7 +1184,7 @@ void updateHaptics(void)
 //                         coordPtr->hapticDevices[i].posDeviceClutched.z() << " " <<
 //                         std::endl;
 
-            //coordPtr->hapticDevices[i].apply_wrench(force, torque);
+            coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
             if (coordPtr->bulletTools[i].linG < coordPtr->bulletTools[i].linGain)
             {
@@ -1205,7 +1205,7 @@ void updateHaptics(void)
             }
 
         }
-        bulletWorld->updateDynamics(nextSimInterval);
+        bulletWorld->updateDynamics(nextSimInterval, clockWorld.getCurrentTimeSeconds());
     }
     // exit haptics thread
     simulationFinished = true;
