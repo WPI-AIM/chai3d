@@ -167,8 +167,7 @@ void cBulletWorld::updateDynamics(double a_interval, double wall_clock)
 
             nextItem->addExternalForce(force);
             nextItem->addExternalTorque(torque);
-            nextItem->m_rosObjPtr->set_time_stamp(m_simulationTime);
-            nextItem->m_rosObjPtr->set_wall_time(wall_clock);
+            nextItem->m_rosObjPtr->set_chai_time_stamp(wall_clock);
         }
     }
 
