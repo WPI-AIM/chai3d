@@ -1065,6 +1065,20 @@ void updateGraphics(void)
     if (err != GL_NO_ERROR) printf("Error:  %s\n", gluErrorString(err));
 }
 
+// Function to fix time dilation
+
+double compute_dt(bool adjust_int_steps = true){
+    double dt = clockWorld.getCurrentTimeSeconds() - bulletWorld->getSimulationTime();
+    if (adjust_int_steps){
+        if (dt >= bulletWorld->getIntegrationTimeStep() * bulletWorld->getIntegrationMaxIterations()){
+            int int_steps_max =  bulletWorld->getIntegrationTimeStep() / dt;
+            if (int_steps_max > bulletWorld->getIntegrationMaxIterations()){
+                bulletWorld->setIntegrationMaxIterations(int_steps_max);
+            }
+        }}
+    return dt;
+}
+
 //---------------------------------------------------------------------------
 
 void updateHaptics(void)
@@ -1076,9 +1090,6 @@ void updateHaptics(void)
     // start haptic device
     coordPtr->open_devices();
 
-    // simulation clock
-    cPrecisionClock simClock;
-    simClock.start(true);
     clockWorld.start(true);
 
     // update position and orientation of tool
@@ -1096,12 +1107,11 @@ void updateHaptics(void)
     {
         // signal frequency counter
         freqCounterHaptics.signal(1);
-        // retrieve simulation time and compute next interval
-        double dt = simClock.getCurrentTimeSeconds();
-        double nextSimInterval = dt;//cClamp(time, 0.00001, 0.0002);
-        // reset clock
-        simClock.reset();
-        simClock.start();
+
+        // Adjust time dilation by computing dt from clockWorld time and the simulationTime
+        double dt = compute_dt();
+        double nextSimInterval = dt;
+
         // compute global reference frames for each object
         for(int i = 0 ; i < coordPtr->m_num_devices ; i++){
             coordPtr->bulletTools[i].tool->set_gripper_angle(
