@@ -145,10 +145,12 @@ cVector3d cBulletWorld::getGravity()
     \param  a_interval  Time increment.
 */
 //==============================================================================
-void cBulletWorld::updateDynamics(double a_interval, double wall_clock)
+void cBulletWorld::updateDynamics(double a_interval, double a_wallClock)
 {
     // sanity check
     if (a_interval <= 0) { return; }
+
+    m_wallClock = a_wallClock;
 
     // apply wrench from ROS
     list<cBulletGenericObject*>::iterator i;
@@ -164,11 +166,8 @@ void cBulletWorld::updateDynamics(double a_interval, double wall_clock)
             torque.set(nextItem->m_rosObjPtr->m_wrenchCmd.Nx,
                        nextItem->m_rosObjPtr->m_wrenchCmd.Ny,
                        nextItem->m_rosObjPtr->m_wrenchCmd.Nz);
-
             nextItem->addExternalForce(force);
             nextItem->addExternalTorque(torque);
-            nextItem->m_rosObjPtr->set_chai_wall_time(wall_clock);
-            nextItem->m_rosObjPtr->set_chai_sim_time(m_simulationTime);
         }
     }
 
@@ -197,6 +196,10 @@ void cBulletWorld::updatePositionFromDynamics()
     {
         cBulletGenericObject* nextItem = *i;
         nextItem->updatePositionFromDynamics();
+            if(nextItem->m_rosObjPtr.get() != nullptr){
+                nextItem->m_rosObjPtr->set_chai_wall_time(m_wallClock);
+                nextItem->m_rosObjPtr->set_chai_sim_time(m_simulationTime);
+            }
     }
 }
 

@@ -137,7 +137,7 @@ public:
     chai3d::cVector3d getGravity();
 
     //! This method updates the simulation over a time interval.
-    void updateDynamics(double a_interval, double wall_clock=0);
+    void updateDynamics(double a_interval, double a_wallClock=0);
 
     //! This method updates the position and orientation from Bullet models to CHAI3D models.
     void updatePositionFromDynamics(void);
@@ -179,6 +179,9 @@ protected:
 
     //! Integration time step.
     double m_integrationTimeStep;
+
+    //! Wall Clock in Secs
+    double m_wallClock;
 
     //! Maximum number of iterations.
     int m_integrationMaxIterations;
