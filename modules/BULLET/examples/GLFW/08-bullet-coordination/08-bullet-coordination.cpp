@@ -601,7 +601,7 @@ int main(int argc, char* argv[])
     //-----------------------------------------------------------------------
 
     // create a dynamic world.
-    bulletWorld = new cBulletWorld();
+    bulletWorld = new cBulletWorld("World");
 
     // set the background color of the environment
     bulletWorld->m_backgroundColor.setWhite();

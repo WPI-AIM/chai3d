@@ -56,8 +56,11 @@ namespace chai3d {
     Constructor of cBulletWorld.
 */
 //==============================================================================
-cBulletWorld::cBulletWorld()
+cBulletWorld::cBulletWorld(std::string a_worldName)
 {
+    if(!a_worldName.empty()){
+        m_rosWorldPtr.reset(new chai_env::World(a_worldName));
+    }
     // reset simulation time
     m_simulationTime = 0.0;
 
@@ -176,6 +179,11 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock)
 
     // add time to overall simulation
     m_simulationTime = m_simulationTime + a_interval;
+
+    if (m_rosWorldPtr.get() != nullptr){
+        m_rosWorldPtr->set_chai_sim_time(m_simulationTime);
+        m_rosWorldPtr->set_chai_wall_time(m_wallClock);
+    }
 
     // update CHAI3D positions for of all object
     updatePositionFromDynamics();

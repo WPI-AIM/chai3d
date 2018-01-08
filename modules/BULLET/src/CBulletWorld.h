@@ -50,7 +50,7 @@
 #include "btBulletDynamicsCommon.h"
 #include "BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h"
 //------------------------------------------------------------------------------
-
+#include "chai_env/World.h"
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ class cBulletWorld : public chai3d::cWorld
 public:
 
     //! Constructor of cBulletWorld.
-    cBulletWorld();
+    cBulletWorld(std::string a_worldName="");
 
     //! Destructor of cBulletWorld.
     virtual ~cBulletWorld();
@@ -185,6 +185,9 @@ protected:
 
     //! Maximum number of iterations.
     int m_integrationMaxIterations;
+
+    //! World ROS Object
+    std::shared_ptr<chai_env::World> m_rosWorldPtr;
 };
 
 //------------------------------------------------------------------------------
