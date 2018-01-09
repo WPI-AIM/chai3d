@@ -1069,13 +1069,13 @@ void updateGraphics(void)
 
 double compute_dt(bool adjust_int_steps = true){
     double dt = clockWorld.getCurrentTimeSeconds() - bulletWorld->getSimulationTime();
+    int min_steps = 2;
     if (adjust_int_steps){
-        if (dt >= bulletWorld->getIntegrationTimeStep() * bulletWorld->getIntegrationMaxIterations()){
-            int int_steps_max =  bulletWorld->getIntegrationTimeStep() / dt;
-            if (int_steps_max > bulletWorld->getIntegrationMaxIterations()){
-                bulletWorld->setIntegrationMaxIterations(int_steps_max);
-            }
-        }}
+        if (dt >= bulletWorld->getIntegrationTimeStep() * min_steps){
+            int int_steps_max =  dt / bulletWorld->getIntegrationTimeStep();
+            bulletWorld->setIntegrationMaxIterations(int_steps_max + min_steps);
+        }
+    }
     return dt;
 }
 
