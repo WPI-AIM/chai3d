@@ -154,39 +154,46 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock)
     if (a_interval <= 0) { return; }
 
     m_wallClock = a_wallClock;
+    bool pauseSim = false;
 
-    // apply wrench from ROS
-    list<cBulletGenericObject*>::iterator i;
+    if(m_rosWorldPtr.get() != nullptr){
+        pauseSim = m_rosWorldPtr->m_pauseSim;
+    }
 
-    for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
-    {
-        cBulletGenericObject* nextItem = *i;
-        if(nextItem->m_rosObjPtr.get() != nullptr){
-            cVector3d force, torque;
-            force.set(nextItem->m_rosObjPtr->m_wrenchCmd.Fx,
-                      nextItem->m_rosObjPtr->m_wrenchCmd.Fy,
-                      nextItem->m_rosObjPtr->m_wrenchCmd.Fz);
-            torque.set(nextItem->m_rosObjPtr->m_wrenchCmd.Nx,
-                       nextItem->m_rosObjPtr->m_wrenchCmd.Ny,
-                       nextItem->m_rosObjPtr->m_wrenchCmd.Nz);
-            nextItem->addExternalForce(force);
-            nextItem->addExternalTorque(torque);
+    if (!pauseSim){
+        // apply wrench from ROS
+        list<cBulletGenericObject*>::iterator i;
+
+        for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
+        {
+            cBulletGenericObject* nextItem = *i;
+            if(nextItem->m_rosObjPtr.get() != nullptr){
+                cVector3d force, torque;
+                force.set(nextItem->m_rosObjPtr->m_wrenchCmd.Fx,
+                          nextItem->m_rosObjPtr->m_wrenchCmd.Fy,
+                          nextItem->m_rosObjPtr->m_wrenchCmd.Fz);
+                torque.set(nextItem->m_rosObjPtr->m_wrenchCmd.Nx,
+                           nextItem->m_rosObjPtr->m_wrenchCmd.Ny,
+                           nextItem->m_rosObjPtr->m_wrenchCmd.Nz);
+                nextItem->addExternalForce(force);
+                nextItem->addExternalTorque(torque);
+            }
         }
+
+        // integrate simulation during an certain interval
+        m_bulletWorld->stepSimulation(a_interval, m_integrationMaxIterations, m_integrationTimeStep);
+
+        // add time to overall simulation
+        m_simulationTime = m_simulationTime + a_interval;
+
+        if (m_rosWorldPtr.get() != nullptr){
+            m_rosWorldPtr->set_chai_sim_time(m_simulationTime);
+            m_rosWorldPtr->set_chai_wall_time(m_wallClock);
+        }
+
+        // update CHAI3D positions for of all object
+        updatePositionFromDynamics();
     }
-
-    // integrate simulation during an certain interval
-    m_bulletWorld->stepSimulation(a_interval, m_integrationMaxIterations, m_integrationTimeStep);
-
-    // add time to overall simulation
-    m_simulationTime = m_simulationTime + a_interval;
-
-    if (m_rosWorldPtr.get() != nullptr){
-        m_rosWorldPtr->set_chai_sim_time(m_simulationTime);
-        m_rosWorldPtr->set_chai_wall_time(m_wallClock);
-    }
-
-    // update CHAI3D positions for of all object
-    updatePositionFromDynamics();
 }
 
 
