@@ -157,7 +157,7 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock)
     bool pauseSim = false;
 
     if(m_rosWorldPtr.get() != nullptr){
-        pauseSim = m_rosWorldPtr->m_pauseSim;
+        pauseSim = m_rosWorldPtr->pauseSim();
     }
 
     if (!pauseSim){
