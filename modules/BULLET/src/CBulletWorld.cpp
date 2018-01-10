@@ -154,13 +154,13 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock)
     if (a_interval <= 0) { return; }
 
     m_wallClock = a_wallClock;
-    bool pauseSim = false;
+    bool stepSim = true;
 
     if(m_rosWorldPtr.get() != nullptr){
-        pauseSim = m_rosWorldPtr->pauseSim();
+        stepSim = m_rosWorldPtr->step_sim();
     }
 
-    if (!pauseSim){
+    if (stepSim){
         // apply wrench from ROS
         list<cBulletGenericObject*>::iterator i;
 
