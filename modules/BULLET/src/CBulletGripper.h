@@ -85,7 +85,7 @@ public:
     void set_surface_props(GripperSurfaceProperties &props);
     void set_scale(double scale);
     void build();
-//    virtual void updateForcesFromROS();
+    virtual void updateForcesFromROS();
 public:
     cBulletMultiMesh* bulletMeshGripperL2;
     btHingeConstraint* bulletHinge;
