@@ -36,7 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti
+    \author    Francois Conti, Adnan Munawar
     \version   3.2.0 $Rev: 2126 $
 */
 //==============================================================================
@@ -186,6 +186,11 @@ public:
     void addExternalForceAtPoint(const cVector3d& a_force,
                                  const cVector3d& a_relativePos);
 
+    //! This method applies any forces that are being sent by ROS.
+    virtual void updateForcesFromROS();
+
+    //! This method applies updates Wall and Sim Time for ROS Message.
+    virtual void updateROSMessageTime(const double* a_wall_time, const double* a_sim_time);
 
     //--------------------------------------------------------------------------
     // PUBLIC METHODS - DAMPING:

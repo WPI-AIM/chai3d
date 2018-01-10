@@ -36,7 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti
+    \author    Francois Conti, Adnan Munawar
     \version   3.2.0 $Rev: 2181 $
 */
 //==============================================================================
@@ -277,6 +277,37 @@ void cBulletGenericObject::addExternalTorque(const cVector3d& a_torque)
     }
 }
 
+
+//==============================================================================
+/*!
+    //! This method applies updates Wall and Sim Time for ROS Message.
+
+    \param a_wall_time   Wall Time
+    \param a_sim_time    Sim Time
+*/
+//==============================================================================
+void cBulletGenericObject::updateROSMessageTime(const double *a_wall_time, const double *a_sim_time){
+     if (m_rosObjPtr.get() != nullptr){
+         m_rosObjPtr->set_chai_wall_time(*a_wall_time);
+         m_rosObjPtr->set_chai_sim_time(*a_sim_time);
+     }
+}
+
+//==============================================================================
+/*!
+    This method updates forces from ROS. This method is called from cBulletWorld if rosObj is created
+*/
+//==============================================================================
+void cBulletGenericObject::updateForcesFromROS(){
+    if (m_rosObjPtr.get() != nullptr){
+        m_rosObjPtr->update_cmd_from_ros();
+        cVector3d force, torque;
+        force.set(m_rosObjPtr->m_cmd.Fx, m_rosObjPtr->m_cmd.Fy, m_rosObjPtr->m_cmd.Fz);
+        torque.set(m_rosObjPtr->m_cmd.Nx, m_rosObjPtr->m_cmd.Ny, m_rosObjPtr->m_cmd.Nz);
+        addExternalForce(force);
+        addExternalTorque(torque);
+    }
+}
 
 //==============================================================================
 /*!

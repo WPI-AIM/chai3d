@@ -36,7 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti
+    \author    Francois Conti, Adnan Munawar
     \version   3.2.0 $Rev: 2015 $
 */
 //==============================================================================
@@ -167,17 +167,7 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock)
         for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
         {
             cBulletGenericObject* nextItem = *i;
-            if(nextItem->m_rosObjPtr.get() != nullptr){
-                cVector3d force, torque;
-                force.set(nextItem->m_rosObjPtr->m_wrenchCmd.Fx,
-                          nextItem->m_rosObjPtr->m_wrenchCmd.Fy,
-                          nextItem->m_rosObjPtr->m_wrenchCmd.Fz);
-                torque.set(nextItem->m_rosObjPtr->m_wrenchCmd.Nx,
-                           nextItem->m_rosObjPtr->m_wrenchCmd.Ny,
-                           nextItem->m_rosObjPtr->m_wrenchCmd.Nz);
-                nextItem->addExternalForce(force);
-                nextItem->addExternalTorque(torque);
-            }
+            nextItem->updateForcesFromROS();
         }
 
         // integrate simulation during an certain interval
@@ -211,10 +201,7 @@ void cBulletWorld::updatePositionFromDynamics()
     {
         cBulletGenericObject* nextItem = *i;
         nextItem->updatePositionFromDynamics();
-            if(nextItem->m_rosObjPtr.get() != nullptr){
-                nextItem->m_rosObjPtr->set_chai_wall_time(m_wallClock);
-                nextItem->m_rosObjPtr->set_chai_sim_time(m_simulationTime);
-            }
+        nextItem->updateROSMessageTime(&m_wallClock, &m_simulationTime);
     }
 }
 
