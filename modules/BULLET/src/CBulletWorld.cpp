@@ -148,42 +148,42 @@ cVector3d cBulletWorld::getGravity()
     \param  a_interval  Time increment.
 */
 //==============================================================================
-void cBulletWorld::updateDynamics(double a_interval, double a_wallClock)
+void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double a_loopFreq, int a_numDevices)
 {
     // sanity check
     if (a_interval <= 0) { return; }
 
     m_wallClock = a_wallClock;
-    bool stepSim = true;
 
     if(m_rosWorldPtr.get() != nullptr){
-        stepSim = m_rosWorldPtr->step_sim();
+        while (!m_rosWorldPtr->step_sim()){
+            usleep(1);
+        }
+    }
+    // apply wrench from ROS
+    list<cBulletGenericObject*>::iterator i;
+
+    for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
+    {
+        cBulletGenericObject* nextItem = *i;
+        nextItem->updateForcesFromROS();
     }
 
-    if (stepSim){
-        // apply wrench from ROS
-        list<cBulletGenericObject*>::iterator i;
+    // integrate simulation during an certain interval
+    m_bulletWorld->stepSimulation(a_interval, m_integrationMaxIterations, m_integrationTimeStep);
 
-        for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
-        {
-            cBulletGenericObject* nextItem = *i;
-            nextItem->updateForcesFromROS();
-        }
+    // add time to overall simulation
+    m_simulationTime = m_simulationTime + a_interval;
 
-        // integrate simulation during an certain interval
-        m_bulletWorld->stepSimulation(a_interval, m_integrationMaxIterations, m_integrationTimeStep);
-
-        // add time to overall simulation
-        m_simulationTime = m_simulationTime + a_interval;
-
-        if (m_rosWorldPtr.get() != nullptr){
-            m_rosWorldPtr->set_chai_sim_time(m_simulationTime);
-            m_rosWorldPtr->set_chai_wall_time(m_wallClock);
-        }
-
-        // update CHAI3D positions for of all object
-        updatePositionFromDynamics();
+    if (m_rosWorldPtr.get() != nullptr){
+        m_rosWorldPtr->set_chai_sim_time(m_simulationTime);
+        m_rosWorldPtr->set_chai_wall_time(m_wallClock);
+        m_rosWorldPtr->set_loop_freq(a_loopFreq);
+        m_rosWorldPtr->set_num_devices(a_numDevices);
     }
+
+    // update CHAI3D positions for of all object
+    updatePositionFromDynamics();
 }
 
 

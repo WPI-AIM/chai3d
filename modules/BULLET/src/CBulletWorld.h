@@ -137,7 +137,7 @@ public:
     chai3d::cVector3d getGravity();
 
     //! This method updates the simulation over a time interval.
-    void updateDynamics(double a_interval, double a_wallClock=0);
+    void updateDynamics(double a_interval, double a_wallClock=0, double a_loopFreq = 0, int a_numDevices = 0);
 
     //! This method updates the position and orientation from Bullet models to CHAI3D models.
     void updatePositionFromDynamics(void);

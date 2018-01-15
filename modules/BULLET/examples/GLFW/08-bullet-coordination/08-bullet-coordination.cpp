@@ -1215,7 +1215,7 @@ void updateHaptics(void)
             }
 
         }
-        bulletWorld->updateDynamics(nextSimInterval, clockWorld.getCurrentTimeSeconds());
+        bulletWorld->updateDynamics(nextSimInterval, clockWorld.getCurrentTimeSeconds(), freqCounterHaptics.getFrequency(), coordPtr->m_num_devices);
     }
     // exit haptics thread
     simulationFinished = true;
