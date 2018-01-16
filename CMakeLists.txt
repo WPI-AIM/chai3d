@@ -90,13 +90,6 @@ find_package(catkin REQUIRED COMPONENTS
   dvrk_arm
   chai_env
 )
-
-catkin_package(
-  INCLUDE_DIRS
-#  LIBRARIES geomagic_teleop
-#  CATKIN_DEPENDS geometry_msgs/PoseStamped roscpp rospy sensor_msgs/JointState sensor_msgs/Joy tf
-#  DEPENDS system_lib
-)
 include_directories (OPENGL_INCLUDE_DIR)
 include_directories(
   ${catkin_INCLUDE_DIRS}
