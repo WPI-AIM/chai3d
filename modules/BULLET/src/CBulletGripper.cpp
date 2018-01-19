@@ -135,8 +135,10 @@ void cBulletGripper::updateForcesFromROS(){
         torque.set(m_rosObjPtr->m_cmd.Nx, m_rosObjPtr->m_cmd.Ny, m_rosObjPtr->m_cmd.Nz);
         addExternalForce(force);
         addExternalTorque(torque);
-        gripper_angle = m_rosObjPtr->m_cmd.size_J_cmd > 0 ? m_rosObjPtr->m_cmd.J_cmd[0] : 0;
-        set_gripper_angle(gripper_angle);
+        if (m_rosObjPtr->m_cmd.size_J_cmd > 0){
+            gripper_angle = m_rosObjPtr->m_cmd.J_cmd[0];
+            set_gripper_angle(gripper_angle);
+        }
     }
 }
 
