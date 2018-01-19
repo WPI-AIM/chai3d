@@ -304,7 +304,7 @@ bool cDvrkDevice::close()
 //    mtm_device->set_force(0,0,0);
 //    mtm_device->set_moment(0,0,0);
     m_deviceReady = false;
-    result = true;//mtm_device->shutDown();
+    result = mtm_device->close();
 
     return (result);
 }
@@ -346,29 +346,29 @@ unsigned int cDvrkDevice::getNumDevices()
     s_mtmL_present = false;
     s_mtmR_open = false;
     s_mtmL_open = false;
-//    static ros::M_string s;
-//    ros::init(s, "chai_node");
+    static ros::M_string s;
+    ros::init(s, "chai_node", ros::init_options::NoSigintHandler);
     numberOfDevices += 1;
     s_mtmR_present = true;
-//    if (ros::master::check()){
-//        std::string armR, armL, checkR, checkL;
-//        armR = "MTMR";
-//        armL = "MTML";
-//        checkR = std::string("/dvrk/" + armR + "/status");
-//        checkL = std::string("/dvrk/" + armL + "/status");
-//        ros::master::V_TopicInfo topics;
-//        ros::master::getTopics(topics);
-//        for(int i = 0 ; i < topics.size() ; i++){
-//            if(strcmp(topics[i].name.c_str(), checkR.c_str()) == 0){
-//               numberOfDevices += 1;
-//               s_mtmR_present = true;
-//            }
-//            if(strcmp(topics[i].name.c_str(), checkL.c_str()) == 0){
-//               numberOfDevices +=1;
-//               s_mtmL_present = true;
-//            }
-//        }
-//    }
+    if (ros::master::check()){
+        std::string armR, armL, checkR, checkL;
+        armR = "MTMR";
+        armL = "MTML";
+        checkR = std::string("/dvrk/" + armR + "/status");
+        checkL = std::string("/dvrk/" + armL + "/status");
+        ros::master::V_TopicInfo topics;
+        ros::master::getTopics(topics);
+        for(int i = 0 ; i < topics.size() ; i++){
+            if(strcmp(topics[i].name.c_str(), checkR.c_str()) == 0){
+               numberOfDevices += 1;
+               s_mtmR_present = true;
+            }
+            if(strcmp(topics[i].name.c_str(), checkL.c_str()) == 0){
+               numberOfDevices +=1;
+               s_mtmL_present = true;
+            }
+        }
+    }
     return (numberOfDevices);
 }
 
