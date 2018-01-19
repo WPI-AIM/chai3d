@@ -348,8 +348,6 @@ unsigned int cDvrkDevice::getNumDevices()
     s_mtmL_open = false;
     static ros::M_string s;
     ros::init(s, "chai_node", ros::init_options::NoSigintHandler);
-    numberOfDevices += 1;
-    s_mtmR_present = true;
     if (ros::master::check()){
         std::string armR, armL, checkR, checkL;
         armR = "MTMR";
@@ -522,7 +520,7 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
 
     double gf = a_gripperForce;
 
-    mtm_device->set_force(fx, fy, fz);
+    mtm_device->set_force(0,0,0);
     //mtmr_device.set_moment(tx, ty, tz);
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
