@@ -1070,11 +1070,14 @@ void updateGraphics(void)
 double compute_dt(bool adjust_int_steps = true){
     double dt = clockWorld.getCurrentTimeSeconds() - bulletWorld->getSimulationTime();
     int min_steps = 2;
+    int max_steps = 10;
     if (adjust_int_steps){
         if (dt >= bulletWorld->getIntegrationTimeStep() * min_steps){
             int int_steps_max =  dt / bulletWorld->getIntegrationTimeStep();
-            bulletWorld->setIntegrationMaxIterations(int_steps_max + min_steps);
-        }
+            if (int_steps_max > max_steps){
+                int_steps_max = max_steps;
+            }
+            bulletWorld->setIntegrationMaxIterations(int_steps_max + min_steps);        }
     }
     return dt;
 }
@@ -1194,7 +1197,7 @@ void updateHaptics(void)
 //                         coordPtr->hapticDevices[i].posDeviceClutched.z() << " " <<
 //                         std::endl;
 
-            coordPtr->hapticDevices[i].apply_wrench(force, torque);
+//            coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
             if (coordPtr->bulletTools[i].linG < coordPtr->bulletTools[i].linGain)
             {
