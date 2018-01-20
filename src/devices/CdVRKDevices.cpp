@@ -64,7 +64,9 @@ bool cDvrkDevice::s_mtmL_present = false;
 cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
 {
     if(s_mtmR_present && !s_mtmR_open){
-        mtm_device = std::shared_ptr<DVRK_Arm>(new DVRK_Arm("MTMR"));
+        std::cerr << "Here*********" << std::endl;
+        mtm_device.reset(new DVRK_Arm("MTMR"));
+        std::cerr << "THere***************" << std::endl;
         s_mtmR_open = true;
         s_mtmL_open = false;
     }
@@ -242,6 +244,7 @@ cDvrkDevice::~cDvrkDevice()
     std::cerr << "*******AFTER******" << std::endl;
     std::cerr << "*******AFTER******" << std::endl;
     std::cerr << "*******AFTER******" << std::endl;
+//    ros::shutdown();
 
 }
 
@@ -271,7 +274,7 @@ bool cDvrkDevice::open()
     // update device status
     if (result)
     {
-        cPrint("MTM is available \n");
+//        cPrint("MTM is available \n");
         m_deviceReady = true;
         return (C_SUCCESS);
     }
@@ -346,27 +349,29 @@ unsigned int cDvrkDevice::getNumDevices()
     s_mtmL_present = false;
     s_mtmR_open = false;
     s_mtmL_open = false;
-    static ros::M_string s;
-    ros::init(s, "chai_node", ros::init_options::NoSigintHandler);
-    if (ros::master::check()){
-        std::string armR, armL, checkR, checkL;
-        armR = "MTMR";
-        armL = "MTML";
-        checkR = std::string("/dvrk/" + armR + "/status");
-        checkL = std::string("/dvrk/" + armL + "/status");
-        ros::master::V_TopicInfo topics;
-        ros::master::getTopics(topics);
-        for(int i = 0 ; i < topics.size() ; i++){
-            if(strcmp(topics[i].name.c_str(), checkR.c_str()) == 0){
-               numberOfDevices += 1;
-               s_mtmR_present = true;
-            }
-            if(strcmp(topics[i].name.c_str(), checkL.c_str()) == 0){
-               numberOfDevices +=1;
-               s_mtmL_present = true;
-            }
-        }
-    }
+    numberOfDevices += 1;
+    s_mtmR_present = true;
+//    static ros::M_string s;
+//    ros::init(s, "chai_node");
+//    if (ros::master::check()){
+//        std::string armR, armL, checkR, checkL;
+//        armR = "MTMR";
+//        armL = "MTML";
+//        checkR = std::string("/dvrk/" + armR + "/status");
+//        checkL = std::string("/dvrk/" + armL + "/status");
+//        ros::master::V_TopicInfo topics;
+//        ros::master::getTopics(topics);
+//        for(int i = 0 ; i < topics.size() ; i++){
+//            if(strcmp(topics[i].name.c_str(), checkR.c_str()) == 0){
+//               numberOfDevices += 1;
+//               s_mtmR_present = true;
+//            }
+//            if(strcmp(topics[i].name.c_str(), checkL.c_str()) == 0){
+//               numberOfDevices +=1;
+//               s_mtmL_present = true;
+//            }
+//        }
+//    }
     return (numberOfDevices);
 }
 
