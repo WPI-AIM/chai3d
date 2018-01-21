@@ -36,7 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Your name, institution, or company name.
+    \author    Adnan Munawar, WPI.
     \version   3.2.0 $Rev: 1875 $
 */
 //==============================================================================
@@ -45,7 +45,8 @@
 #ifndef cDvrkDeviceH
 #define cDvrkDeviceH
 //------------------------------------------------------------------------------
-#if defined(C_ENABLE_DVRK_DEVICE_SUPPORT)
+//#if defined(C_ENABLE_DVRK_DEVICE_SUPPORT)
+#if 1
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
 #include <dvrk_arm/Arm.h>
@@ -132,7 +133,7 @@ public:
     static cDvrkDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cDvrkDevice>(a_deviceNumber)); }
 
     //! DVRK MTM Object
-    typedef std::shared_ptr<DVRK_Arm> DVRK_ArmPtr;
+    typedef boost::shared_ptr<DVRK_Arm> DVRK_ArmPtr;
     DVRK_ArmPtr mtm_device;
 
 
@@ -196,8 +197,11 @@ protected:
     int m_MyVariable;
 
 private:
-    static bool s_mtmR_present, s_mtmR_open;
-    static bool s_mtmL_present, s_mtmL_open;
+    static std::vector<std::string> m_dev_names;
+    typedef boost::shared_ptr<DVRK_Arm> (*factory_fcn)(std::string);
+    typedef void (*destroy)(boost::shared_ptr<DVRK_Arm>);
+    static factory_fcn create_fcn;
+    static destroy destroy_fcn;
 };
 
 //------------------------------------------------------------------------------
