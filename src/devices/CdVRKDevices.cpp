@@ -174,7 +174,7 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
 
         
     //sleep(8.0);
-    if(mtm_device->_is_available()){
+    if(mtm_device->is_available()){
         m_deviceAvailable = true;
         tf::Transform home_trans, tip_trans;
         tf::Quaternion home_rot, tip_rot;
@@ -243,7 +243,7 @@ bool cDvrkDevice::open()
     bool result = C_ERROR; // this value will need to become "C_SUCCESS" for the device to be marked as ready.
 
     // result = openConnectionToMyDevice();
-    result = mtm_device->_is_available();
+    result = mtm_device->is_available();
     mtm_device->set_mode(mtm_device->_m_effort_mode);
 
 
