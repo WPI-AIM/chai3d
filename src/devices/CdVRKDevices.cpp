@@ -53,8 +53,8 @@
 namespace chai3d {
 //------------------------------------------------------------------------------
 std::vector<std::string> cDvrkDevice::m_dev_names;
-//typedef boost::shared_ptr<DVRK_Arm> (*factory_fcn)(std::string name);
-cDvrkDevice::factory_fcn cDvrkDevice::create_fcn;
+cDvrkDevice::factory_create cDvrkDevice::create_fcn;
+cDvrkDevice::factory_destroy cDvrkDevice::destroy_fcn;
 
 
 //==============================================================================
@@ -220,7 +220,7 @@ cDvrkDevice::~cDvrkDevice()
     {
         close();
     }
-//    ros::shutdown();
+    destroy_fcn(mtm_device);
 
 }
 
@@ -282,7 +282,7 @@ bool cDvrkDevice::close()
     mtm_device->set_force(0,0,0);
     mtm_device->set_moment(0,0,0);
     m_deviceReady = false;
-    result = mtm_device->shutDown();
+    result = mtm_device->close();
 
     return (result);
 }
@@ -326,9 +326,9 @@ unsigned int cDvrkDevice::getNumDevices()
         std::cerr << dlerror();
         return 0;
     }
-//    else{
-//        std::cout << "Found lib: " << libname.c_str() <<std::endl;
-//    }
+    else{
+        std::cerr << "Found Lib: " << libname.c_str() << std::endl;
+    }
     typedef std::vector<std::string> (*fcn_signature)();
     dlerror();
     fcn_signature get_num_devs = (fcn_signature)dlsym(handle, "get_active_arms");
@@ -342,8 +342,10 @@ unsigned int cDvrkDevice::getNumDevices()
         m_dev_names = get_num_devs();
     }
     dlerror();
-    create_fcn = (factory_fcn)dlsym(handle, "create");
-    if(create_fcn == NULL){
+    create_fcn = (factory_create)dlsym(handle, "create");
+    destroy_fcn = (factory_destroy)dlsym(handle, "destroy");
+
+    if((!create_fcn) || (!destroy_fcn)){
         std::cerr << dlerror() << std::endl;
         return 0;
     }

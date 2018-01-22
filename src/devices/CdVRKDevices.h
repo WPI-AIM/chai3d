@@ -198,10 +198,10 @@ protected:
 
 private:
     static std::vector<std::string> m_dev_names;
-    typedef boost::shared_ptr<DVRK_Arm> (*factory_fcn)(std::string);
-    typedef void (*destroy)(boost::shared_ptr<DVRK_Arm>);
-    static factory_fcn create_fcn;
-    static destroy destroy_fcn;
+    typedef boost::shared_ptr<DVRK_Arm> (*factory_create)(std::string);
+    typedef void (*factory_destroy)(boost::shared_ptr<DVRK_Arm>);
+    static factory_create create_fcn;
+    static factory_destroy destroy_fcn;
 };
 
 //------------------------------------------------------------------------------
