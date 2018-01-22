@@ -246,8 +246,8 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
     // clamp the force output gain to the max device stiffness
     linGain = cMin(linGain, maxStiffness / linStiffness);
 
-    if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") == 0 ||
-        strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") == 0)
+    if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") || strcmp(a_hInfo.m_modelName.c_str(), "MTMR") == 0 ||
+        strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") || strcmp(a_hInfo.m_modelName.c_str(), "MTML") == 0)
     {
         workspaceScaleFactor = 10.0;
         linGain = linGain/3;
@@ -1197,7 +1197,7 @@ void updateHaptics(void)
 //                         coordPtr->hapticDevices[i].posDeviceClutched.z() << " " <<
 //                         std::endl;
 
-//            coordPtr->hapticDevices[i].apply_wrench(force, torque);
+            coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
             if (coordPtr->bulletTools[i].linG < coordPtr->bulletTools[i].linGain)
             {
