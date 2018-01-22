@@ -511,8 +511,6 @@ bool cDvrkDevice::setForceAndTorqueAndGripperForce(const cVector3d& a_force,
     // setForceToMyDevice(fx, fy, fz);
     // setTorqueToMyDevice(tx, ty, tz);
     // setForceToGripper(fg);
-
-    cSleepMs(1);
     // exit
     return (result);
 }
