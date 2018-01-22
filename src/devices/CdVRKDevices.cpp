@@ -36,7 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Your name, institution, or company name.
+    \author    Adnan Munawar, WPI.
     \version   3.2.0 $Rev: 1869 $
 */
 //==============================================================================
@@ -52,10 +52,11 @@
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
-bool cDvrkDevice::s_mtmR_open = false;
-bool cDvrkDevice::s_mtmL_open = false;
-bool cDvrkDevice::s_mtmR_present = false;
-bool cDvrkDevice::s_mtmL_present = false;
+std::vector<std::string> cDvrkDevice::m_dev_names;
+//typedef boost::shared_ptr<DVRK_Arm> (*factory_fcn)(std::string name);
+cDvrkDevice::factory_fcn cDvrkDevice::create_fcn;
+
+
 //==============================================================================
 /*!
     Constructor of cDvrkDevice.
@@ -63,20 +64,10 @@ bool cDvrkDevice::s_mtmL_present = false;
 //==============================================================================
 cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
 {
-    if(s_mtmR_present && !s_mtmR_open){
-        mtm_device = std::shared_ptr<DVRK_Arm>(new DVRK_Arm("MTMR"));
-        s_mtmR_open = true;
-        s_mtmL_open = false;
-    }
-    else if(s_mtmL_present && !s_mtmL_open){
-        mtm_device = std::shared_ptr<DVRK_Arm>(new DVRK_Arm("MTML"));
-        s_mtmL_open = true;
-        s_mtmR_open = false;
-    }
+    std::string dev_name = m_dev_names[a_deviceNumber];
+    mtm_device = create_fcn(dev_name);
     // the connection to your device has not yet been established.
     m_deviceReady = false;
-
-
     //--------------------------------------------------------------------------
     // NAME:
     //--------------------------------------------------------------------------
@@ -88,12 +79,7 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     m_specifications.m_manufacturerName              = "Intuitive Surgical";
 
     // name of your device
-    if(s_mtmR_open){
-    m_specifications.m_modelName                     = "MTM-R";
-    }
-    else if(s_mtmL_open){
-    m_specifications.m_modelName                     = "MTM-L";
-    }
+    m_specifications.m_modelName                     = dev_name;
 
 
     //--------------------------------------------------------------------------
@@ -170,13 +156,13 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     // is the gripper of your device actuated?
     m_specifications.m_actuatedGripper               = false;
 
-    if(s_mtmR_present){
+    if(std::strcmp(dev_name.c_str(), "MTMR") == 0){
     // can the device be used with the left hand?
     m_specifications.m_leftHand                      = false;
     // can the device be used with the right hand?
     m_specifications.m_rightHand                     = true;
     }
-    else if(s_mtmL_present){
+    else if(std::strcmp(dev_name.c_str(), "MTML") == 0){
     // can the device be used with the left hand?
     m_specifications.m_leftHand                      = true;
     // can the device be used with the right hand?
@@ -192,14 +178,14 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
         m_deviceAvailable = true;
         tf::Transform home_trans, tip_trans;
         tf::Quaternion home_rot, tip_rot;
-        if(s_mtmR_open){
+        if(std::strcmp(dev_name.c_str(), "MTMR") == 0){
             home_trans.setOrigin(tf::Vector3(-0.181025, -0.0163, -0.2620));
             tip_trans.setOrigin(tf::Vector3(0,0,0));
 
             tip_rot.setRPY(0, M_PI/2, 0);
             home_rot.setRPY(3.058663, -1.055021, -1.500306);
         }
-        else if((s_mtmL_open)){
+        else if(std::strcmp(dev_name.c_str(), "MTML") == 0){
             home_trans.setOrigin(tf::Vector3(0.181025, -0.0163, -0.2620));
             tip_trans.setOrigin(tf::Vector3(0,0,0));
 
@@ -234,7 +220,8 @@ cDvrkDevice::~cDvrkDevice()
     {
         close();
     }
-    ros::shutdown();
+//    ros::shutdown();
+
 }
 
 
@@ -263,7 +250,6 @@ bool cDvrkDevice::open()
     // update device status
     if (result)
     {
-        cPrint("MTM is available \n");
         m_deviceReady = true;
         return (C_SUCCESS);
     }
@@ -334,31 +320,37 @@ bool cDvrkDevice::calibrate(bool a_forceCalibration)
 unsigned int cDvrkDevice::getNumDevices()
 {
     int numberOfDevices = 0;
-    s_mtmR_present = false;
-    s_mtmL_present = false;
-    s_mtmR_open = false;
-    s_mtmL_open = false;
-    static ros::M_string s;
-    ros::init(s, "chai_node");
-    if (ros::master::check()){
-        std::string armR, armL, checkR, checkL;
-        armR = "MTMR";
-        armL = "MTML";
-        checkR = std::string("/dvrk/" + armR + "/status");
-        checkL = std::string("/dvrk/" + armL + "/status");
-        ros::master::V_TopicInfo topics;
-        ros::master::getTopics(topics);
-        for(int i = 0 ; i < topics.size() ; i++){
-            if(strcmp(topics[i].name.c_str(), checkR.c_str()) == 0){
-               numberOfDevices += 1;
-               s_mtmR_present = true;
-            }
-            if(strcmp(topics[i].name.c_str(), checkL.c_str()) == 0){
-               numberOfDevices +=1;
-               s_mtmL_present = true;
-            }
-        }
+    const std::string libname = "libdvrk_arm.so";
+    void* handle = dlopen(libname.c_str(), RTLD_NOW);
+    if (handle == NULL){
+        std::cerr << dlerror();
+        return 0;
     }
+//    else{
+//        std::cout << "Found lib: " << libname.c_str() <<std::endl;
+//    }
+    typedef std::vector<std::string> (*fcn_signature)();
+    dlerror();
+    fcn_signature get_num_devs = (fcn_signature)dlsym(handle, "get_active_arms");
+    if(get_num_devs == NULL){
+        std::cerr << dlerror() << std::endl;
+        return 0;
+    }
+    int n_devs = get_num_devs().size();
+    if ( n_devs > 0){
+        m_dev_names.resize(n_devs);
+        m_dev_names = get_num_devs();
+    }
+    dlerror();
+    create_fcn = (factory_fcn)dlsym(handle, "create");
+    if(create_fcn == NULL){
+        std::cerr << dlerror() << std::endl;
+        return 0;
+    }
+    std::cout << "No of dVRK Masters detected: "<< n_devs << std::endl;
+
+    numberOfDevices = n_devs;
+    dlclose(handle);
     return (numberOfDevices);
 }
 
