@@ -221,6 +221,7 @@ public:
         rotSimLast.identity();
     }
     void set_sim_params(cHapticDeviceInfo &a_hInfo);
+    double get_workspace_scale_factor();
     cVector3d posSim, posSimLast;
     cMatrix3d rotSim, rotSimLast;
     cVector3d dPos, dPos_last, ddPos;
@@ -254,6 +255,10 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
         pos_clutch = 1;
         cam_clutch = 2;
     }
+}
+
+double Sim::get_workspace_scale_factor(){
+    return workspaceScaleFactor;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -310,6 +315,8 @@ public:
     cVector3d posDevice, posDeviceClutched, velDevice;
     cMatrix3d rotDevice, rotDeviceClutched;
     cVector3d force, torque;
+    boost::shared_ptr<cShapeSphere> m_cursor;
+    double _m_workspace_scale_factor;
 };
 
 Device::Device(){
@@ -317,11 +324,13 @@ Device::Device(){
 
 cVector3d Device::measured_pos(){
     hDevice->getPosition(posDevice);
+    m_cursor->setLocalPos(posDevice * _m_workspace_scale_factor);
     return posDevice;
 }
 
 cMatrix3d Device::measured_rot(){
     hDevice->getRotation(rotDevice);
+    m_cursor->setLocalRot(rotDevice);
     return rotDevice;
 }
 
@@ -398,11 +407,21 @@ void Coordination::create_bullet_gripper(uint dev_num){
     bulletTools[dev_num].set_sim_params(hapticDevices[dev_num].hInfo);
     bulletTools[dev_num].tool->build();
     m_bullet_world->addChild(bulletTools[dev_num].tool);
+    hapticDevices[dev_num]._m_workspace_scale_factor = bulletTools[dev_num].get_workspace_scale_factor();
 }
 
 void Coordination::open_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         hapticDevices[i].hDevice->open();
+        hapticDevices[i].m_cursor.reset(new cShapeSphere(0.05));
+        hapticDevices[i].m_cursor->setShowEnabled(true);
+        hapticDevices[i].m_cursor->setShowFrame(true);
+        hapticDevices[i].m_cursor->setFrameSize(0.1);
+        cMaterial mat;
+        mat.setGreenLightSea();
+        hapticDevices[i].m_cursor->setMaterial(mat);
+        m_bullet_world->addChild(hapticDevices[i].m_cursor.get());
+
     }
 }
 
@@ -1117,8 +1136,8 @@ void updateHaptics(void)
 
         // compute global reference frames for each object
         for(int i = 0 ; i < coordPtr->m_num_devices ; i++){
-            coordPtr->bulletTools[i].tool->set_gripper_angle(
-                        3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
+//            coordPtr->bulletTools[i].tool->set_gripper_angle(
+//                        3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
             bulletWorld->computeGlobalPositions(true);
 
             coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
@@ -1179,11 +1198,13 @@ void updateHaptics(void)
                                               coordPtr->bulletTools[i].dRot_last);
             coordPtr->bulletTools[i].ddRot.toAxisAngle(daxis, dangle);
             cVector3d force, torque;
-            force = coordPtr->bulletTools[i].linStiffness * coordPtr->bulletTools[i].dPos +
-                    coordPtr->bulletTools[i].cont_lin_damping * coordPtr->bulletTools[i].ddPos;
+            double dt_scaling = 0.001/dt;
+            if (dt_scaling > 1.0) dt_scaling = 1.0;
+            force = coordPtr->bulletTools[i].linStiffness * dt_scaling * coordPtr->bulletTools[i].dPos +
+                    coordPtr->bulletTools[i].cont_lin_damping * (dt_scaling * dt_scaling) * coordPtr->bulletTools[i].ddPos;
             coordPtr->bulletTools[i].apply_force(force);
 
-            torque = (coordPtr->bulletTools[i].angStiffness * angle) * axis;
+            torque = (coordPtr->bulletTools[i].angStiffness * dt_scaling * angle) * axis;
             //(3.0 * dangle * daxis ) / nextSimInterval;
             coordPtr->bulletTools[i].rotTool.mul(torque);
             coordPtr->bulletTools[i].apply_torque(torque);
@@ -1192,12 +1213,7 @@ void updateHaptics(void)
             force.set(0,0,0);
             torque.set(0,0,0);
 
-//            std::cerr << coordPtr->hapticDevices[i].posDeviceClutched.x() << " " <<
-//                         coordPtr->hapticDevices[i].posDeviceClutched.y() << " " <<
-//                         coordPtr->hapticDevices[i].posDeviceClutched.z() << " " <<
-//                         std::endl;
-
-            coordPtr->hapticDevices[i].apply_wrench(force, torque);
+//            coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
             if (coordPtr->bulletTools[i].linG < coordPtr->bulletTools[i].linGain)
             {

@@ -45,8 +45,7 @@
 #ifndef cDvrkDeviceH
 #define cDvrkDeviceH
 //------------------------------------------------------------------------------
-//#if defined(C_ENABLE_DVRK_DEVICE_SUPPORT)
-#if 1
+#if defined(C_ENABLE_DVRK_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
 #include <dvrk_arm/Arm.h>
