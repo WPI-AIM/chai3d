@@ -315,8 +315,8 @@ public:
     cVector3d posDevice, posDeviceClutched, velDevice;
     cMatrix3d rotDevice, rotDeviceClutched;
     cVector3d force, torque;
-    boost::shared_ptr<cShapeSphere> m_cursor;
     double _m_workspace_scale_factor;
+    cShapeSphere* m_cursor;
 };
 
 Device::Device(){
@@ -413,14 +413,14 @@ void Coordination::create_bullet_gripper(uint dev_num){
 void Coordination::open_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         hapticDevices[i].hDevice->open();
-        hapticDevices[i].m_cursor.reset(new cShapeSphere(0.05));
+        hapticDevices[i].m_cursor = new cShapeSphere(0.05);
         hapticDevices[i].m_cursor->setShowEnabled(true);
         hapticDevices[i].m_cursor->setShowFrame(true);
         hapticDevices[i].m_cursor->setFrameSize(0.1);
         cMaterial mat;
         mat.setGreenLightSea();
         hapticDevices[i].m_cursor->setMaterial(mat);
-        m_bullet_world->addChild(hapticDevices[i].m_cursor.get());
+        m_bullet_world->addChild(hapticDevices[i].m_cursor);
 
     }
 }
