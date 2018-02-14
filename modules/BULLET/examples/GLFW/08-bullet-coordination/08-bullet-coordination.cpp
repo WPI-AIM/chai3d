@@ -185,14 +185,14 @@ const int MAX_DEVICES = 10;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class DataExchange{
 public:
-    virtual cVector3d measured_pos(){};
-    virtual cMatrix3d measured_rot(){};
-    virtual cVector3d measured_vel(){};
-    virtual bool button_pressed(int button_index){};
-    virtual double measured_gripper_angle(){};
-    virtual void apply_wrench(cVector3d force, cVector3d torque){};
-    virtual void apply_force(cVector3d force){};
-    virtual void apply_torque(cVector3d torque){};
+    virtual cVector3d measured_pos(){}
+    virtual cMatrix3d measured_rot(){}
+    virtual cVector3d measured_vel(){}
+    virtual bool button_pressed(int button_index){}
+    virtual double measured_gripper_angle(){}
+    virtual void apply_wrench(cVector3d force, cVector3d torque){}
+    virtual void apply_force(cVector3d force){}
+    virtual void apply_torque(cVector3d torque){}
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class Sim{
@@ -302,8 +302,8 @@ void ToolGripper::apply_torque(cVector3d torque){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class Device: public DataExchange{
 public:
-    Device();
-    ~Device(){};
+    Device(){}
+    ~Device(){}
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual cVector3d measured_vel();
@@ -318,9 +318,6 @@ public:
     double _m_workspace_scale_factor;
     cShapeSphere* m_cursor;
 };
-
-Device::Device(){
-}
 
 cVector3d Device::measured_pos(){
     hDevice->getPosition(posDevice);
