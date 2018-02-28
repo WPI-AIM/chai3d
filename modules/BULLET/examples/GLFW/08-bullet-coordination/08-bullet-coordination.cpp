@@ -200,14 +200,14 @@ class Sim{
 public:
     Sim(){
         workspaceScaleFactor = 30.0;
-        linGain = 0.05;
-        linG = 0.0;
-        angG = 0.0;
-        angGain = 0.03;
-        linStiffness = 1000;
-        angStiffness = 30;
-        cont_lin_damping = 5.0;
-        cont_ang_damping = 3.0;
+        K_lh = 0.05;
+        K_lh_ramp = 0.0;
+        K_ah_ramp = 0.0;
+        K_ah = 0.03;
+        K_lc = 1000;
+        K_ac = 30;
+        B_lc = 5.0;
+        B_ac = 3.0;
         dPos.set(0,0,0);
         dPos_last.set(0,0,0);
         ddPos.set(0,0,0);
@@ -228,14 +228,14 @@ public:
     cVector3d dPos, dPos_last, ddPos;
     cMatrix3d dRot, dRot_last, ddRot;
     double workspaceScaleFactor;
-    double linGain;
-    double angGain;
-    double linG;
-    double angG;
-    double linStiffness;
-    double angStiffness;
-    double cont_lin_damping;
-    double cont_ang_damping;
+    double K_lh;                    //Linear Haptic Stiffness Gain
+    double K_ah;                    //Angular Haptic Stiffness Gain
+    double K_lh_ramp;               //Linear Haptic Stiffness Gain Ramped
+    double K_ah_ramp;               //Angular Haptic Stiffness Gain Ramped
+    double K_lc;                    //Linear Controller Stiffness Gain
+    double K_ac;                    //Angular Controller Stiffness Gain
+    double B_lc;                    //Linear Controller Damping Gain
+    double B_ac;                    //Angular Controller Damping Gain
     int cam_clutch;
     int pos_clutch;
     bool _camTrigger;
@@ -246,13 +246,13 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
     double maxStiffness	= a_hInfo.m_maxLinearStiffness / workspaceScaleFactor;
 
     // clamp the force output gain to the max device stiffness
-    linGain = cMin(linGain, maxStiffness / linStiffness);
+    K_lh = cMin(K_lh, maxStiffness / K_lc);
 
     if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") || strcmp(a_hInfo.m_modelName.c_str(), "MTMR") == 0 ||
         strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") || strcmp(a_hInfo.m_modelName.c_str(), "MTML") == 0)
     {
         workspaceScaleFactor = 10.0;
-        linGain = linGain/3;
+        K_lh = K_lh/3;
         pos_clutch = 1;
         cam_clutch = 2;
     }
@@ -433,65 +433,65 @@ void Coordination::close_devices(){
 
 double Coordination::increment_lin_gains(double a_gain){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].linGain + a_gain <= 0)
+        if (bulletTools[i].K_lh + a_gain <= 0)
         {
-            bulletTools[i].linGain = 0.0;
+            bulletTools[i].K_lh = 0.0;
         }
         else{
-            bulletTools[i].linGain += a_gain;
+            bulletTools[i].K_lh += a_gain;
         }
     }
     //Set the return value to the gain of the last device
     if(m_num_devices > 0){
-        a_gain = bulletTools[m_num_devices-1].linGain;
+        a_gain = bulletTools[m_num_devices-1].K_lh;
     }
     return a_gain;
 }
 
 double Coordination::increment_ang_gains(double a_gain){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].angGain + a_gain <=0){
-            bulletTools[i].angGain = 0.0;
+        if (bulletTools[i].K_ah + a_gain <=0){
+            bulletTools[i].K_ah = 0.0;
         }
         else{
-            bulletTools[i].angGain += a_gain;
+            bulletTools[i].K_ah += a_gain;
         }
     }
     //Set the return value to the gain of the last device
     if(m_num_devices > 0){
-        a_gain = bulletTools[m_num_devices-1].angGain;
+        a_gain = bulletTools[m_num_devices-1].K_ah;
     }
     return a_gain;
 }
 
 double Coordination::increment_lin_stifnesses(double a_stiffness){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].linStiffness + a_stiffness <=0){
-            bulletTools[i].linStiffness = 0.0;
+        if (bulletTools[i].K_lc + a_stiffness <=0){
+            bulletTools[i].K_lc = 0.0;
         }
         else{
-            bulletTools[i].linStiffness += a_stiffness;
+            bulletTools[i].K_lc += a_stiffness;
         }
     }
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
-        a_stiffness = bulletTools[m_num_devices-1].linStiffness;
+        a_stiffness = bulletTools[m_num_devices-1].K_lc;
     }
     return a_stiffness;
 }
 
 double Coordination::increment_ang_stiffnesses(double a_stiffness){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].angStiffness + a_stiffness <=0){
-            bulletTools[i].angStiffness = 0.0;
+        if (bulletTools[i].K_ac + a_stiffness <=0){
+            bulletTools[i].K_ac = 0.0;
         }
         else{
-            bulletTools[i].angStiffness += a_stiffness;
+            bulletTools[i].K_ac += a_stiffness;
         }
     }
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
-        a_stiffness = bulletTools[m_num_devices-1].angStiffness;
+        a_stiffness = bulletTools[m_num_devices-1].K_ac;
     }
     return a_stiffness;
 }
@@ -1202,39 +1202,40 @@ void updateHaptics(void)
                                               coordPtr->bulletTools[i].dRot_last);
             coordPtr->bulletTools[i].ddRot.toAxisAngle(daxis, dangle);
             cVector3d force, torque;
-            double dt_scaling = 0.001/dt;
+            double dt_scaling = 1/dt;
             if (dt_scaling > 1.0) dt_scaling = 1.0;
-            force = coordPtr->bulletTools[i].linStiffness * dt_scaling * coordPtr->bulletTools[i].dPos +
-                    coordPtr->bulletTools[i].cont_lin_damping * (dt_scaling * dt_scaling) * coordPtr->bulletTools[i].ddPos;
+
+            force = coordPtr->bulletTools[i].K_lc * dt_scaling * coordPtr->bulletTools[i].dPos +
+                    (coordPtr->bulletTools[i].B_lc) * (dt_scaling * dt_scaling) * coordPtr->bulletTools[i].ddPos;
             coordPtr->bulletTools[i].apply_force(force);
 
-            torque = (coordPtr->bulletTools[i].angStiffness * dt_scaling * angle) * axis;
+            torque = (coordPtr->bulletTools[i].K_ac * dt_scaling * angle) * axis;
             //(3.0 * dangle * daxis ) / nextSimInterval;
             coordPtr->bulletTools[i].rotTool.mul(torque);
             coordPtr->bulletTools[i].apply_torque(torque);
-            force = - coordPtr->bulletTools[i].linG * force;
-            torque = -coordPtr->bulletTools[i].angG * torque;
+            force = - coordPtr->bulletTools[i].K_lh_ramp * force;
+            torque = -coordPtr->bulletTools[i].K_ah_ramp * torque;
             force.set(0,0,0);
             torque.set(0,0,0);
 
 //            coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
-            if (coordPtr->bulletTools[i].linG < coordPtr->bulletTools[i].linGain)
+            if (coordPtr->bulletTools[i].K_lh_ramp < coordPtr->bulletTools[i].K_lh)
             {
-                coordPtr->bulletTools[i].linG = coordPtr->bulletTools[i].linG + 0.1 * dt * coordPtr->bulletTools[i].linGain;
+                coordPtr->bulletTools[i].K_lh_ramp = coordPtr->bulletTools[i].K_lh_ramp + 0.1 * dt * coordPtr->bulletTools[i].K_lh;
             }
             else
             {
-                coordPtr->bulletTools[i].linG = coordPtr->bulletTools[i].linGain;
+                coordPtr->bulletTools[i].K_lh_ramp = coordPtr->bulletTools[i].K_lh;
             }
 
-            if (coordPtr->bulletTools[i].angG < coordPtr->bulletTools[i].angGain)
+            if (coordPtr->bulletTools[i].K_ah_ramp < coordPtr->bulletTools[i].K_ah)
             {
-                coordPtr->bulletTools[i].angG = coordPtr->bulletTools[i].angG + 0.1 * dt * coordPtr->bulletTools[i].angGain;
+                coordPtr->bulletTools[i].K_ah_ramp = coordPtr->bulletTools[i].K_ah_ramp + 0.1 * dt * coordPtr->bulletTools[i].K_ah;
             }
             else
             {
-                coordPtr->bulletTools[i].angG = coordPtr->bulletTools[i].angGain;
+                coordPtr->bulletTools[i].K_ah_ramp = coordPtr->bulletTools[i].K_ah;
             }
 
         }
