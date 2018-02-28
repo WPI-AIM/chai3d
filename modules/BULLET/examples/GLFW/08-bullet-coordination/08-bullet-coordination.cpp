@@ -330,6 +330,7 @@ public:
     virtual void apply_wrench(cVector3d force, cVector3d torque);
     virtual bool is_button_pressed(int button_index);
     virtual bool is_button_press_rising_edge(int button_index);
+    virtual bool is_button_press_falling_edge(int button_index);
     cGenericHapticDevicePtr hDevice;
     cHapticDeviceInfo hInfo;
     cVector3d posDevice, posDeviceClutched, velDevice;
@@ -337,7 +338,8 @@ public:
     cVector3d force, torque;
     double _m_workspace_scale_factor;
     cShapeSphere* m_cursor;
-    bool m_btn_prev_state[10] = {false};
+    bool m_btn_prev_state_rising[10] = {false};
+    bool m_btn_prev_state_falling[10] = {false};
 };
 
 cVector3d Device::measured_pos(){
@@ -372,13 +374,28 @@ bool Device::is_button_pressed(int button_index){
 bool Device::is_button_press_rising_edge(int button_index){
     bool status;
     hDevice->getUserSwitch(button_index, status);
-    if (m_btn_prev_state[button_index] ^ status){
-        if (!m_btn_prev_state[button_index]){
-            m_btn_prev_state[button_index] = true;
+    if (m_btn_prev_state_rising[button_index] ^ status){
+        if (!m_btn_prev_state_rising[button_index]){
+            m_btn_prev_state_rising[button_index] = true;
             return true;
         }
         else{
-            m_btn_prev_state[button_index] = false;
+            m_btn_prev_state_rising[button_index] = false;
+        }
+    }
+    return false;
+}
+
+bool Device::is_button_press_falling_edge(int button_index){
+    bool status;
+    hDevice->getUserSwitch(button_index, status);
+    if (m_btn_prev_state_falling[button_index] ^ status){
+        if (m_btn_prev_state_falling[button_index]){
+            m_btn_prev_state_falling[button_index] = false;
+            return true;
+        }
+        else{
+            m_btn_prev_state_falling[button_index] = true;
         }
     }
     return false;
@@ -1307,11 +1324,16 @@ void updateHaptics(void)
             if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_prev_btn)) coordPtr->prev_mode();
             bool btn_1_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_1_btn);
             bool btn_2_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_2_btn);
+            bool btn_1_falling_edge = coordPtr->hapticDevices[i].is_button_press_falling_edge(coordPtr->bulletTools[i].act_1_btn);
+            bool btn_2_falling_edge = coordPtr->hapticDevices[i].is_button_press_falling_edge(coordPtr->bulletTools[i].act_2_btn);
 
             switch (coordPtr->m_mode){
             case MODES::CAM_CLUTCH_CONTROL:
                 clutch_btn_pressed  = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_1_btn);
                 cam_btn_pressed     = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_2_btn);
+                if(clutch_btn_pressed) btn_action_str = "Clutch Pressed";
+                if(cam_btn_pressed)    btn_action_str = "Cam Pressed";
+                if(btn_1_falling_edge || btn_2_falling_edge) btn_action_str = "";
                 break;
             case MODES::CHANGE_CONT_LIN_GAIN:
                 if(btn_1_rising_edge) coordPtr->increment_K_lc(K_lc_offset);
@@ -1361,7 +1383,7 @@ void updateHaptics(void)
                 coordPtr->hapticDevices[i].posDeviceClutched = coordPtr->hapticDevices[i].posDevice;
                 coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
             }
-            else{
+            else{            
                 coordPtr->bulletTools[i]._posTrigger = true;
             }
             //}
