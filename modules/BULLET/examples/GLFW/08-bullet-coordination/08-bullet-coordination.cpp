@@ -363,10 +363,10 @@ class Coordination{
     void open_devices();
     void close_devices();
 
-    double increment_lin_gains(double a_gain);
-    double increment_ang_gains(double a_gain);
-    double increment_lin_stifnesses(double a_stiffness);
-    double increment_ang_stiffnesses(double a_stiffness);
+    double increment_K_lh(double a_gain);
+    double increment_K_ah(double a_gain);
+    double increment_K_lc(double a_stiffness);
+    double increment_K_ac(double a_stiffness);
 
     cHapticDeviceHandler *device_handler;
     ToolGripper bulletTools[MAX_DEVICES];
@@ -431,7 +431,7 @@ void Coordination::close_devices(){
 }
 
 
-double Coordination::increment_lin_gains(double a_gain){
+double Coordination::increment_K_lh(double a_gain){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (bulletTools[i].K_lh + a_gain <= 0)
         {
@@ -448,7 +448,7 @@ double Coordination::increment_lin_gains(double a_gain){
     return a_gain;
 }
 
-double Coordination::increment_ang_gains(double a_gain){
+double Coordination::increment_K_ah(double a_gain){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (bulletTools[i].K_ah + a_gain <=0){
             bulletTools[i].K_ah = 0.0;
@@ -464,7 +464,7 @@ double Coordination::increment_ang_gains(double a_gain){
     return a_gain;
 }
 
-double Coordination::increment_lin_stifnesses(double a_stiffness){
+double Coordination::increment_K_lc(double a_stiffness){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (bulletTools[i].K_lc + a_stiffness <=0){
             bulletTools[i].K_lc = 0.0;
@@ -480,7 +480,7 @@ double Coordination::increment_lin_stifnesses(double a_stiffness){
     return a_stiffness;
 }
 
-double Coordination::increment_ang_stiffnesses(double a_stiffness){
+double Coordination::increment_K_ac(double a_stiffness){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (bulletTools[i].K_ac + a_stiffness <=0){
             bulletTools[i].K_ac = 0.0;
@@ -952,49 +952,49 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     // option - decrease linear haptic gain
     else if (a_key == GLFW_KEY_3)
     {
-        printf("linear haptic gain:  %f\n", coordPtr->increment_lin_gains(-0.05));
+        printf("linear haptic gain:  %f\n", coordPtr->increment_K_lh(-0.05));
     }
 
     // option - increase linear haptic gain
     else if (a_key == GLFW_KEY_4)
     {
-        printf("linear haptic gain:  %f\n", coordPtr->increment_lin_gains(0.05));
+        printf("linear haptic gain:  %f\n", coordPtr->increment_K_lh(0.05));
     }
 
     // option - decrease angular haptic gain
     else if (a_key == GLFW_KEY_5)
     {
-        printf("angular haptic gain:  %f\n", coordPtr->increment_ang_gains(-0.05));
+        printf("angular haptic gain:  %f\n", coordPtr->increment_K_ah(-0.05));
     }
 
     // option - increase angular haptic gain
     else if (a_key == GLFW_KEY_6)
     {
-        printf("angular haptic gain:  %f\n", coordPtr->increment_ang_gains(0.05));
+        printf("angular haptic gain:  %f\n", coordPtr->increment_K_ah(0.05));
     }
 
     // option - decrease linear stiffness
     else if (a_key == GLFW_KEY_7)
     {
-        printf("linear stiffness:  %f\n", coordPtr->increment_lin_stifnesses(-50));
+        printf("linear stiffness:  %f\n", coordPtr->increment_K_lc(-50));
     }
 
     // option - increase linear stiffness
     else if (a_key == GLFW_KEY_8)
     {
-        printf("linear stiffness:  %f\n", coordPtr->increment_lin_stifnesses(50));
+        printf("linear stiffness:  %f\n", coordPtr->increment_K_lc(50));
     }
 
     // option - decrease angular stiffness
     else if (a_key == GLFW_KEY_9)
     {
-        printf("angular stiffness:  %f\n", coordPtr->increment_ang_stiffnesses(-1));
+        printf("angular stiffness:  %f\n", coordPtr->increment_K_ac(-1));
     }
 
     // option - increase angular stiffness
     else if (a_key == GLFW_KEY_0)
     {
-        printf("angular stiffness:  %f\n", coordPtr->increment_ang_stiffnesses(1));
+        printf("angular stiffness:  %f\n", coordPtr->increment_K_ac(1));
     }
     else if (a_key == GLFW_KEY_C){
         coordPtr->_useCamFrameRot = true;
