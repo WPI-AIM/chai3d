@@ -356,7 +356,7 @@ void Device::apply_wrench(cVector3d force, cVector3d torque){
 
 class Coordination{
     public:
-    Coordination(cBulletWorld* a_bullet_world);
+    Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs = MAX_DEVICES);
     bool retrieve_device_handle(uint dev_num);
     void create_bullet_gripper(uint dev_num);
     void open_devices();
@@ -378,12 +378,13 @@ class Coordination{
     bool _useCamFrameRot;
 };
 
-Coordination::Coordination(cBulletWorld* a_bullet_world){
+Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
     m_bullet_world = NULL;
     m_bullet_world = a_bullet_world;
     device_handler = new cHapticDeviceHandler();
     m_num_devices = device_handler->getNumDevices();
     std::cerr << "Num of devices " << m_num_devices << std::endl;
+    if (a_max_load_devs < m_num_devices) m_num_devices = a_max_load_devs;
     for (uint i = 0; i < m_num_devices; i++){
         retrieve_device_handle(i);
         create_bullet_gripper(i);
@@ -739,7 +740,8 @@ int main(int argc, char* argv[])
     bulletBase->setMaterial(meshMat);
     bulletBase->m_bulletRigidBody->setFriction(1);
 
-    coordPtr = std::make_shared<Coordination>(bulletWorld);
+    if (argc > 1) coordPtr = std::make_shared<Coordination>(bulletWorld, std::atoi(argv[1]));
+    else coordPtr = std::make_shared<Coordination>(bulletWorld);
     usleep(100);
 
 
