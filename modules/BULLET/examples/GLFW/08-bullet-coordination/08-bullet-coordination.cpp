@@ -95,6 +95,7 @@ cBulletStaticPlane* bulletBoxWall[5];
 cVector3d camPos(0,0,0);
 cVector3d dev_vel;
 cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
+double dt_fixed = 0;
 // Default switch index for clutches
 
 
@@ -742,6 +743,8 @@ int main(int argc, char* argv[])
 
     if (argc > 1) coordPtr = std::make_shared<Coordination>(bulletWorld, std::atoi(argv[1]));
     else coordPtr = std::make_shared<Coordination>(bulletWorld);
+
+    if (argc > 2) dt_fixed = atof(argv[2]);
     usleep(100);
 
 
@@ -1130,7 +1133,9 @@ void updateHaptics(void)
         freqCounterHaptics.signal(1);
 
         // Adjust time dilation by computing dt from clockWorld time and the simulationTime
-        double dt = compute_dt();
+        double dt;
+        if (dt_fixed > 0.0) dt = dt_fixed;
+        else dt = compute_dt();
         double nextSimInterval = dt;
 
         // compute global reference frames for each object
