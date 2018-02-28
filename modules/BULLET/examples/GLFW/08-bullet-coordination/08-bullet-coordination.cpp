@@ -115,7 +115,9 @@ cLabel* labelRates;
 cLabel* labelTimes;
 cLabel* labelModes;
 cLabel* labelBtnAction;
-std::string btn_action_str = "        ";
+std::string btn_action_str = "";
+bool cam_btn_pressed = false;
+bool clutch_btn_pressed = false;
 cPrecisionClock clockWorld;
 
 
@@ -191,7 +193,7 @@ class DataExchange{
 public:
     virtual cVector3d measured_pos(){}
     virtual cMatrix3d measured_rot(){}
-    virtual cVector3d measured_vel(){}
+    virtual cVector3d measured_lin_vel(){}
     virtual bool is_button_pressed(int button_index){}
     virtual double measured_gripper_angle(){}
     virtual void apply_wrench(cVector3d force, cVector3d torque){}
@@ -325,7 +327,8 @@ public:
     ~Device(){}
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
-    virtual cVector3d measured_vel();
+    virtual cVector3d measured_lin_vel();
+    virtual cVector3d mearured_ang_vel();
     virtual double measured_gripper_angle();
     virtual void apply_wrench(cVector3d force, cVector3d torque);
     virtual bool is_button_pressed(int button_index);
@@ -333,7 +336,7 @@ public:
     virtual bool is_button_press_falling_edge(int button_index);
     cGenericHapticDevicePtr hDevice;
     cHapticDeviceInfo hInfo;
-    cVector3d posDevice, posDeviceClutched, velDevice;
+    cVector3d posDevice, posDeviceClutched, velDevice, wDevice;
     cMatrix3d rotDevice, rotDeviceClutched;
     cVector3d force, torque;
     double _m_workspace_scale_factor;
@@ -354,9 +357,14 @@ cMatrix3d Device::measured_rot(){
     return rotDevice;
 }
 
-cVector3d Device::measured_vel(){
+cVector3d Device::measured_lin_vel(){
     hDevice->getLinearVelocity(velDevice);
     return velDevice;
+}
+
+cVector3d Device::mearured_ang_vel(){
+    hDevice->getAngularVelocity(wDevice);
+    return wDevice;
 }
 
 double Device::measured_gripper_angle(){
@@ -487,6 +495,8 @@ void Coordination::next_mode(){
     m_mode = m_modes_enum_vec[m_mode_idx];
     m_mode_str = m_modes_enum_str[m_mode_idx];
     btn_action_str = "";
+    cam_btn_pressed = false;
+    clutch_btn_pressed = false;
     std::cout << m_mode_str << std::endl;
 }
 
@@ -496,6 +506,8 @@ void Coordination::prev_mode(){
     m_mode = m_modes_enum_vec[m_mode_idx];
     m_mode_str = m_modes_enum_str[m_mode_idx];
     btn_action_str = "";
+    cam_btn_pressed = false;
+    clutch_btn_pressed = false;
     std::cout << m_mode_str << std::endl;
 }
 
@@ -1212,7 +1224,7 @@ void updateGraphics(void)
         coordPtr->hapticDevices[0].hDevice->getUserSwitch(coordPtr->bulletTools[0].act_2_btn, _pressed);
         if(_pressed && coordPtr->m_mode == MODES::CAM_CLUTCH_CONTROL){
             double scale = 0.3;
-            dev_vel = coordPtr->hapticDevices[0].measured_vel();
+            dev_vel = coordPtr->hapticDevices[0].measured_lin_vel();
             coordPtr->hapticDevices[0].hDevice->getRotation(dev_rot_cur);
             camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(camera->getGlobalRot(),dev_vel)));
             camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
@@ -1318,8 +1330,6 @@ void updateHaptics(void)
 //                    std::cout << "Mode Prev Btn " << coordPtr->bulletTools[i].mode_prev_btn << std::endl;
 //                }
 //            }
-
-            bool cam_btn_pressed = false, clutch_btn_pressed = false;
             if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_next_btn)) coordPtr->next_mode();
             if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_prev_btn)) coordPtr->prev_mode();
             bool btn_1_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_1_btn);
@@ -1332,7 +1342,7 @@ void updateHaptics(void)
                 clutch_btn_pressed  = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_1_btn);
                 cam_btn_pressed     = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_2_btn);
                 if(clutch_btn_pressed) btn_action_str = "Clutch Pressed";
-                if(cam_btn_pressed)    btn_action_str = "Cam Pressed";
+                if(cam_btn_pressed)   {btn_action_str = "Cam Pressed";}
                 if(btn_1_falling_edge || btn_2_falling_edge) btn_action_str = "";
                 break;
             case MODES::CHANGE_CONT_LIN_GAIN:
