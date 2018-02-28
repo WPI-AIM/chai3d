@@ -113,6 +113,9 @@ cSpotLight *light;
 // a label to display the rates [Hz] at which the simulation is running
 cLabel* labelRates;
 cLabel* labelTimes;
+cLabel* labelModes;
+cLabel* labelBtnAction;
+std::string btn_action_str = "        ";
 cPrecisionClock clockWorld;
 
 
@@ -189,7 +192,7 @@ public:
     virtual cVector3d measured_pos(){}
     virtual cMatrix3d measured_rot(){}
     virtual cVector3d measured_vel(){}
-    virtual bool button_pressed(int button_index){}
+    virtual bool is_button_pressed(int button_index){}
     virtual double measured_gripper_angle(){}
     virtual void apply_wrench(cVector3d force, cVector3d torque){}
     virtual void apply_force(cVector3d force){}
@@ -214,8 +217,10 @@ public:
         dRot.identity();
         dRot_last.identity();
         ddRot.identity();
-        cam_clutch = 1;
-        pos_clutch = 0;
+        act_1_btn   = 0;
+        act_2_btn   = 1;
+        mode_next_btn = 2;
+        mode_prev_btn= 3;
         _camTrigger = false;
         _posTrigger = false;
         posSimLast.set(0.0,0.0,0.0);
@@ -236,8 +241,10 @@ public:
     double K_ac;                    //Angular Controller Stiffness Gain
     double B_lc;                    //Linear Controller Damping Gain
     double B_ac;                    //Angular Controller Damping Gain
-    int cam_clutch;
-    int pos_clutch;
+    int act_1_btn;
+    int act_2_btn;
+    int mode_next_btn;
+    int mode_prev_btn;
     bool _camTrigger;
     bool _posTrigger;
 };
@@ -247,14 +254,25 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
 
     // clamp the force output gain to the max device stiffness
     K_lh = cMin(K_lh, maxStiffness / K_lc);
-
-    if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") || strcmp(a_hInfo.m_modelName.c_str(), "MTMR") == 0 ||
-        strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") || strcmp(a_hInfo.m_modelName.c_str(), "MTML") == 0)
+    if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") == 0 || strcmp(a_hInfo.m_modelName.c_str(), "MTMR") == 0 ||
+        strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") == 0 || strcmp(a_hInfo.m_modelName.c_str(), "MTML") == 0)
     {
+        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
         workspaceScaleFactor = 10.0;
         K_lh = K_lh/3;
-        pos_clutch = 1;
-        cam_clutch = 2;
+        act_1_btn     =  1;
+        act_2_btn     =  2;
+        mode_next_btn =  3;
+        mode_prev_btn =  4;
+    }
+
+    if (strcmp(a_hInfo.m_modelName.c_str(), "Falcon") == 0)
+    {
+        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
+        act_1_btn     = 0;
+        act_2_btn     = 2;
+        mode_next_btn = 3;
+        mode_prev_btn = 1;
     }
 }
 
@@ -310,7 +328,8 @@ public:
     virtual cVector3d measured_vel();
     virtual double measured_gripper_angle();
     virtual void apply_wrench(cVector3d force, cVector3d torque);
-    virtual bool button_pressed(int button_index);
+    virtual bool is_button_pressed(int button_index);
+    virtual bool is_button_press_rising_edge(int button_index);
     cGenericHapticDevicePtr hDevice;
     cHapticDeviceInfo hInfo;
     cVector3d posDevice, posDeviceClutched, velDevice;
@@ -318,6 +337,7 @@ public:
     cVector3d force, torque;
     double _m_workspace_scale_factor;
     cShapeSphere* m_cursor;
+    bool m_btn_prev_state[10] = {false};
 };
 
 cVector3d Device::measured_pos(){
@@ -343,10 +363,25 @@ double Device::measured_gripper_angle(){
     return angle;
 }
 
-bool Device::button_pressed(int button_index){
+bool Device::is_button_pressed(int button_index){
     bool status;
     hDevice->getUserSwitch(button_index, status);
     return status;
+}
+
+bool Device::is_button_press_rising_edge(int button_index){
+    bool status;
+    hDevice->getUserSwitch(button_index, status);
+    if (m_btn_prev_state[button_index] ^ status){
+        if (!m_btn_prev_state[button_index]){
+            m_btn_prev_state[button_index] = true;
+            return true;
+        }
+        else{
+            m_btn_prev_state[button_index] = false;
+        }
+    }
+    return false;
 }
 
 void Device::apply_wrench(cVector3d force, cVector3d torque){
@@ -354,6 +389,17 @@ void Device::apply_wrench(cVector3d force, cVector3d torque){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum MODES{ CAM_CLUTCH_CONTROL,
+            CHANGE_CONT_LIN_GAIN,
+            CHANGE_CONT_ANG_GAIN,
+            CHANGE_CONT_LIN_DAMP,
+            CHANGE_CONT_ANG_DAMP,
+            CHANGE_DEV_LIN_GAIN,
+            CHANGE_DEV_ANG_GAIN
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class Coordination{
     public:
@@ -363,10 +409,15 @@ class Coordination{
     void open_devices();
     void close_devices();
 
-    double increment_K_lh(double a_gain);
-    double increment_K_ah(double a_gain);
-    double increment_K_lc(double a_stiffness);
-    double increment_K_ac(double a_stiffness);
+    double increment_K_lh(double a_offset);
+    double increment_K_ah(double a_offset);
+    double increment_K_lc(double a_offset);
+    double increment_K_ac(double a_offset);
+    double increment_B_lc(double a_offset);
+    double increment_B_ac(double a_offset);
+
+    void next_mode();
+    void prev_mode();
 
     cHapticDeviceHandler *device_handler;
     ToolGripper bulletTools[MAX_DEVICES];
@@ -377,6 +428,24 @@ class Coordination{
     // bool to enable the rotation of tool be in camera frame. i.e. Orienting the camera
     // re-orients the tool.
     bool _useCamFrameRot;
+    MODES m_mode;
+    std::string m_mode_str;
+    std::vector<MODES> m_modes_enum_vec {MODES::CAM_CLUTCH_CONTROL,
+                                         MODES::CHANGE_CONT_LIN_GAIN,
+                                         MODES::CHANGE_CONT_ANG_GAIN,
+                                         MODES::CHANGE_CONT_LIN_DAMP,
+                                         MODES::CHANGE_CONT_ANG_DAMP,
+                                         MODES::CHANGE_DEV_LIN_GAIN,
+                                         MODES::CHANGE_DEV_ANG_GAIN};
+
+    std::vector<std::string> m_modes_enum_str {"CAM_CLUTCH_CONTROL  "  ,
+                                               "CHANGE_CONT_LIN_GAIN",
+                                               "CHANGE_CONT_ANG_GAIN",
+                                               "CHANGE_CONT_LIN_DAMP",
+                                               "CHANGE_CONT_ANG_DAMP",
+                                               "CHANGE_DEV_LIN_GAIN ",
+                                               "CHANGE_DEV_ANG_GAIN "};
+    int m_mode_idx;
 };
 
 Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
@@ -391,6 +460,26 @@ Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
         create_bullet_gripper(i);
     }
     _useCamFrameRot = true;
+    m_mode = CAM_CLUTCH_CONTROL;
+    m_mode_str = "CAM_CLUTCH_CONTROL";
+    m_mode_idx = 0;
+}
+
+void Coordination::next_mode(){
+    m_mode_idx = (m_mode_idx + 1) % m_modes_enum_vec.size();
+    m_mode = m_modes_enum_vec[m_mode_idx];
+    m_mode_str = m_modes_enum_str[m_mode_idx];
+    btn_action_str = "";
+    std::cout << m_mode_str << std::endl;
+}
+
+
+void Coordination::prev_mode(){
+    m_mode_idx = (m_mode_idx - 1) % m_modes_enum_vec.size();
+    m_mode = m_modes_enum_vec[m_mode_idx];
+    m_mode_str = m_modes_enum_str[m_mode_idx];
+    btn_action_str = "";
+    std::cout << m_mode_str << std::endl;
 }
 
 bool Coordination::retrieve_device_handle(uint dev_num){
@@ -431,70 +520,109 @@ void Coordination::close_devices(){
 }
 
 
-double Coordination::increment_K_lh(double a_gain){
+double Coordination::increment_K_lh(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].K_lh + a_gain <= 0)
+        if (bulletTools[i].K_lh + a_offset <= 0)
         {
             bulletTools[i].K_lh = 0.0;
         }
         else{
-            bulletTools[i].K_lh += a_gain;
+            bulletTools[i].K_lh += a_offset;
         }
     }
     //Set the return value to the gain of the last device
     if(m_num_devices > 0){
-        a_gain = bulletTools[m_num_devices-1].K_lh;
+        a_offset = bulletTools[m_num_devices-1].K_lh;
+        btn_action_str = "K_lh = " + cStr(a_offset, 4);
     }
-    return a_gain;
+    return a_offset;
 }
 
-double Coordination::increment_K_ah(double a_gain){
+double Coordination::increment_K_ah(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].K_ah + a_gain <=0){
+        if (bulletTools[i].K_ah + a_offset <=0){
             bulletTools[i].K_ah = 0.0;
         }
         else{
-            bulletTools[i].K_ah += a_gain;
+            bulletTools[i].K_ah += a_offset;
         }
     }
     //Set the return value to the gain of the last device
     if(m_num_devices > 0){
-        a_gain = bulletTools[m_num_devices-1].K_ah;
+        a_offset = bulletTools[m_num_devices-1].K_ah;
+        btn_action_str = "K_ah = " + cStr(a_offset, 4);
     }
-    return a_gain;
+    return a_offset;
 }
 
-double Coordination::increment_K_lc(double a_stiffness){
+double Coordination::increment_K_lc(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].K_lc + a_stiffness <=0){
+        if (bulletTools[i].K_lc + a_offset <=0){
             bulletTools[i].K_lc = 0.0;
         }
         else{
-            bulletTools[i].K_lc += a_stiffness;
+            bulletTools[i].K_lc += a_offset;
         }
     }
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
-        a_stiffness = bulletTools[m_num_devices-1].K_lc;
+        a_offset = bulletTools[m_num_devices-1].K_lc;
+        btn_action_str = "K_lc = " + cStr(a_offset, 4);
     }
-    return a_stiffness;
+    return a_offset;
 }
 
-double Coordination::increment_K_ac(double a_stiffness){
+double Coordination::increment_K_ac(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
-        if (bulletTools[i].K_ac + a_stiffness <=0){
+        if (bulletTools[i].K_ac + a_offset <=0){
             bulletTools[i].K_ac = 0.0;
         }
         else{
-            bulletTools[i].K_ac += a_stiffness;
+            bulletTools[i].K_ac += a_offset;
         }
     }
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
-        a_stiffness = bulletTools[m_num_devices-1].K_ac;
+        a_offset = bulletTools[m_num_devices-1].K_ac;
+        btn_action_str = "K_ac = " + cStr(a_offset, 4);
     }
-    return a_stiffness;
+    return a_offset;
 }
+
+double Coordination::increment_B_lc(double a_offset){
+    for (int i = 0 ; i < m_num_devices ; i++){
+        if (bulletTools[i].B_lc + a_offset <=0){
+            bulletTools[i].B_lc = 0.0;
+        }
+        else{
+            bulletTools[i].B_lc += a_offset;
+        }
+    }
+    //Set the return value to the stiffness of the last device
+    if(m_num_devices > 0){
+        a_offset = bulletTools[m_num_devices-1].B_lc;
+        btn_action_str = "B_lc = " + cStr(a_offset, 4);
+    }
+    return a_offset;
+}
+
+double Coordination::increment_B_ac(double a_offset){
+    for (int i = 0 ; i < m_num_devices ; i++){
+        if (bulletTools[i].B_ac + a_offset <=0){
+            bulletTools[i].B_ac = 0.0;
+        }
+        else{
+            bulletTools[i].B_ac += a_offset;
+        }
+    }
+    //Set the return value to the stiffness of the last device
+    if(m_num_devices > 0){
+        a_offset = bulletTools[m_num_devices-1].B_ac;
+        btn_action_str = "B_ac = " + cStr(a_offset, 4);
+    }
+    return a_offset;
+}
+
 
 std::shared_ptr<Coordination> coordPtr;
 
@@ -685,10 +813,16 @@ int main(int argc, char* argv[])
     // create a label to display the haptic and graphic rate of the simulation
     labelRates = new cLabel(font);
     labelTimes = new cLabel(font);
+    labelModes = new cLabel(font);
+    labelBtnAction = new cLabel(font);
     labelRates->m_fontColor.setBlack();
     labelTimes->m_fontColor.setBlack();
+    labelModes->m_fontColor.setBlack();
+    labelBtnAction->m_fontColor.setBlack();
     camera->m_frontLayer->addChild(labelRates);
     camera->m_frontLayer->addChild(labelTimes);
+    camera->m_frontLayer->addChild(labelModes);
+    camera->m_frontLayer->addChild(labelBtnAction);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -1048,14 +1182,18 @@ void updateGraphics(void)
                         + " / "+" Simulation Time: " + cStr(bulletWorld->getSimulationTime(),2) + " s");
     labelRates->setText(cStr(freqCounterGraphics.getFrequency(), 0) + " Hz / " +
         cStr(freqCounterHaptics.getFrequency(), 0) + " Hz");
+    labelModes->setText("MODE: " + coordPtr->m_mode_str);
+    labelBtnAction->setText(" : " + btn_action_str);
 
     // update position of label
     labelTimes->setLocalPos((int)(0.5 * (width - labelTimes->getWidth())), 30);
     labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 10);
+    labelModes->setLocalPos((int)(0.5 * (width - labelModes->getWidth())), 50);
+    labelBtnAction->setLocalPos((int)(0.5 * (width - labelModes->getWidth()) + labelModes->getWidth()), 50);
     bool _pressed;
     if (coordPtr->m_num_devices > 0){
-        coordPtr->hapticDevices[0].hDevice->getUserSwitch(coordPtr->bulletTools[0].cam_clutch, _pressed);
-        if(_pressed){
+        coordPtr->hapticDevices[0].hDevice->getUserSwitch(coordPtr->bulletTools[0].act_2_btn, _pressed);
+        if(_pressed && coordPtr->m_mode == MODES::CAM_CLUTCH_CONTROL){
             double scale = 0.3;
             dev_vel = coordPtr->hapticDevices[0].measured_vel();
             coordPtr->hapticDevices[0].hDevice->getRotation(dev_rot_cur);
@@ -1126,6 +1264,13 @@ void updateHaptics(void)
         coordPtr->bulletTools[i].rotSimLast = coordPtr->hapticDevices[i].rotDevice;
     }
 
+    double K_lc_offset = 10;
+    double K_ac_offset = 1;
+    double B_lc_offset = 1;
+    double B_ac_offset = 1;
+    double K_lh_offset = 5;
+    double K_ah_offset = 1;;
+
     // main haptic simulation loop
     while(simulationRunning)
     {
@@ -1147,8 +1292,55 @@ void updateHaptics(void)
             coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
             coordPtr->hapticDevices[i].rotDevice = coordPtr->hapticDevices[i].measured_rot();
 
-            //if(i == 0){
-            if(coordPtr->hapticDevices[i].button_pressed(coordPtr->bulletTools[i].cam_clutch)){
+//            for (int bi = 0 ; bi < 4 ; bi++){
+//                if(coordPtr->hapticDevices[i].is_button_press_rising_edge(bi)){
+//                    std::cout << bi << " Pressed" << std::endl;
+//                    std::cout << "Actio   1 Btn " << coordPtr->bulletTools[i].act_1_btn << std::endl;
+//                    std::cout << "Action  2 Btn " << coordPtr->bulletTools[i].act_2_btn << std::endl;
+//                    std::cout << "Mode Next Btn " << coordPtr->bulletTools[i].mode_next_btn << std::endl;
+//                    std::cout << "Mode Prev Btn " << coordPtr->bulletTools[i].mode_prev_btn << std::endl;
+//                }
+//            }
+
+            bool cam_btn_pressed = false, clutch_btn_pressed = false;
+            if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_next_btn)) coordPtr->next_mode();
+            if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_prev_btn)) coordPtr->prev_mode();
+            bool btn_1_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_1_btn);
+            bool btn_2_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_2_btn);
+
+            switch (coordPtr->m_mode){
+            case MODES::CAM_CLUTCH_CONTROL:
+                clutch_btn_pressed  = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_1_btn);
+                cam_btn_pressed     = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_2_btn);
+                break;
+            case MODES::CHANGE_CONT_LIN_GAIN:
+                if(btn_1_rising_edge) coordPtr->increment_K_lc(K_lc_offset);
+                if(btn_2_rising_edge) coordPtr->increment_K_lc(-K_lc_offset);
+                break;
+            case MODES::CHANGE_CONT_ANG_GAIN:
+                if(btn_1_rising_edge) coordPtr->increment_K_ac(K_ac_offset);
+                if(btn_2_rising_edge) coordPtr->increment_K_ac(-K_ac_offset);
+                break;
+            case MODES::CHANGE_CONT_LIN_DAMP:
+                if(btn_1_rising_edge) coordPtr->increment_B_lc(B_lc_offset);
+                if(btn_2_rising_edge) coordPtr->increment_B_lc(-B_lc_offset);
+                break;
+            case MODES::CHANGE_CONT_ANG_DAMP:
+                if(btn_1_rising_edge) coordPtr->increment_B_ac(B_ac_offset);
+                if(btn_2_rising_edge) coordPtr->increment_B_ac(-B_ac_offset);
+                break;
+            case MODES::CHANGE_DEV_LIN_GAIN:
+                if(btn_1_rising_edge) coordPtr->increment_K_lh(K_lh_offset);
+                if(btn_2_rising_edge) coordPtr->increment_K_lh(-K_lh_offset);
+                break;
+            case MODES::CHANGE_DEV_ANG_GAIN:
+                if(btn_1_rising_edge) coordPtr->increment_K_ah(K_ah_offset);
+                if(btn_2_rising_edge) coordPtr->increment_K_ah(-K_ah_offset);
+                break;
+            }
+
+
+            if(cam_btn_pressed){
                 if(coordPtr->bulletTools[i]._camTrigger){
                     coordPtr->bulletTools[i]._camTrigger = false;
                     coordPtr->bulletTools[i].posSimLast = coordPtr->bulletTools[i].posSim / coordPtr->bulletTools[i].workspaceScaleFactor;
@@ -1160,7 +1352,7 @@ void updateHaptics(void)
             else{
                 coordPtr->bulletTools[i]._camTrigger = true;
             }
-            if(coordPtr->hapticDevices[i].button_pressed(coordPtr->bulletTools[i].pos_clutch)){
+            if(clutch_btn_pressed){
                 if(coordPtr->bulletTools[i]._posTrigger){
                     coordPtr->bulletTools[i]._posTrigger = false;
                     coordPtr->bulletTools[i].posSimLast = coordPtr->bulletTools[i].posSim / coordPtr->bulletTools[i].workspaceScaleFactor;
