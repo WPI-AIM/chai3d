@@ -198,6 +198,7 @@ class DataExchange{
 public:
     virtual cVector3d measured_pos(){}
     virtual cMatrix3d measured_rot(){}
+    virtual void update_measured_pose(){}
     virtual cVector3d measured_lin_vel(){}
     virtual bool is_button_pressed(int button_index){}
     virtual double measured_gripper_angle(){}
@@ -295,6 +296,7 @@ public:
     ~ToolGripper(){}
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
+    virtual void update_measured_pose();
     virtual inline void apply_force(cVector3d force){tool->addExternalForce(force);}
     virtual inline void apply_torque(cVector3d torque){tool->addExternalTorque(torque);}
     bool is_wrench_set();
@@ -307,13 +309,16 @@ public:
 };
 
 cVector3d ToolGripper::measured_pos(){
-    posTool = tool->getLocalPos();
-    return posTool;
+    return tool->getLocalPos();
 }
 
 cMatrix3d ToolGripper::measured_rot(){
+    return tool->getLocalRot();
+}
+
+void ToolGripper::update_measured_pose(){
+    posTool  = tool->getLocalPos();
     rotTool = tool->getLocalRot();
-    return rotTool;
 }
 
 void ToolGripper::offset_gripper_angle(double offset){
@@ -340,6 +345,7 @@ public:
     ~Device(){}
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
+    virtual void update_measured_pose();
     virtual cVector3d measured_lin_vel();
     virtual cVector3d mearured_ang_vel();
     virtual double measured_gripper_angle();
@@ -368,6 +374,10 @@ cMatrix3d Device::measured_rot(){
     hDevice->getRotation(rotDevice);
     m_cursor->setLocalRot(rotDevice);
     return rotDevice;
+}
+
+void Device::update_measured_pose(){
+
 }
 
 cVector3d Device::measured_lin_vel(){
@@ -1471,8 +1481,7 @@ void updateHaptics(void* a_arg){
         coordPtr->bulletTools[i].posRef.mul(coordPtr->bulletTools[i].workspaceScaleFactor);
 
         // read position of tool
-        coordPtr->bulletTools[i].measured_pos();
-        coordPtr->bulletTools[i].measured_rot();
+        coordPtr->bulletTools[i].update_measured_pose();
         coordPtr->bulletTools[i].dposLast = coordPtr->bulletTools[i].dpos;
         coordPtr->bulletTools[i].drotLast = coordPtr->bulletTools[i].drot;
         coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posTool;
