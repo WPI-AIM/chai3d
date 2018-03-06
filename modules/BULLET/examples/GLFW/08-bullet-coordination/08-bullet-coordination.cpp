@@ -1480,21 +1480,22 @@ void updateHaptics(void* a_arg){
         }
         coordPtr->bulletTools[i].posRef.mul(coordPtr->bulletTools[i].workspaceScaleFactor);
 
-        // read position of tool
+        // update position of tool
         coordPtr->bulletTools[i].update_measured_pose();
+
         coordPtr->bulletTools[i].dposLast = coordPtr->bulletTools[i].dpos;
-        coordPtr->bulletTools[i].drotLast = coordPtr->bulletTools[i].drot;
         coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posTool;
+        coordPtr->bulletTools[i].ddpos = (coordPtr->bulletTools[i].dpos - coordPtr->bulletTools[i].dposLast) / nextSimInterval;
+
+        coordPtr->bulletTools[i].drotLast = coordPtr->bulletTools[i].drot;
         coordPtr->bulletTools[i].drot = cTranspose(coordPtr->bulletTools[i].rotTool) * coordPtr->bulletTools[i].rotRef;
+        coordPtr->bulletTools[i].ddrot = (cTranspose(coordPtr->bulletTools[i].drot) * coordPtr->bulletTools[i].drotLast);
+
         double angle, dangle;
         cVector3d axis, daxis;
         coordPtr->bulletTools[i].drot.toAxisAngle(axis, angle);
-
-        coordPtr->bulletTools[i].ddpos = (coordPtr->bulletTools[i].dpos -
-                                          coordPtr->bulletTools[i].dposLast) / nextSimInterval;
-        coordPtr->bulletTools[i].ddrot = (cTranspose(coordPtr->bulletTools[i].drot)*
-                                          coordPtr->bulletTools[i].drotLast);
         coordPtr->bulletTools[i].ddrot.toAxisAngle(daxis, dangle);
+
         cVector3d force, torque;
         double dt_scaling = 1/dt;
         if (dt_scaling > 1.0) dt_scaling = 1.0;
@@ -1502,16 +1503,13 @@ void updateHaptics(void* a_arg){
         force = coordPtr->bulletTools[i].K_lc * dt_scaling * coordPtr->bulletTools[i].dpos +
                 (coordPtr->bulletTools[i].B_lc) * (dt_scaling * dt_scaling) * coordPtr->bulletTools[i].ddpos;
         torque = (coordPtr->bulletTools[i].K_ac * dt_scaling * angle) * axis;
-//        if (coordPtr->bulletTools[i].is_wrench_set()) coordPtr->bulletTools[i].clear_wrench();
         coordPtr->bulletTools[i].apply_force(force);
-        //(3.0 * dangle * daxis ) / nextSimInterval;
         coordPtr->bulletTools[i].rotTool.mul(torque);
         coordPtr->bulletTools[i].apply_torque(torque);
         force = - coordPtr->bulletTools[i].K_lh_ramp * force;
         torque = -coordPtr->bulletTools[i].K_ah_ramp * torque;
         force.set(0,0,0);
         torque.set(0,0,0);
-
         coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
         if (coordPtr->bulletTools[i].K_lh_ramp < coordPtr->bulletTools[i].K_lh)
