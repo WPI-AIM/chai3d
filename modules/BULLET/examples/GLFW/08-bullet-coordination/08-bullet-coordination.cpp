@@ -112,6 +112,7 @@ cSpotLight *light;
 
 // a label to display the rates [Hz] at which the simulation is running
 cLabel* labelRates;
+cLabel* labelDevRates[10];
 cLabel* labelTimes;
 cLabel* labelModes;
 cLabel* labelBtnAction;
@@ -361,6 +362,7 @@ public:
     cShapeSphere* m_cursor;
     bool m_btn_prev_state_rising[10] = {false};
     bool m_btn_prev_state_falling[10] = {false};
+    cFrequencyCounter m_freq_ctr;
 };
 
 cVector3d Device::measured_pos(){
@@ -902,7 +904,6 @@ int main(int argc, char* argv[])
     camera->m_frontLayer->addChild(labelModes);
     camera->m_frontLayer->addChild(labelBtnAction);
 
-
     //////////////////////////////////////////////////////////////////////////
     // BULLET WORLD
     //////////////////////////////////////////////////////////////////////////
@@ -1024,6 +1025,13 @@ int main(int argc, char* argv[])
     //create a thread which starts the Bullet Simulation loop
     bulletSimThread = new cThread();
     bulletSimThread->start(updateBulletSim, CTHREAD_PRIORITY_HAPTICS);
+
+    for (int i = 0 ; i < coordPtr->m_num_devices ; i++){
+        labelDevRates[i] = new cLabel(font);
+        labelDevRates[i]->m_fontColor.setBlack();
+        labelDevRates[i]->setFontScale(0.8);
+        camera->m_frontLayer->addChild(labelDevRates[i]);
+    }
 
     // setup callback when application exits
     atexit(close);
@@ -1265,10 +1273,14 @@ void updateGraphics(void)
     // update haptic and graphic rate data
     labelTimes->setText("Wall Time: " + cStr(clockWorld.getCurrentTimeSeconds(),2) + " s" +
                         + " / "+" Simulation Time: " + cStr(bulletWorld->getSimulationTime(),2) + " s");
-    labelRates->setText(cStr(freqCounterGraphics.getFrequency(), 0) + " Hz / " +
-        cStr(freqCounterHaptics.getFrequency(), 0) + " Hz");
+    labelRates->setText(cStr(freqCounterGraphics.getFrequency(), 0) + " Hz / " + cStr(freqCounterHaptics.getFrequency(), 0) + " Hz");
     labelModes->setText("MODE: " + coordPtr->m_mode_str);
     labelBtnAction->setText(" : " + btn_action_str);
+
+    for (int i = 0 ; i < coordPtr->m_num_devices ; i++){
+        labelDevRates[i]->setText(coordPtr->hapticDevices[i].hInfo.m_modelName + ": " + cStr(coordPtr->hapticDevices[i].m_freq_ctr.getFrequency(), 0) + " Hz");
+        labelDevRates[i]->setLocalPos(10, (int)(height - (i+1)*20));
+    }
 
     // update position of label
     labelTimes->setLocalPos((int)(0.5 * (width - labelTimes->getWidth())), 30);
@@ -1401,6 +1413,7 @@ void updateHaptics(void* a_arg){
     // main haptic simulation loop
     while(simulationRunning)
     {
+        coordPtr->hapticDevices[i].m_freq_ctr.signal(1);
         // Adjust time dilation by computing dt from clockWorld time and the simulationTime
         double dt;
         if (dt_fixed > 0.0) dt = dt_fixed;
