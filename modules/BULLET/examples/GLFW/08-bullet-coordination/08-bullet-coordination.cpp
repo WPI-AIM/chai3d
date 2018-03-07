@@ -353,6 +353,7 @@ public:
     virtual bool is_button_pressed(int button_index);
     virtual bool is_button_press_rising_edge(int button_index);
     virtual bool is_button_press_falling_edge(int button_index);
+    cShapeSphere* create_cursor();
     cGenericHapticDevicePtr hDevice;
     cHapticDeviceInfo hInfo;
     cVector3d posDevice, posDeviceClutched, velDevice, avelDevice;
@@ -364,6 +365,17 @@ public:
     bool m_btn_prev_state_falling[10] = {false};
     cFrequencyCounter m_freq_ctr;
 };
+
+cShapeSphere* Device::create_cursor(){
+    m_cursor = new cShapeSphere(0.05);
+    m_cursor->setShowEnabled(true);
+    m_cursor->setShowFrame(true);
+    m_cursor->setFrameSize(0.1);
+    cMaterial mat;
+    mat.setGreenLightSea();
+    m_cursor->setMaterial(mat);
+    return m_cursor;
+}
 
 cVector3d Device::measured_pos(){
     hDevice->getPosition(posDevice);
@@ -560,15 +572,7 @@ void Coordination::create_bullet_gripper(uint dev_num){
 void Coordination::open_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         hapticDevices[i].hDevice->open();
-        hapticDevices[i].m_cursor = new cShapeSphere(0.05);
-        hapticDevices[i].m_cursor->setShowEnabled(true);
-        hapticDevices[i].m_cursor->setShowFrame(true);
-        hapticDevices[i].m_cursor->setFrameSize(0.1);
-        cMaterial mat;
-        mat.setGreenLightSea();
-        hapticDevices[i].m_cursor->setMaterial(mat);
-        m_bullet_world->addChild(hapticDevices[i].m_cursor);
-
+        m_bullet_world->addChild(hapticDevices[i].create_cursor());
     }
 }
 
