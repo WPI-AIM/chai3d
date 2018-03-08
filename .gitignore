@@ -3,3 +3,9 @@ build/
 .user
 *lin-x86_64/
 *.user
+
+extras/hdPhantom/lib/release/lin-x86_64-gcc/libhdPhantom\.so\.3\.2\.0
+
+extras/hdPhantom/log\.txt
+
+extras/hdPhantom/obj/release/lin-x86_64-gcc/shared/hdPhantom\.o
