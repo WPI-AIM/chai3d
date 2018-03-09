@@ -307,22 +307,28 @@ public:
     cVector3d posTool;
     cMatrix3d rotTool;
     double gripper_angle;
+
+    boost::mutex m_mutex;
 };
 
 cVector3d ToolGripper::measured_pos(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     return tool->getLocalPos();
 }
 
 cMatrix3d ToolGripper::measured_rot(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     return tool->getLocalRot();
 }
 
 void ToolGripper::update_measured_pose(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     posTool  = tool->getLocalPos();
     rotTool = tool->getLocalRot();
 }
 
 void ToolGripper::offset_gripper_angle(double offset){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     gripper_angle += offset;
     tool->set_gripper_angle(gripper_angle);
 }
@@ -364,6 +370,9 @@ public:
     bool m_btn_prev_state_rising[10] = {false};
     bool m_btn_prev_state_falling[10] = {false};
     cFrequencyCounter m_freq_ctr;
+
+private:
+    boost::mutex m_mutex;
 };
 
 cShapeSphere* Device::create_cursor(){
@@ -378,12 +387,14 @@ cShapeSphere* Device::create_cursor(){
 }
 
 cVector3d Device::measured_pos(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     hDevice->getPosition(posDevice);
     m_cursor->setLocalPos(posDevice * _m_workspace_scale_factor);
     return posDevice;
 }
 
 cMatrix3d Device::measured_rot(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     hDevice->getRotation(rotDevice);
     m_cursor->setLocalRot(rotDevice);
     return rotDevice;
@@ -394,28 +405,33 @@ void Device::update_measured_pose(){
 }
 
 cVector3d Device::measured_lin_vel(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     hDevice->getLinearVelocity(velDevice);
     return velDevice;
 }
 
 cVector3d Device::mearured_ang_vel(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     hDevice->getAngularVelocity(avelDevice);
     return avelDevice;
 }
 
 double Device::measured_gripper_angle(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     double angle;
     hDevice->getGripperAngleRad(angle);
     return angle;
 }
 
 bool Device::is_button_pressed(int button_index){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     bool status;
     hDevice->getUserSwitch(button_index, status);
     return status;
 }
 
 bool Device::is_button_press_rising_edge(int button_index){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     bool status;
     hDevice->getUserSwitch(button_index, status);
     if (m_btn_prev_state_rising[button_index] ^ status){
@@ -431,6 +447,7 @@ bool Device::is_button_press_rising_edge(int button_index){
 }
 
 bool Device::is_button_press_falling_edge(int button_index){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     bool status;
     hDevice->getUserSwitch(button_index, status);
     if (m_btn_prev_state_falling[button_index] ^ status){
@@ -446,6 +463,7 @@ bool Device::is_button_press_falling_edge(int button_index){
 }
 
 void Device::apply_wrench(cVector3d force, cVector3d torque){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
     hDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
 }
 
@@ -1423,10 +1441,9 @@ void updateHaptics(void* a_arg){
         if (dt_fixed > 0.0) dt = dt_fixed;
         else dt = compute_dt();
 
-        // compute global reference frames for each object
-//            coordPtr->bulletTools[i].tool->set_gripper_angle(
-//                        3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
-        bulletWorld->computeGlobalPositions(true);
+//         compute global reference frames for each object
+        coordPtr->bulletTools[i].tool->set_gripper_angle(3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
+//        bulletWorld->computeGlobalPositions(true);
 
         coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
         coordPtr->hapticDevices[i].rotDevice = coordPtr->hapticDevices[i].measured_rot();
