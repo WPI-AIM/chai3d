@@ -725,6 +725,33 @@ double Coordination::increment_B_ac(double a_offset){
     return a_offset;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class RateSleep{
+public:
+    RateSleep(int a_freq){
+        cycle_time = 1.0 / double(a_freq);
+        m_clock.start();
+        next_expected_time = m_clock.getCurrentTimeSeconds() + cycle_time;
+    }
+  bool sleep(){
+      double cur_time = m_clock.getCurrentTimeSeconds();
+      if (cur_time >= next_expected_time){
+          next_expected_time = cur_time + cycle_time;
+          return true;
+      }
+      while(m_clock.getCurrentTimeSeconds() <= next_expected_time){
+
+      }
+      next_expected_time = m_clock.getCurrentTimeSeconds() + cycle_time;
+      return true;
+  }
+private:
+  double next_expected_time;
+  double cycle_time;
+  cPrecisionClock m_clock;
+};
+
 
 std::shared_ptr<Coordination> coordPtr;
 
@@ -1369,6 +1396,8 @@ void updateBulletSim(){
     // start haptic device
     clockWorld.start(true);
     // main Bullet simulation loop
+
+    RateSleep rateSleep(1000);
     while(simulationRunning)
     {
         // signal frequency counter
@@ -1407,7 +1436,7 @@ void updateBulletSim(){
         }
         bulletWorld->updateDynamics(dt, clockWorld.getCurrentTimeSeconds(), freqCounterHaptics.getFrequency(), coordPtr->m_num_devices);
         coordPtr->clear_all_haptics_loop_exec_flags();
-//        usleep(500);
+        rateSleep.sleep();
     }
     simulationFinished = true;
 }
