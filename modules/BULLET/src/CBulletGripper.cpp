@@ -126,25 +126,63 @@ void cBulletGripper::set_surface_props(GripperSurfaceProperties &props){
 
 }
 
-void cBulletGripper::updateForcesFromROS(){
+void cBulletGripper::updateCmdFromROS(double dt){
     if (m_rosObjPtr.get() != nullptr){
         m_rosObjPtr->update_af_cmd();
         cVector3d force, torque;
-        double gripper_angle;
-        force.set(m_rosObjPtr->m_afCmd.Fx,
-                  m_rosObjPtr->m_afCmd.Fy,
-                  m_rosObjPtr->m_afCmd.Fz);
-        torque.set(m_rosObjPtr->m_afCmd.Nx,
-                   m_rosObjPtr->m_afCmd.Ny,
-                   m_rosObjPtr->m_afCmd.Nz);
+        if (m_rosObjPtr->m_afCmd.pos_ctrl){
+            cVector3d cur_pos, cmd_pos, rot_axis;
+            cQuaternion cur_rot, cmd_rot;
+            cMatrix3d cur_rot_mat, cmd_rot_mat;
+            btTransform b_trans;
+            double rot_angle;
+            double K_lin = 10, B_lin = 1;
+            double K_ang = 5;
+            m_bulletRigidBody->getMotionState()->getWorldTransform(b_trans);
+            cur_pos.set(b_trans.getOrigin().getX(),
+                        b_trans.getOrigin().getY(),
+                        b_trans.getOrigin().getZ());
+
+            cur_rot.x = b_trans.getRotation().getX();
+            cur_rot.y = b_trans.getRotation().getY();
+            cur_rot.z = b_trans.getRotation().getZ();
+            cur_rot.w = b_trans.getRotation().getW();
+            cur_rot.toRotMat(cur_rot_mat);
+
+            cmd_pos.set(m_rosObjPtr->m_afCmd.px,
+                        m_rosObjPtr->m_afCmd.py,
+                        m_rosObjPtr->m_afCmd.pz);
+
+            cmd_rot.x = m_rosObjPtr->m_afCmd.qx;
+            cmd_rot.y = m_rosObjPtr->m_afCmd.qy;
+            cmd_rot.z = m_rosObjPtr->m_afCmd.qz;
+            cmd_rot.w = m_rosObjPtr->m_afCmd.qw;
+            cmd_rot.toRotMat(cmd_rot_mat);
+
+            m_dpos_prev = m_dpos;
+            m_dpos = cmd_pos - cur_pos;
+            m_ddpos = (m_dpos - m_dpos_prev)/dt;
+            m_drot = cMul(cTranspose(cur_rot_mat), cmd_rot_mat);
+            m_drot.toAxisAngle(rot_axis, rot_angle);
+
+            force = K_lin * m_dpos + B_lin * m_ddpos;
+            torque = cMul(K_ang * rot_angle, rot_axis);
+            cur_rot_mat.mul(torque);
+        }
+        else{
+            force.set(m_rosObjPtr->m_afCmd.Fx,
+                      m_rosObjPtr->m_afCmd.Fy,
+                      m_rosObjPtr->m_afCmd.Fz);
+            torque.set(m_rosObjPtr->m_afCmd.Nx,
+                       m_rosObjPtr->m_afCmd.Ny,
+                       m_rosObjPtr->m_afCmd.Nz);
+        }
         addExternalForce(force);
         addExternalTorque(torque);
-
+    }
         if (m_rosObjPtr->m_afCmd.size_J_cmd > 0){
-            gripper_angle = m_rosObjPtr->m_afCmd.J_cmd[0];
-            set_gripper_angle(gripper_angle);
+            set_gripper_angle(m_rosObjPtr->m_afCmd.J_cmd[0]);
         }
     }
 }
 
-}
