@@ -298,14 +298,14 @@ public:
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual void update_measured_pose();
-    virtual inline void apply_force(cVector3d force){tool->addExternalForce(force);}
-    virtual inline void apply_torque(cVector3d torque){tool->addExternalTorque(torque);}
+    virtual inline void apply_force(cVector3d force){gripper->addExternalForce(force);}
+    virtual inline void apply_torque(cVector3d torque){gripper->addExternalTorque(torque);}
     bool is_wrench_set();
     void clear_wrench();
     void offset_gripper_angle(double offset);
-    cBulletGripper* tool;
-    cVector3d posTool;
-    cMatrix3d rotTool;
+    cBulletGripper* gripper;
+    cVector3d posGripper;
+    cMatrix3d rotGripper;
     double gripper_angle;
 
     boost::mutex m_mutex;
@@ -313,35 +313,35 @@ public:
 
 cVector3d ToolGripper::measured_pos(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    return tool->getLocalPos();
+    return gripper->getLocalPos();
 }
 
 cMatrix3d ToolGripper::measured_rot(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    return tool->getLocalRot();
+    return gripper->getLocalRot();
 }
 
 void ToolGripper::update_measured_pose(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    posTool  = tool->getLocalPos();
-    rotTool = tool->getLocalRot();
+    posGripper  = gripper->getLocalPos();
+    rotGripper = gripper->getLocalRot();
 }
 
 void ToolGripper::offset_gripper_angle(double offset){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     gripper_angle += offset;
-    tool->set_gripper_angle(gripper_angle);
+    gripper->set_gripper_angle(gripper_angle);
 }
 
 bool ToolGripper::is_wrench_set(){
-    btVector3 f = tool->m_bulletRigidBody->getTotalForce();
-    btVector3 n = tool->m_bulletRigidBody->getTotalTorque();
+    btVector3 f = gripper->m_bulletRigidBody->getTotalForce();
+    btVector3 n = gripper->m_bulletRigidBody->getTotalTorque();
     if (f.isZero()) return false;
     else return true;
 }
 
 void ToolGripper::clear_wrench(){
-    tool->m_bulletRigidBody->clearForces();
+    gripper->m_bulletRigidBody->clearForces();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -580,10 +580,10 @@ void Coordination::create_bullet_gripper(uint dev_num){
     std::ostringstream dev_str;
     dev_str << (dev_num + 1);
     std::string gripper_name = "Gripper" + dev_str.str();
-    bulletTools[dev_num].tool = new cBulletGripper(m_bullet_world, gripper_name);
+    bulletTools[dev_num].gripper = new cBulletGripper(m_bullet_world, gripper_name);
     bulletTools[dev_num].set_sim_params(hapticDevices[dev_num].hInfo);
-    bulletTools[dev_num].tool->build();
-    m_bullet_world->addChild(bulletTools[dev_num].tool);
+    bulletTools[dev_num].gripper->build();
+    m_bullet_world->addChild(bulletTools[dev_num].gripper);
     hapticDevices[dev_num]._m_workspace_scale_factor = bulletTools[dev_num].get_workspace_scale_factor();
 }
 
@@ -1410,11 +1410,11 @@ void updateBulletSim(){
             coordPtr->bulletTools[i].update_measured_pose();
 
             coordPtr->bulletTools[i].dposLast = coordPtr->bulletTools[i].dpos;
-            coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posTool;
+            coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posGripper;
             coordPtr->bulletTools[i].ddpos = (coordPtr->bulletTools[i].dpos - coordPtr->bulletTools[i].dposLast) / dt;
 
             coordPtr->bulletTools[i].drotLast = coordPtr->bulletTools[i].drot;
-            coordPtr->bulletTools[i].drot = cTranspose(coordPtr->bulletTools[i].rotTool) * coordPtr->bulletTools[i].rotRef;
+            coordPtr->bulletTools[i].drot = cTranspose(coordPtr->bulletTools[i].rotGripper) * coordPtr->bulletTools[i].rotRef;
             coordPtr->bulletTools[i].ddrot = (cTranspose(coordPtr->bulletTools[i].drot) * coordPtr->bulletTools[i].drotLast);
 
             double angle, dangle;
@@ -1429,7 +1429,7 @@ void updateBulletSim(){
             force = coordPtr->bulletTools[i].K_lc * dt_scaling * coordPtr->bulletTools[i].dpos +
                     (coordPtr->bulletTools[i].B_lc) * (dt_scaling * dt_scaling) * coordPtr->bulletTools[i].ddpos;
             torque = (coordPtr->bulletTools[i].K_ac * dt_scaling * angle) * axis;
-            coordPtr->bulletTools[i].rotTool.mul(torque);
+            coordPtr->bulletTools[i].rotGripper.mul(torque);
 
             coordPtr->bulletTools[i].apply_force(force);
             coordPtr->bulletTools[i].apply_torque(torque);
@@ -1471,7 +1471,7 @@ void updateHaptics(void* a_arg){
         else dt = compute_dt();
 
 //         compute global reference frames for each object
-        coordPtr->bulletTools[i].tool->set_gripper_angle(3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
+        coordPtr->bulletTools[i].gripper->set_gripper_angle(3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
 //        bulletWorld->computeGlobalPositions(true);
 
         coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
@@ -1566,11 +1566,11 @@ void updateHaptics(void* a_arg){
         coordPtr->bulletTools[i].update_measured_pose();
 
         coordPtr->bulletTools[i].dposLast = coordPtr->bulletTools[i].dpos;
-        coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posTool;
+        coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posGripper;
         coordPtr->bulletTools[i].ddpos = (coordPtr->bulletTools[i].dpos - coordPtr->bulletTools[i].dposLast) / dt;
 
         coordPtr->bulletTools[i].drotLast = coordPtr->bulletTools[i].drot;
-        coordPtr->bulletTools[i].drot = cTranspose(coordPtr->bulletTools[i].rotTool) * coordPtr->bulletTools[i].rotRef;
+        coordPtr->bulletTools[i].drot = cTranspose(coordPtr->bulletTools[i].rotGripper) * coordPtr->bulletTools[i].rotRef;
         coordPtr->bulletTools[i].ddrot = (cTranspose(coordPtr->bulletTools[i].drot) * coordPtr->bulletTools[i].drotLast);
 
         double angle, dangle;
