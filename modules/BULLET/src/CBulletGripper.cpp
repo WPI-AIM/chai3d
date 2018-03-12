@@ -128,15 +128,20 @@ void cBulletGripper::set_surface_props(GripperSurfaceProperties &props){
 
 void cBulletGripper::updateForcesFromROS(){
     if (m_rosObjPtr.get() != nullptr){
-        m_rosObjPtr->update_cmd_from_ros();
+        m_rosObjPtr->update_af_cmd();
         cVector3d force, torque;
         double gripper_angle;
-        force.set(m_rosObjPtr->m_cmd.Fx, m_rosObjPtr->m_cmd.Fy, m_rosObjPtr->m_cmd.Fz);
-        torque.set(m_rosObjPtr->m_cmd.Nx, m_rosObjPtr->m_cmd.Ny, m_rosObjPtr->m_cmd.Nz);
+        force.set(m_rosObjPtr->m_afCmd.Fx,
+                  m_rosObjPtr->m_afCmd.Fy,
+                  m_rosObjPtr->m_afCmd.Fz);
+        torque.set(m_rosObjPtr->m_afCmd.Nx,
+                   m_rosObjPtr->m_afCmd.Ny,
+                   m_rosObjPtr->m_afCmd.Nz);
         addExternalForce(force);
         addExternalTorque(torque);
-        if (m_rosObjPtr->m_cmd.size_J_cmd > 0){
-            gripper_angle = m_rosObjPtr->m_cmd.J_cmd[0];
+
+        if (m_rosObjPtr->m_afCmd.size_J_cmd > 0){
+            gripper_angle = m_rosObjPtr->m_afCmd.J_cmd[0];
             set_gripper_angle(gripper_angle);
         }
     }
