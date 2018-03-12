@@ -187,7 +187,7 @@ public:
                                  const cVector3d& a_relativePos);
 
     //! This method applies any forces that are being sent by ROS.
-    virtual void updateForcesFromROS();
+    virtual void updateCmdFromROS(double dt=0.001);
 
     //! This method applies updates Wall and Sim Time for ROS Message.
     virtual void updateROSMessageTime(const double* a_wall_time, const double* a_sim_time);
@@ -253,6 +253,10 @@ protected:
 
     //! Inertia properties.
     cVector3d m_inertia;
+
+    //! Command Position from Asynchronous Framework
+    cVector3d m_dpos, m_dpos_prev, m_ddpos;
+    cMatrix3d m_drot;
 };
 
 //------------------------------------------------------------------------------
