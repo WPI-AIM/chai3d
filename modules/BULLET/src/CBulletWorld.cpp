@@ -166,7 +166,7 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double 
     for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
     {
         cBulletGenericObject* nextItem = *i;
-        nextItem->updateCmdFromROS(a_interval);
+        nextItem->updateForcesFromROS();
     }
 
     // integrate simulation during an certain interval
