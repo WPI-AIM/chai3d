@@ -335,6 +335,7 @@ void ToolGripper::set_gripper_angle(double angle){
 void ToolGripper::offset_gripper_angle(double offset){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     gripper_angle += offset;
+    gripper_angle = cClamp(gripper_angle, 0.0, 1.0);
     gripper->set_gripper_angle(gripper_angle);
 }
 
@@ -1476,7 +1477,7 @@ void updateHaptics(void* a_arg){
         else dt = compute_dt();
 
         // compute global reference frames for each object
-        coordPtr->bulletTools[i].set_gripper_angle(3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
+        coordPtr->bulletTools[i].set_gripper_angle(coordPtr->hapticDevices[i].measured_gripper_angle());
 
         coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
         coordPtr->hapticDevices[i].rotDevice = coordPtr->hapticDevices[i].measured_rot();

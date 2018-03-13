@@ -64,6 +64,8 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperN
     cMatrix3d rotMat;
     rotMat.setAxisAngleRotationDeg(1,0,0,180);
     bulletMeshGripperL2->setLocalRot(rotMat);
+    jaw_lower_lim = 2.2;
+    jaw_upper_lim = 3.13;
 }
 
 void cBulletGripper::build(){
@@ -93,7 +95,7 @@ void cBulletGripper::build(){
     m_dynamicWorld->m_bulletWorld->addConstraint(bulletHinge, true);
     bulletHinge->enableMotor(true);
     bulletHinge->setMaxMotorImpulse(0.3);
-    bulletHinge->setLimit(2.2, 3.139);
+    bulletHinge->setLimit(jaw_lower_lim, jaw_upper_lim);
 
     GripperSurfaceProperties props;
     props.set_default();
@@ -107,7 +109,9 @@ void cBulletGripper::build(){
 }
 
 void cBulletGripper::set_gripper_angle(const double &angle){
-    bulletHinge->setMotorTarget(angle, 0.001);
+    double jaw_angle = cClamp(angle, 0.0, 1.0);
+    jaw_angle = jaw_lower_lim + angle * (jaw_upper_lim - jaw_lower_lim);
+    bulletHinge->setMotorTarget(jaw_angle, 0.001);
 }
 
 void cBulletGripper::set_scale(double a_scale){
