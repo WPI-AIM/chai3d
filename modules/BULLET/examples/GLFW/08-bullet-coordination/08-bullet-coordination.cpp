@@ -230,8 +230,8 @@ public:
         act_2_btn   = 1;
         mode_next_btn = 2;
         mode_prev_btn= 3;
-        _camTrigger = false;
-        _posTrigger = false;
+        btn_cam_rising_edge = false;
+        btn_clutch_rising_edge = false;
         posRefLast.set(0.0,0.0,0.0);
         rotRefLast.identity();
         m_loop_exec_flag = false;
@@ -258,8 +258,8 @@ public:
     int act_2_btn;
     int mode_next_btn;
     int mode_prev_btn;
-    bool _camTrigger;
-    bool _posTrigger;
+    bool btn_cam_rising_edge;
+    bool btn_clutch_rising_edge;
     bool m_loop_exec_flag;
 };
 
@@ -1483,9 +1483,10 @@ void updateHaptics(void* a_arg){
 
         if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_next_btn)) coordPtr->next_mode();
         if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_prev_btn)) coordPtr->prev_mode();
+
         bool btn_1_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_1_btn);
-        bool btn_2_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_2_btn);
         bool btn_1_falling_edge = coordPtr->hapticDevices[i].is_button_press_falling_edge(coordPtr->bulletTools[i].act_1_btn);
+        bool btn_2_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_2_btn);
         bool btn_2_falling_edge = coordPtr->hapticDevices[i].is_button_press_falling_edge(coordPtr->bulletTools[i].act_2_btn);
 
         double gripper_offset = 0;
@@ -1530,8 +1531,8 @@ void updateHaptics(void* a_arg){
 
 
         if(cam_btn_pressed){
-            if(coordPtr->bulletTools[i]._camTrigger){
-                coordPtr->bulletTools[i]._camTrigger = false;
+            if(coordPtr->bulletTools[i].btn_cam_rising_edge){
+                coordPtr->bulletTools[i].btn_cam_rising_edge = false;
                 coordPtr->bulletTools[i].posRefLast = coordPtr->bulletTools[i].posRef / coordPtr->bulletTools[i].workspaceScaleFactor;
                 coordPtr->bulletTools[i].rotRefLast = coordPtr->bulletTools[i].rotRef;
             }
@@ -1539,11 +1540,11 @@ void updateHaptics(void* a_arg){
             coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
         }
         else{
-            coordPtr->bulletTools[i]._camTrigger = true;
+            coordPtr->bulletTools[i].btn_cam_rising_edge = true;
         }
         if(clutch_btn_pressed){
-            if(coordPtr->bulletTools[i]._posTrigger){
-                coordPtr->bulletTools[i]._posTrigger = false;
+            if(coordPtr->bulletTools[i].btn_clutch_rising_edge){
+                coordPtr->bulletTools[i].btn_clutch_rising_edge = false;
                 coordPtr->bulletTools[i].posRefLast = coordPtr->bulletTools[i].posRef / coordPtr->bulletTools[i].workspaceScaleFactor;
                 coordPtr->bulletTools[i].rotRefLast = coordPtr->bulletTools[i].rotRef;
             }
@@ -1551,9 +1552,9 @@ void updateHaptics(void* a_arg){
             coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
         }
         else{
-            coordPtr->bulletTools[i]._posTrigger = true;
+            coordPtr->bulletTools[i].btn_clutch_rising_edge = true;
         }
-        //}
+
         coordPtr->bulletTools[i].posRef = coordPtr->bulletTools[i].posRefLast +
                 (camera->getLocalRot() * (coordPtr->hapticDevices[i].posDevice - coordPtr->hapticDevices[i].posDeviceClutched));
         if (!coordPtr->_useCamFrameRot){
