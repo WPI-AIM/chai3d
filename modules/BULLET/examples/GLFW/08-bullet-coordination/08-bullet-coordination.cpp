@@ -298,11 +298,12 @@ public:
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual void update_measured_pose();
-    virtual inline void apply_force(cVector3d force){gripper->addExternalForce(force);}
-    virtual inline void apply_torque(cVector3d torque){gripper->addExternalTorque(torque);}
+    virtual inline void apply_force(cVector3d force){if (!gripper->m_af_pos_ctrl_active) gripper->addExternalForce(force);}
+    virtual inline void apply_torque(cVector3d torque){if (!gripper->m_af_pos_ctrl_active) gripper->addExternalTorque(torque);}
     bool is_wrench_set();
     void clear_wrench();
     void offset_gripper_angle(double offset);
+    void set_gripper_angle(double angle);
     cBulletGripper* gripper;
     cVector3d posGripper;
     cMatrix3d rotGripper;
@@ -325,6 +326,10 @@ void ToolGripper::update_measured_pose(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     posGripper  = gripper->getLocalPos();
     rotGripper = gripper->getLocalRot();
+}
+
+void ToolGripper::set_gripper_angle(double angle){
+    if(!gripper->m_af_pos_ctrl_active) gripper->set_gripper_angle(angle);
 }
 
 void ToolGripper::offset_gripper_angle(double offset){
@@ -1470,9 +1475,8 @@ void updateHaptics(void* a_arg){
         if (dt_fixed > 0.0) dt = dt_fixed;
         else dt = compute_dt();
 
-//         compute global reference frames for each object
-        coordPtr->bulletTools[i].gripper->set_gripper_angle(3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
-//        bulletWorld->computeGlobalPositions(true);
+        // compute global reference frames for each object
+        coordPtr->bulletTools[i].set_gripper_angle(3.0 - coordPtr->hapticDevices[i].measured_gripper_angle());
 
         coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
         coordPtr->hapticDevices[i].rotDevice = coordPtr->hapticDevices[i].measured_rot();

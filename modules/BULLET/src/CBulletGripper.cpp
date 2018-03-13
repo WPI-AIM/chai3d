@@ -130,6 +130,7 @@ void cBulletGripper::updateCmdFromROS(double dt){
     if (m_rosObjPtr.get() != nullptr){
         m_rosObjPtr->update_af_cmd();
         cVector3d force, torque;
+        m_af_pos_ctrl_active = m_rosObjPtr->m_afCmd.pos_ctrl;
         if (m_rosObjPtr->m_afCmd.pos_ctrl){
             cVector3d cur_pos, cmd_pos, rot_axis;
             cQuaternion cur_rot, cmd_rot;
@@ -180,7 +181,7 @@ void cBulletGripper::updateCmdFromROS(double dt){
         addExternalForce(force);
         addExternalTorque(torque);
     }
-        if (m_rosObjPtr->m_afCmd.size_J_cmd > 0){
+        if (m_rosObjPtr->m_afCmd.size_J_cmd > 0 && m_rosObjPtr->m_afCmd.pos_ctrl){
             set_gripper_angle(m_rosObjPtr->m_afCmd.J_cmd[0]);
         }
     }

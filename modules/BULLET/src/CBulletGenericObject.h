@@ -213,6 +213,8 @@ public:
     //--------------------------------------------------------------------------
 
 public:
+    //! If the afPos Controller is active, disable Position Ctrl from Haptic Device
+    bool m_af_pos_ctrl_active;
 
     //! Bullet world.
     cBulletWorld* m_dynamicWorld;
