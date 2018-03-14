@@ -193,7 +193,7 @@ public:
 protected:
 
     //! A short description of my variable
-    int m_MyVariable;
+    double m_gripper_max_angle, m_gripper_min_angle;
 
 private:
     static std::vector<std::string> m_dev_names;

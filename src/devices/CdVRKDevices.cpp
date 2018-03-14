@@ -110,7 +110,9 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     m_specifications.m_workspaceRadius                = 0.2;     // [m]
 
     // the maximum opening angle of the gripper
-    m_specifications.m_gripperMaxAngleRad             = cDegToRad(30.0);
+    m_gripper_max_angle = cDegToRad(60);
+    m_gripper_min_angle = cDegToRad(-60);
+    m_specifications.m_gripperMaxAngleRad             = m_gripper_max_angle;
 
 
     ////////////////////////////////////////////////////////////////////////////
@@ -203,8 +205,6 @@ cDvrkDevice::cDvrkDevice(unsigned int a_deviceNumber)
     else{
         m_deviceAvailable = false; // this value should become 'true' when the device is available.
     }
-    m_MyVariable = 0;
-
 }
 
 
@@ -460,7 +460,8 @@ bool cDvrkDevice::getGripperAngleRad(double& a_angle)
     // return gripper angle in radian
     // a_angle = getGripperAngleInRadianFromMyDevice();
     mtm_device->measured_gripper_angle(a_angle);
-
+    a_angle = cClamp(a_angle, m_gripper_min_angle, m_gripper_max_angle);
+    a_angle = (a_angle - m_gripper_min_angle) / (m_gripper_max_angle - m_gripper_min_angle);
     // estimate gripper velocity
     estimateGripperVelocity(a_angle);
 

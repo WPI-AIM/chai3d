@@ -93,7 +93,7 @@ public:
 private:
     btVector3 axisA, axisB, pvtA, pvtB;
     cMaterial mat;
-    double jaw_lower_lim, jaw_upper_lim;
+    double jaw_open_lim, jaw_close_lim;
 };
 
 }
