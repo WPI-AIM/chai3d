@@ -365,14 +365,14 @@ public:
     virtual bool is_button_pressed(int button_index);
     virtual bool is_button_press_rising_edge(int button_index);
     virtual bool is_button_press_falling_edge(int button_index);
-    cShapeSphere* create_cursor();
+    cBulletSphere* create_cursor(cBulletWorld* world, std::string name="");
     cGenericHapticDevicePtr hDevice;
     cHapticDeviceInfo hInfo;
     cVector3d posDevice, posDeviceClutched, velDevice, avelDevice;
     cMatrix3d rotDevice, rotDeviceClutched;
     cVector3d force, torque;
     double _m_workspace_scale_factor;
-    cShapeSphere* m_cursor;
+    cBulletSphere* m_cursor;
     bool m_btn_prev_state_rising[10] = {false};
     bool m_btn_prev_state_falling[10] = {false};
     cFrequencyCounter m_freq_ctr;
@@ -381,14 +381,16 @@ private:
     boost::mutex m_mutex;
 };
 
-cShapeSphere* Device::create_cursor(){
-    m_cursor = new cShapeSphere(0.05);
+cBulletSphere* Device::create_cursor(cBulletWorld* world, std::string name){
+    m_cursor = new cBulletSphere(world, 0.05, name);
     m_cursor->setShowEnabled(true);
     m_cursor->setShowFrame(true);
     m_cursor->setFrameSize(0.1);
     cMaterial mat;
     mat.setGreenLightSea();
     m_cursor->setMaterial(mat);
+    world->addChild(m_cursor);
+    m_cursor->buildDynamicModel();
     return m_cursor;
 }
 
@@ -596,7 +598,8 @@ void Coordination::create_bullet_gripper(uint dev_num){
 void Coordination::open_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         hapticDevices[i].hDevice->open();
-        m_bullet_world->addChild(hapticDevices[i].create_cursor());
+        std::string name = "Device" + std::to_string(i+1);
+        hapticDevices[i].create_cursor(m_bullet_world, name);
     }
 }
 
@@ -1429,12 +1432,10 @@ void updateBulletSim(){
             coordPtr->bulletTools[i].ddrot.toAxisAngle(daxis, dangle);
 
             cVector3d force, torque;
-            double dt_scaling = 1/dt;
-            if (dt_scaling > 1.0) dt_scaling = 1.0;
 
-            force = coordPtr->bulletTools[i].K_lc * dt_scaling * coordPtr->bulletTools[i].dpos +
-                    (coordPtr->bulletTools[i].B_lc) * (dt_scaling * dt_scaling) * coordPtr->bulletTools[i].ddpos;
-            torque = (coordPtr->bulletTools[i].K_ac * dt_scaling * angle) * axis;
+            force = coordPtr->bulletTools[i].K_lc * coordPtr->bulletTools[i].dpos +
+                    (coordPtr->bulletTools[i].B_lc) * coordPtr->bulletTools[i].ddpos;
+            torque = (coordPtr->bulletTools[i].K_ac * angle) * axis;
             coordPtr->bulletTools[i].rotGripper.mul(torque);
 
             coordPtr->bulletTools[i].apply_force(force);
@@ -1585,15 +1586,11 @@ void updateHaptics(void* a_arg){
         coordPtr->bulletTools[i].ddrot.toAxisAngle(daxis, dangle);
 
         cVector3d force, torque;
-        double dt_scaling = 1/dt;
-        if (dt_scaling > 1.0) dt_scaling = 1.0;
 
-        force = coordPtr->bulletTools[i].K_lc * dt_scaling * coordPtr->bulletTools[i].dpos +
-                (coordPtr->bulletTools[i].B_lc) * (dt_scaling * dt_scaling) * coordPtr->bulletTools[i].ddpos;
-        torque = (coordPtr->bulletTools[i].K_ac * dt_scaling * angle) * axis;
-//        coordPtr->bulletTools[i].apply_force(force);
-//        coordPtr->bulletTools[i].rotTool.mul(torque);
-//        coordPtr->bulletTools[i].apply_torque(torque);
+        force = coordPtr->bulletTools[i].K_lc * coordPtr->bulletTools[i].dpos +
+                (coordPtr->bulletTools[i].B_lc) * coordPtr->bulletTools[i].ddpos;
+        torque = (coordPtr->bulletTools[i].K_ac* angle) * axis;
+
         force = - coordPtr->bulletTools[i].K_lh_ramp * force;
         torque = -coordPtr->bulletTools[i].K_ah_ramp * torque;
         force.set(0,0,0);
