@@ -220,12 +220,6 @@ public:
         K_ac = 30;
         B_lc = 5.0;
         B_ac = 3.0;
-        dpos.set(0,0,0);
-        dposLast.set(0,0,0);
-        ddpos.set(0,0,0);
-        drot.identity();
-        drotLast.identity();
-        ddrot.identity();
         act_1_btn   = 0;
         act_2_btn   = 1;
         mode_next_btn = 2;
@@ -243,8 +237,6 @@ public:
     inline double get_workspace_scale_factor(){return workspaceScaleFactor;}
     cVector3d posRef, posRefLast;
     cMatrix3d rotRef, rotRefLast;
-    cVector3d dpos, dposLast, ddpos;
-    cMatrix3d drot, drotLast, ddrot;
     double workspaceScaleFactor;
     double K_lh;                    //Linear Haptic Stiffness Gain
     double K_ah;                    //Angular Haptic Stiffness Gain
@@ -365,14 +357,14 @@ public:
     virtual bool is_button_pressed(int button_index);
     virtual bool is_button_press_rising_edge(int button_index);
     virtual bool is_button_press_falling_edge(int button_index);
-    cBulletSphere* create_cursor(cBulletWorld* world, std::string name="");
+    cShapeSphere* create_cursor();
     cGenericHapticDevicePtr hDevice;
     cHapticDeviceInfo hInfo;
     cVector3d posDevice, posDeviceClutched, velDevice, avelDevice;
     cMatrix3d rotDevice, rotDeviceClutched;
     cVector3d force, torque;
     double _m_workspace_scale_factor;
-    cBulletSphere* m_cursor;
+    cShapeSphere* m_cursor;
     bool m_btn_prev_state_rising[10] = {false};
     bool m_btn_prev_state_falling[10] = {false};
     cFrequencyCounter m_freq_ctr;
@@ -381,16 +373,14 @@ private:
     boost::mutex m_mutex;
 };
 
-cBulletSphere* Device::create_cursor(cBulletWorld* world, std::string name){
-    m_cursor = new cBulletSphere(world, 0.05, name);
+cShapeSphere* Device::create_cursor(){
+    m_cursor = new cShapeSphere(0.05);
     m_cursor->setShowEnabled(true);
     m_cursor->setShowFrame(true);
     m_cursor->setFrameSize(0.1);
     cMaterial mat;
     mat.setGreenLightSea();
     m_cursor->setMaterial(mat);
-    world->addChild(m_cursor);
-    m_cursor->buildDynamicModel();
     return m_cursor;
 }
 
@@ -599,7 +589,7 @@ void Coordination::open_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         hapticDevices[i].hDevice->open();
         std::string name = "Device" + std::to_string(i+1);
-        hapticDevices[i].create_cursor(m_bullet_world, name);
+        m_bullet_world->addChild(hapticDevices[i].create_cursor());
     }
 }
 
@@ -1405,7 +1395,14 @@ void updateBulletSim(){
     // start haptic device
     clockWorld.start(true);
     // main Bullet simulation loop
+    int n = coordPtr->m_num_devices;
+    cVector3d dpos[n], ddpos[n], dposLast[n];
+    cMatrix3d drot[n], ddrot[n], drotLast[n];
 
+    for(int i = 0 ; i < n; i ++){
+        dpos[i].set(0,0,0); ddpos[i].set(0,0,0); dposLast[i].set(0,0,0);
+        drot[i].identity(); ddrot[i].identity(); drotLast[i].identity();
+    }
     RateSleep rateSleep(1000);
     while(simulationRunning)
     {
@@ -1418,23 +1415,23 @@ void updateBulletSim(){
             // update position of tool
             coordPtr->bulletTools[i].update_measured_pose();
 
-            coordPtr->bulletTools[i].dposLast = coordPtr->bulletTools[i].dpos;
-            coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posGripper;
-            coordPtr->bulletTools[i].ddpos = (coordPtr->bulletTools[i].dpos - coordPtr->bulletTools[i].dposLast) / dt;
+            dposLast[i] = dpos[i];
+            dpos[i] = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posGripper;
+            ddpos[i] = (dpos[i] - dposLast[i]) / dt;
 
-            coordPtr->bulletTools[i].drotLast = coordPtr->bulletTools[i].drot;
-            coordPtr->bulletTools[i].drot = cTranspose(coordPtr->bulletTools[i].rotGripper) * coordPtr->bulletTools[i].rotRef;
-            coordPtr->bulletTools[i].ddrot = (cTranspose(coordPtr->bulletTools[i].drot) * coordPtr->bulletTools[i].drotLast);
+            drotLast[i] = drot[i];
+            drot[i] = cTranspose(coordPtr->bulletTools[i].rotGripper) * coordPtr->bulletTools[i].rotRef;
+            ddrot[i] = (cTranspose(drot[i]) * drotLast[i]);
 
             double angle, dangle;
             cVector3d axis, daxis;
-            coordPtr->bulletTools[i].drot.toAxisAngle(axis, angle);
-            coordPtr->bulletTools[i].ddrot.toAxisAngle(daxis, dangle);
+            drot[i].toAxisAngle(axis, angle);
+            ddrot[i].toAxisAngle(daxis, dangle);
 
             cVector3d force, torque;
 
-            force = coordPtr->bulletTools[i].K_lc * coordPtr->bulletTools[i].dpos +
-                    (coordPtr->bulletTools[i].B_lc) * coordPtr->bulletTools[i].ddpos;
+            force = coordPtr->bulletTools[i].K_lc * dpos[i] +
+                    (coordPtr->bulletTools[i].B_lc) * ddpos[i];
             torque = (coordPtr->bulletTools[i].K_ac * angle) * axis;
             coordPtr->bulletTools[i].rotGripper.mul(torque);
 
@@ -1460,6 +1457,11 @@ void updateHaptics(void* a_arg){
     coordPtr->hapticDevices[i].measured_rot();
     coordPtr->hapticDevices[i].rotDeviceClutched.identity();
     coordPtr->bulletTools[i].rotRefLast = coordPtr->hapticDevices[i].rotDevice;
+
+    cVector3d dpos, ddpos, dposLast;
+    cMatrix3d drot, ddrot, drotLast;
+    dpos.set(0,0,0); ddpos.set(0,0,0); dposLast.set(0,0,0);
+    drot.identity(); ddrot.identity(); drotLast.identity();
 
     double K_lc_offset = 10;
     double K_ac_offset = 1;
@@ -1572,29 +1574,29 @@ void updateHaptics(void* a_arg){
         // update position of tool
         coordPtr->bulletTools[i].update_measured_pose();
 
-        coordPtr->bulletTools[i].dposLast = coordPtr->bulletTools[i].dpos;
-        coordPtr->bulletTools[i].dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posGripper;
-        coordPtr->bulletTools[i].ddpos = (coordPtr->bulletTools[i].dpos - coordPtr->bulletTools[i].dposLast) / dt;
+        dposLast = dpos;
+        dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posGripper;
+        ddpos = (dpos - dposLast) / dt;
 
-        coordPtr->bulletTools[i].drotLast = coordPtr->bulletTools[i].drot;
-        coordPtr->bulletTools[i].drot = cTranspose(coordPtr->bulletTools[i].rotGripper) * coordPtr->bulletTools[i].rotRef;
-        coordPtr->bulletTools[i].ddrot = (cTranspose(coordPtr->bulletTools[i].drot) * coordPtr->bulletTools[i].drotLast);
+        drotLast = drot;
+        drot = cTranspose(coordPtr->bulletTools[i].rotGripper) * coordPtr->bulletTools[i].rotRef;
+        ddrot = (cTranspose(drot) * drotLast);
 
         double angle, dangle;
         cVector3d axis, daxis;
-        coordPtr->bulletTools[i].drot.toAxisAngle(axis, angle);
-        coordPtr->bulletTools[i].ddrot.toAxisAngle(daxis, dangle);
+        drot.toAxisAngle(axis, angle);
+        ddrot.toAxisAngle(daxis, dangle);
 
         cVector3d force, torque;
 
-        force = coordPtr->bulletTools[i].K_lc * coordPtr->bulletTools[i].dpos +
-                (coordPtr->bulletTools[i].B_lc) * coordPtr->bulletTools[i].ddpos;
-        torque = (coordPtr->bulletTools[i].K_ac* angle) * axis;
+        force = coordPtr->bulletTools[i].K_lc * dpos + (coordPtr->bulletTools[i].B_lc) * ddpos;
+        torque = (coordPtr->bulletTools[i].K_ac * angle) * axis;
 
-        force = - coordPtr->bulletTools[i].K_lh_ramp * force;
-        torque = -coordPtr->bulletTools[i].K_ah_ramp * torque;
+        force  = - coordPtr->bulletTools[i].K_lh_ramp * force;
+        torque = - coordPtr->bulletTools[i].K_ah_ramp * torque;
         force.set(0,0,0);
         torque.set(0,0,0);
+
         coordPtr->hapticDevices[i].apply_wrench(force, torque);
 
         if (coordPtr->bulletTools[i].K_lh_ramp < coordPtr->bulletTools[i].K_lh)
