@@ -1453,10 +1453,12 @@ void updateHaptics(void* a_arg){
     simulationFinished = false;
 
     // update position and orientation of tool
-    coordPtr->hapticDevices[i].posDeviceClutched.set(0.0,0.0,0.0);
-    coordPtr->hapticDevices[i].measured_rot();
-    coordPtr->hapticDevices[i].rotDeviceClutched.identity();
-    coordPtr->bulletTools[i].rotRefLast = coordPtr->hapticDevices[i].rotDevice;
+    Device *hDev = & coordPtr->hapticDevices[i];
+    ToolGripper* bGripper = & coordPtr->bulletTools[i];
+    hDev->posDeviceClutched.set(0.0,0.0,0.0);
+    hDev->measured_rot();
+    hDev->rotDeviceClutched.identity();
+    bGripper->rotRefLast = hDev->rotDevice;
 
     cVector3d dpos, ddpos, dposLast;
     cMatrix3d drot, ddrot, drotLast;
@@ -1473,31 +1475,31 @@ void updateHaptics(void* a_arg){
     // main haptic simulation loop
     while(simulationRunning)
     {
-        coordPtr->hapticDevices[i].m_freq_ctr.signal(1);
+        hDev->m_freq_ctr.signal(1);
         // Adjust time dilation by computing dt from clockWorld time and the simulationTime
         double dt;
         if (dt_fixed > 0.0) dt = dt_fixed;
         else dt = compute_dt();
 
         // compute global reference frames for each object
-        coordPtr->bulletTools[i].set_gripper_angle(coordPtr->hapticDevices[i].measured_gripper_angle());
+        bGripper->set_gripper_angle(hDev->measured_gripper_angle());
 
-        coordPtr->hapticDevices[i].posDevice = coordPtr->hapticDevices[i].measured_pos();
-        coordPtr->hapticDevices[i].rotDevice = coordPtr->hapticDevices[i].measured_rot();
+        hDev->posDevice = hDev->measured_pos();
+        hDev->rotDevice = hDev->measured_rot();
 
-        if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_next_btn)) coordPtr->next_mode();
-        if(coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].mode_prev_btn)) coordPtr->prev_mode();
+        if(hDev->is_button_press_rising_edge(bGripper->mode_next_btn)) coordPtr->next_mode();
+        if(hDev->is_button_press_rising_edge(bGripper->mode_prev_btn)) coordPtr->prev_mode();
 
-        bool btn_1_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_1_btn);
-        bool btn_1_falling_edge = coordPtr->hapticDevices[i].is_button_press_falling_edge(coordPtr->bulletTools[i].act_1_btn);
-        bool btn_2_rising_edge = coordPtr->hapticDevices[i].is_button_press_rising_edge(coordPtr->bulletTools[i].act_2_btn);
-        bool btn_2_falling_edge = coordPtr->hapticDevices[i].is_button_press_falling_edge(coordPtr->bulletTools[i].act_2_btn);
+        bool btn_1_rising_edge = hDev->is_button_press_rising_edge(bGripper->act_1_btn);
+        bool btn_1_falling_edge = hDev->is_button_press_falling_edge(bGripper->act_1_btn);
+        bool btn_2_rising_edge = hDev->is_button_press_rising_edge(bGripper->act_2_btn);
+        bool btn_2_falling_edge = hDev->is_button_press_falling_edge(bGripper->act_2_btn);
 
         double gripper_offset = 0;
         switch (coordPtr->m_mode){
         case MODES::CAM_CLUTCH_CONTROL:
-            clutch_btn_pressed  = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_1_btn);
-            cam_btn_pressed     = coordPtr->hapticDevices[i].is_button_pressed(coordPtr->bulletTools[i].act_2_btn);
+            clutch_btn_pressed  = hDev->is_button_pressed(bGripper->act_1_btn);
+            cam_btn_pressed     = hDev->is_button_pressed(bGripper->act_2_btn);
             if(clutch_btn_pressed) btn_action_str = "Clutch Pressed";
             if(cam_btn_pressed)   {btn_action_str = "Cam Pressed";}
             if(btn_1_falling_edge || btn_2_falling_edge) btn_action_str = "";
@@ -1505,7 +1507,7 @@ void updateHaptics(void* a_arg){
         case MODES::GRIPPER_JAW_CONTROL:
             if (btn_1_rising_edge) gripper_offset = 0.1;
             if (btn_2_rising_edge) gripper_offset = -0.1;
-            coordPtr->bulletTools[i].offset_gripper_angle(gripper_offset);
+            bGripper->offset_gripper_angle(gripper_offset);
             break;
         case MODES::CHANGE_CONT_LIN_GAIN:
             if(btn_1_rising_edge) coordPtr->increment_K_lc(K_lc_offset);
@@ -1535,51 +1537,51 @@ void updateHaptics(void* a_arg){
 
 
         if(cam_btn_pressed){
-            if(coordPtr->bulletTools[i].btn_cam_rising_edge){
-                coordPtr->bulletTools[i].btn_cam_rising_edge = false;
-                coordPtr->bulletTools[i].posRefLast = coordPtr->bulletTools[i].posRef / coordPtr->bulletTools[i].workspaceScaleFactor;
-                coordPtr->bulletTools[i].rotRefLast = coordPtr->bulletTools[i].rotRef;
+            if(bGripper->btn_cam_rising_edge){
+                bGripper->btn_cam_rising_edge = false;
+                bGripper->posRefLast = bGripper->posRef / bGripper->workspaceScaleFactor;
+                bGripper->rotRefLast = bGripper->rotRef;
             }
-            coordPtr->hapticDevices[i].posDeviceClutched = coordPtr->hapticDevices[i].posDevice;
-            coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
+            hDev->posDeviceClutched = hDev->posDevice;
+            hDev->rotDeviceClutched = hDev->rotDevice;
         }
         else{
-            coordPtr->bulletTools[i].btn_cam_rising_edge = true;
+            bGripper->btn_cam_rising_edge = true;
         }
         if(clutch_btn_pressed){
-            if(coordPtr->bulletTools[i].btn_clutch_rising_edge){
-                coordPtr->bulletTools[i].btn_clutch_rising_edge = false;
-                coordPtr->bulletTools[i].posRefLast = coordPtr->bulletTools[i].posRef / coordPtr->bulletTools[i].workspaceScaleFactor;
-                coordPtr->bulletTools[i].rotRefLast = coordPtr->bulletTools[i].rotRef;
+            if(bGripper->btn_clutch_rising_edge){
+                bGripper->btn_clutch_rising_edge = false;
+                bGripper->posRefLast = bGripper->posRef / bGripper->workspaceScaleFactor;
+                bGripper->rotRefLast = bGripper->rotRef;
             }
-            coordPtr->hapticDevices[i].posDeviceClutched = coordPtr->hapticDevices[i].posDevice;
-            coordPtr->hapticDevices[i].rotDeviceClutched = coordPtr->hapticDevices[i].rotDevice;
+            hDev->posDeviceClutched = hDev->posDevice;
+            hDev->rotDeviceClutched = hDev->rotDevice;
         }
         else{
-            coordPtr->bulletTools[i].btn_clutch_rising_edge = true;
+            bGripper->btn_clutch_rising_edge = true;
         }
 
-        coordPtr->bulletTools[i].posRef = coordPtr->bulletTools[i].posRefLast +
-                (camera->getLocalRot() * (coordPtr->hapticDevices[i].posDevice - coordPtr->hapticDevices[i].posDeviceClutched));
+        bGripper->posRef = bGripper->posRefLast +
+                (camera->getLocalRot() * (hDev->posDevice - hDev->posDeviceClutched));
         if (!coordPtr->_useCamFrameRot){
-            coordPtr->bulletTools[i].rotRef = coordPtr->bulletTools[i].rotRefLast * camera->getLocalRot() *
-                    cTranspose(coordPtr->hapticDevices[i].rotDeviceClutched) * coordPtr->hapticDevices[i].rotDevice *
+            bGripper->rotRef = bGripper->rotRefLast * camera->getLocalRot() *
+                    cTranspose(hDev->rotDeviceClutched) * hDev->rotDevice *
                     cTranspose(camera->getLocalRot());
         }
         else{
-            coordPtr->bulletTools[i].rotRef = coordPtr->hapticDevices[i].rotDevice;
+            bGripper->rotRef = hDev->rotDevice;
         }
-        coordPtr->bulletTools[i].posRef.mul(coordPtr->bulletTools[i].workspaceScaleFactor);
+        bGripper->posRef.mul(bGripper->workspaceScaleFactor);
 
         // update position of tool
-        coordPtr->bulletTools[i].update_measured_pose();
+       bGripper->update_measured_pose();
 
         dposLast = dpos;
-        dpos = coordPtr->bulletTools[i].posRef - coordPtr->bulletTools[i].posGripper;
+        dpos = bGripper->posRef - bGripper->posGripper;
         ddpos = (dpos - dposLast) / dt;
 
         drotLast = drot;
-        drot = cTranspose(coordPtr->bulletTools[i].rotGripper) * coordPtr->bulletTools[i].rotRef;
+        drot = cTranspose(bGripper->rotGripper) * bGripper->rotRef;
         ddrot = (cTranspose(drot) * drotLast);
 
         double angle, dangle;
@@ -1589,34 +1591,34 @@ void updateHaptics(void* a_arg){
 
         cVector3d force, torque;
 
-        force = coordPtr->bulletTools[i].K_lc * dpos + (coordPtr->bulletTools[i].B_lc) * ddpos;
-        torque = (coordPtr->bulletTools[i].K_ac * angle) * axis;
+        force = bGripper->K_lc * dpos + (bGripper->B_lc) * ddpos;
+        torque = (bGripper->K_ac * angle) * axis;
 
-        force  = - coordPtr->bulletTools[i].K_lh_ramp * force;
-        torque = - coordPtr->bulletTools[i].K_ah_ramp * torque;
+        force  = - bGripper->K_lh_ramp * force;
+        torque = - bGripper->K_ah_ramp * torque;
         force.set(0,0,0);
         torque.set(0,0,0);
 
-        coordPtr->hapticDevices[i].apply_wrench(force, torque);
+        hDev->apply_wrench(force, torque);
 
-        if (coordPtr->bulletTools[i].K_lh_ramp < coordPtr->bulletTools[i].K_lh)
+        if (bGripper->K_lh_ramp < bGripper->K_lh)
         {
-            coordPtr->bulletTools[i].K_lh_ramp = coordPtr->bulletTools[i].K_lh_ramp + 0.1 * dt * coordPtr->bulletTools[i].K_lh;
+            bGripper->K_lh_ramp = bGripper->K_lh_ramp + 0.1 * dt * bGripper->K_lh;
         }
         else
         {
-            coordPtr->bulletTools[i].K_lh_ramp = coordPtr->bulletTools[i].K_lh;
+            bGripper->K_lh_ramp = bGripper->K_lh;
         }
 
-        if (coordPtr->bulletTools[i].K_ah_ramp < coordPtr->bulletTools[i].K_ah)
+        if (bGripper->K_ah_ramp < bGripper->K_ah)
         {
-            coordPtr->bulletTools[i].K_ah_ramp = coordPtr->bulletTools[i].K_ah_ramp + 0.1 * dt * coordPtr->bulletTools[i].K_ah;
+            bGripper->K_ah_ramp = bGripper->K_ah_ramp + 0.1 * dt * bGripper->K_ah;
         }
         else
         {
-            coordPtr->bulletTools[i].K_ah_ramp = coordPtr->bulletTools[i].K_ah;
+            bGripper->K_ah_ramp = bGripper->K_ah;
         }
-        coordPtr->bulletTools[i].set_loop_exec_flag();
+        bGripper->set_loop_exec_flag();
     }
     // exit haptics thread
 }
