@@ -357,23 +357,26 @@ public:
     virtual bool is_button_pressed(int button_index);
     virtual bool is_button_press_rising_edge(int button_index);
     virtual bool is_button_press_falling_edge(int button_index);
-    cShapeSphere* create_cursor();
+    cShapeSphere* create_cursor(cBulletWorld* a_world);
+    cBulletSphere* create_af_cursor(cBulletWorld* a_world, std::string a_name);
     cGenericHapticDevicePtr hDevice;
     cHapticDeviceInfo hInfo;
     cVector3d posDevice, posDeviceClutched, velDevice, avelDevice;
     cMatrix3d rotDevice, rotDeviceClutched;
     cVector3d force, torque;
     double _m_workspace_scale_factor;
-    cShapeSphere* m_cursor;
+    cShapeSphere* m_cursor = NULL;
+    cBulletSphere* m_af_cursor = NULL;
     bool m_btn_prev_state_rising[10] = {false};
     bool m_btn_prev_state_falling[10] = {false};
     cFrequencyCounter m_freq_ctr;
 
 private:
     boost::mutex m_mutex;
+    void update_cursor_pose();
 };
 
-cShapeSphere* Device::create_cursor(){
+cShapeSphere* Device::create_cursor(cBulletWorld* a_world){
     m_cursor = new cShapeSphere(0.05);
     m_cursor->setShowEnabled(true);
     m_cursor->setShowFrame(true);
@@ -381,25 +384,49 @@ cShapeSphere* Device::create_cursor(){
     cMaterial mat;
     mat.setGreenLightSea();
     m_cursor->setMaterial(mat);
+    a_world->addChild(m_cursor);
     return m_cursor;
+}
+
+cBulletSphere* Device::create_af_cursor(cBulletWorld *a_world, string a_name){
+    m_af_cursor = new cBulletSphere(a_world, 0.05, a_name);
+    m_af_cursor->setShowEnabled(true);
+    m_af_cursor->setShowFrame(true);
+    m_af_cursor->setFrameSize(0.1);
+    cMaterial mat;
+    mat.setGreenLightSea();
+    m_af_cursor->setMaterial(mat);
+    m_af_cursor->buildDynamicModel();
+    a_world->addChild(m_af_cursor);
+    return m_af_cursor;
 }
 
 cVector3d Device::measured_pos(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     hDevice->getPosition(posDevice);
-    m_cursor->setLocalPos(posDevice * _m_workspace_scale_factor);
+    update_cursor_pose();
     return posDevice;
 }
 
 cMatrix3d Device::measured_rot(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     hDevice->getRotation(rotDevice);
-    m_cursor->setLocalRot(rotDevice);
     return rotDevice;
 }
 
 void Device::update_measured_pose(){
+    update_cursor_pose();
+}
 
+void Device::update_cursor_pose(){
+    if(m_cursor){
+        m_cursor->setLocalPos(posDevice * _m_workspace_scale_factor);
+        m_cursor->setLocalRot(rotDevice);
+    }
+    if(m_af_cursor){
+        m_af_cursor->setLocalPos(posDevice * _m_workspace_scale_factor);
+        m_af_cursor->setLocalRot(rotDevice);
+    }
 }
 
 cVector3d Device::measured_lin_vel(){
@@ -589,7 +616,7 @@ void Coordination::open_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         hapticDevices[i].hDevice->open();
         std::string name = "Device" + std::to_string(i+1);
-        m_bullet_world->addChild(hapticDevices[i].create_cursor());
+        hapticDevices[i].create_cursor(m_bullet_world);
     }
 }
 
