@@ -210,7 +210,8 @@ public:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/* This class encapsulates each haptic device in isolation and provides methods to get/set device
+ * state/commands, button's state and grippers state if present */
 class Device: public DataExchange{
 public:
     Device(){}
@@ -365,6 +366,10 @@ void Device::apply_wrench(cVector3d force, cVector3d torque){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/* This class encapsulates Simulation Parameters that deal with the interaction between a single haptic device
+ *  and the related Gripper simulated in Bullet. These Parameters include mapping the device buttons to
+ * action/mode buttons, capturing button triggers in addition to presses, mapping the workspace scale factors
+ * for a device and so on. */
 class Sim{
 public:
     Sim(){
@@ -453,7 +458,8 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
     }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/* This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
+ * for interface with the haptics device*/
 class ToolGripper: public Sim, public DataExchange{
 public:
     ToolGripper(){gripper_angle = 3.0;}
@@ -514,7 +520,7 @@ void ToolGripper::clear_wrench(){
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/* These are the currently availble modes for each device. */
 
 enum MODES{ CAM_CLUTCH_CONTROL,
             GRIPPER_JAW_CONTROL,
@@ -527,7 +533,9 @@ enum MODES{ CAM_CLUTCH_CONTROL,
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/* This is a higher level class that queries the number of haptics devices available on the sytem
+ * and on the Network for dVRK devices and creates a single Bullet Gripper and a Device Handle for
+   each device. */
 class Coordination{
     public:
     Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs = MAX_DEVICES);
@@ -775,6 +783,8 @@ double Coordination::increment_B_ac(double a_offset){
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/* This is an implementation of Sleep function that tries to adjust sleep between each cycle to maintain
+ * the desired loop frequency. This class has been inspired from ROS Rate Sleep written by Eitan Marder-Eppstein */
 class RateSleep{
 public:
     RateSleep(int a_freq){
@@ -807,12 +817,12 @@ std::shared_ptr<Coordination> coordPtr;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //===========================================================================
 /*
-    DEMO:    08-bullet-tool.cpp
+    Application:    08-bullet-coordination.cpp
 
-    This example illustrates the use of the Bullet framework for simulating
-    haptic interaction with dynamic bodies. In this scene we create 4
-    cubic meshes that we individually attach to ODE bodies. One of the blocks
-    is attached to the haptic device through a virtual spring.
+    This Application allows multi-manual tasks using several haptics devices.
+    Each device can perturb or control the dynamic bodies in the simulation
+    environment. The objects in the simulation are exposed via Asynchoronous
+    Framework (AF) to allow query and control via external applications.
  */
 //===========================================================================
 
@@ -1649,8 +1659,6 @@ void updateHaptics(void* a_arg){
 
         force  = - bGripper->K_lh_ramp * force;
         torque = - bGripper->K_ah_ramp * torque;
-//        force.set(0,0,0);
-//        torque.set(0,0,0);
 
         hDev->apply_wrench(force, torque);
 
