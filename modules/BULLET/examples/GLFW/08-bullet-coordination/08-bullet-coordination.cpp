@@ -193,6 +193,7 @@ void close(void);
 
 const int MAX_DEVICES = 10;
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class DataExchange{
@@ -207,153 +208,9 @@ public:
     virtual void apply_force(cVector3d force){}
     virtual void apply_torque(cVector3d torque){}
 };
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class Sim{
-public:
-    Sim(){
-        workspaceScaleFactor = 30.0;
-        K_lh = 0.02;
-        K_lh_ramp = 0.0;
-        K_ah_ramp = 0.0;
-        K_ah = 0.03;
-        K_lc = 200;
-        K_ac = 30;
-        B_lc = 5.0;
-        B_ac = 3.0;
-        act_1_btn   = 0;
-        act_2_btn   = 1;
-        mode_next_btn = 2;
-        mode_prev_btn= 3;
-        btn_cam_rising_edge = false;
-        btn_clutch_rising_edge = false;
-        posRefLast.set(0.0,0.0,0.0);
-        rotRefLast.identity();
-        m_loop_exec_flag = false;
-    }
-    void set_sim_params(cHapticDeviceInfo &a_hInfo);
-    inline void set_loop_exec_flag(){m_loop_exec_flag=true;}
-    inline void clear_loop_exec_flag(){m_loop_exec_flag = false;}
-    inline bool is_loop_exec(){return m_loop_exec_flag;}
-    inline double get_workspace_scale_factor(){return workspaceScaleFactor;}
-    cVector3d posRef, posRefLast;
-    cMatrix3d rotRef, rotRefLast;
-    double workspaceScaleFactor;
-    double K_lh;                    //Linear Haptic Stiffness Gain
-    double K_ah;                    //Angular Haptic Stiffness Gain
-    double K_lh_ramp;               //Linear Haptic Stiffness Gain Ramped
-    double K_ah_ramp;               //Angular Haptic Stiffness Gain Ramped
-    double K_lc;                    //Linear Controller Stiffness Gain
-    double K_ac;                    //Angular Controller Stiffness Gain
-    double B_lc;                    //Linear Controller Damping Gain
-    double B_ac;                    //Angular Controller Damping Gain
-    int act_1_btn;
-    int act_2_btn;
-    int mode_next_btn;
-    int mode_prev_btn;
-    bool btn_cam_rising_edge;
-    bool btn_clutch_rising_edge;
-    bool m_loop_exec_flag;
-};
-
-void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
-    double maxStiffness	= a_hInfo.m_maxLinearStiffness / workspaceScaleFactor;
-
-    // clamp the force output gain to the max device stiffness
-    K_lh = cMin(K_lh, maxStiffness / K_lc);
-    if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") == 0 || strcmp(a_hInfo.m_modelName.c_str(), "MTMR") == 0 ||
-        strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") == 0 || strcmp(a_hInfo.m_modelName.c_str(), "MTML") == 0)
-    {
-        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
-        workspaceScaleFactor = 10.0;
-        K_lh = K_lh/3;
-        act_1_btn     =  1;
-        act_2_btn     =  2;
-        mode_next_btn =  3;
-        mode_prev_btn =  4;
-        K_lh = 0.04;
-        K_ah = 0.0;
-    }
-
-    if (strcmp(a_hInfo.m_modelName.c_str(), "Falcon") == 0)
-    {
-        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
-        act_1_btn     = 0;
-        act_2_btn     = 2;
-        mode_next_btn = 3;
-        mode_prev_btn = 1;
-        K_lh = 0.05;
-        K_ah - 0.0;
-    }
-
-    if (strcmp(a_hInfo.m_modelName.c_str(), "PHANTOM Omni") == 0)
-    {
-        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
-        K_lh = 0.01;
-        K_ah = 0.0;
-    }
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class ToolGripper: public Sim, public DataExchange{
-public:
-    ToolGripper(){gripper_angle = 3.0;}
-    ~ToolGripper(){}
-    virtual cVector3d measured_pos();
-    virtual cMatrix3d measured_rot();
-    virtual void update_measured_pose();
-    virtual inline void apply_force(cVector3d force){if (!gripper->m_af_pos_ctrl_active) gripper->addExternalForce(force);}
-    virtual inline void apply_torque(cVector3d torque){if (!gripper->m_af_pos_ctrl_active) gripper->addExternalTorque(torque);}
-    bool is_wrench_set();
-    void clear_wrench();
-    void offset_gripper_angle(double offset);
-    void set_gripper_angle(double angle);
-    cBulletGripper* gripper;
-    cVector3d posGripper;
-    cMatrix3d rotGripper;
-    double gripper_angle;
-
-    boost::mutex m_mutex;
-};
-
-cVector3d ToolGripper::measured_pos(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-    return gripper->getLocalPos();
-}
-
-cMatrix3d ToolGripper::measured_rot(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-    return gripper->getLocalRot();
-}
-
-void ToolGripper::update_measured_pose(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-    posGripper  = gripper->getLocalPos();
-    rotGripper = gripper->getLocalRot();
-}
-
-void ToolGripper::set_gripper_angle(double angle){
-    if(!gripper->m_af_pos_ctrl_active) gripper->set_gripper_angle(angle);
-}
-
-void ToolGripper::offset_gripper_angle(double offset){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
-    gripper_angle += offset;
-    gripper_angle = cClamp(gripper_angle, 0.0, 1.0);
-    gripper->set_gripper_angle(gripper_angle);
-}
-
-bool ToolGripper::is_wrench_set(){
-    btVector3 f = gripper->m_bulletRigidBody->getTotalForce();
-    btVector3 n = gripper->m_bulletRigidBody->getTotalTorque();
-    if (f.isZero()) return false;
-    else return true;
-}
-
-void ToolGripper::clear_wrench(){
-    gripper->m_bulletRigidBody->clearForces();
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class Device: public DataExchange{
 public:
     Device(){}
@@ -368,6 +225,7 @@ public:
     virtual bool is_button_pressed(int button_index);
     virtual bool is_button_press_rising_edge(int button_index);
     virtual bool is_button_press_falling_edge(int button_index);
+    void enable_force_feedback(bool enable){ff_enabled = enable;}
     cShapeSphere* create_cursor(cBulletWorld* a_world);
     cBulletSphere* create_af_cursor(cBulletWorld* a_world, std::string a_name);
     cGenericHapticDevicePtr hDevice;
@@ -385,6 +243,7 @@ public:
 private:
     boost::mutex m_mutex;
     void update_cursor_pose();
+    bool ff_enabled = true;
 };
 
 cShapeSphere* Device::create_cursor(cBulletWorld* a_world){
@@ -500,10 +359,162 @@ bool Device::is_button_press_falling_edge(int button_index){
 
 void Device::apply_wrench(cVector3d force, cVector3d torque){
     boost::lock_guard<boost::mutex> lock(m_mutex);
+    force = force * ff_enabled;
+    torque = torque * ff_enabled;
     hDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class Sim{
+public:
+    Sim(){
+        workspaceScaleFactor = 30.0;
+        K_lh = 0.02;
+        K_lh_ramp = 0.0;
+        K_ah_ramp = 0.0;
+        K_ah = 0.03;
+        K_lc = 200;
+        K_ac = 30;
+        B_lc = 5.0;
+        B_ac = 3.0;
+        act_1_btn   = 0;
+        act_2_btn   = 1;
+        mode_next_btn = 2;
+        mode_prev_btn= 3;
+        btn_cam_rising_edge = false;
+        btn_clutch_rising_edge = false;
+        posRefLast.set(0.0,0.0,0.0);
+        rotRefLast.identity();
+        m_loop_exec_flag = false;
+    }
+    void set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev);
+    inline void set_loop_exec_flag(){m_loop_exec_flag=true;}
+    inline void clear_loop_exec_flag(){m_loop_exec_flag = false;}
+    inline bool is_loop_exec(){return m_loop_exec_flag;}
+    inline double get_workspace_scale_factor(){return workspaceScaleFactor;}
+    cVector3d posRef, posRefLast;
+    cMatrix3d rotRef, rotRefLast;
+    double workspaceScaleFactor;
+    double K_lh;                    //Linear Haptic Stiffness Gain
+    double K_ah;                    //Angular Haptic Stiffness Gain
+    double K_lh_ramp;               //Linear Haptic Stiffness Gain Ramped
+    double K_ah_ramp;               //Angular Haptic Stiffness Gain Ramped
+    double K_lc;                    //Linear Controller Stiffness Gain
+    double K_ac;                    //Angular Controller Stiffness Gain
+    double B_lc;                    //Linear Controller Damping Gain
+    double B_ac;                    //Angular Controller Damping Gain
+    int act_1_btn;
+    int act_2_btn;
+    int mode_next_btn;
+    int mode_prev_btn;
+    int gripper_pinch_btn = -1;
+    bool btn_cam_rising_edge;
+    bool btn_clutch_rising_edge;
+    bool m_loop_exec_flag;
+};
+
+void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
+    double maxStiffness	= a_hInfo.m_maxLinearStiffness / workspaceScaleFactor;
+
+    // clamp the force output gain to the max device stiffness
+    K_lh = cMin(K_lh, maxStiffness / K_lc);
+    if (strcmp(a_hInfo.m_modelName.c_str(), "MTM-R") == 0 || strcmp(a_hInfo.m_modelName.c_str(), "MTMR") == 0 ||
+        strcmp(a_hInfo.m_modelName.c_str(), "MTM-L") == 0 || strcmp(a_hInfo.m_modelName.c_str(), "MTML") == 0)
+    {
+        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
+        workspaceScaleFactor = 10.0;
+        K_lh = K_lh/3;
+        act_1_btn     =  1;
+        act_2_btn     =  2;
+        mode_next_btn =  3;
+        mode_prev_btn =  4;
+        K_lh = 0.04;
+        K_ah = 0.0;
+        gripper_pinch_btn = 0;
+        a_dev->enable_force_feedback(false);
+    }
+
+    if (strcmp(a_hInfo.m_modelName.c_str(), "Falcon") == 0)
+    {
+        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
+        act_1_btn     = 0;
+        act_2_btn     = 2;
+        mode_next_btn = 3;
+        mode_prev_btn = 1;
+        K_lh = 0.05;
+        K_ah - 0.0;
+    }
+
+    if (strcmp(a_hInfo.m_modelName.c_str(), "PHANTOM Omni") == 0)
+    {
+        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
+        K_lh = 0.01;
+        K_ah = 0.0;
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class ToolGripper: public Sim, public DataExchange{
+public:
+    ToolGripper(){gripper_angle = 3.0;}
+    ~ToolGripper(){}
+    virtual cVector3d measured_pos();
+    virtual cMatrix3d measured_rot();
+    virtual void update_measured_pose();
+    virtual inline void apply_force(cVector3d force){if (!gripper->m_af_pos_ctrl_active) gripper->addExternalForce(force);}
+    virtual inline void apply_torque(cVector3d torque){if (!gripper->m_af_pos_ctrl_active) gripper->addExternalTorque(torque);}
+    bool is_wrench_set();
+    void clear_wrench();
+    void offset_gripper_angle(double offset);
+    void set_gripper_angle(double angle);
+    cBulletGripper* gripper;
+    cVector3d posGripper;
+    cMatrix3d rotGripper;
+    double gripper_angle;
+
+    boost::mutex m_mutex;
+};
+
+cVector3d ToolGripper::measured_pos(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+    return gripper->getLocalPos();
+}
+
+cMatrix3d ToolGripper::measured_rot(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+    return gripper->getLocalRot();
+}
+
+void ToolGripper::update_measured_pose(){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+    posGripper  = gripper->getLocalPos();
+    rotGripper = gripper->getLocalRot();
+}
+
+void ToolGripper::set_gripper_angle(double angle){
+    if(!gripper->m_af_pos_ctrl_active) gripper->set_gripper_angle(angle);
+}
+
+void ToolGripper::offset_gripper_angle(double offset){
+    boost::lock_guard<boost::mutex> lock(m_mutex);
+    gripper_angle += offset;
+    gripper_angle = cClamp(gripper_angle, 0.0, 1.0);
+    gripper->set_gripper_angle(gripper_angle);
+}
+
+bool ToolGripper::is_wrench_set(){
+    btVector3 f = gripper->m_bulletRigidBody->getTotalForce();
+    btVector3 n = gripper->m_bulletRigidBody->getTotalTorque();
+    if (f.isZero()) return false;
+    else return true;
+}
+
+void ToolGripper::clear_wrench(){
+    gripper->m_bulletRigidBody->clearForces();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 enum MODES{ CAM_CLUTCH_CONTROL,
             GRIPPER_JAW_CONTROL,
@@ -617,7 +628,7 @@ void Coordination::create_bullet_gripper(uint dev_num){
     dev_str << (dev_num + 1);
     std::string gripper_name = "Gripper" + dev_str.str();
     bulletTools[dev_num].gripper = new cBulletGripper(m_bullet_world, gripper_name);
-    bulletTools[dev_num].set_sim_params(hapticDevices[dev_num].hInfo);
+    bulletTools[dev_num].set_sim_params(hapticDevices[dev_num].hInfo, & hapticDevices[dev_num]);
     bulletTools[dev_num].gripper->build();
     m_bullet_world->addChild(bulletTools[dev_num].gripper);
     hapticDevices[dev_num]._m_workspace_scale_factor = bulletTools[dev_num].get_workspace_scale_factor();
@@ -1524,6 +1535,12 @@ void updateHaptics(void* a_arg){
 
         hDev->posDevice = hDev->measured_pos();
         hDev->rotDevice = hDev->measured_rot();
+
+        if(bGripper->gripper_pinch_btn >= 0){
+            if(hDev->is_button_pressed(bGripper->gripper_pinch_btn)){
+                hDev->enable_force_feedback(true);
+            }
+        }
 
         if(hDev->is_button_press_rising_edge(bGripper->mode_next_btn)) coordPtr->next_mode();
         if(hDev->is_button_press_rising_edge(bGripper->mode_prev_btn)) coordPtr->prev_mode();
