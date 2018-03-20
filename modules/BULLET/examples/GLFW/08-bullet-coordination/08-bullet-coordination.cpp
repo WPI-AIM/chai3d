@@ -1530,15 +1530,13 @@ void updateHaptics(void* a_arg){
         if (dt_fixed > 0.0) dt = dt_fixed;
         else dt = compute_dt();
 
-        // compute global reference frames for each object
-        bGripper->set_gripper_angle(hDev->measured_gripper_angle());
-
         hDev->posDevice = hDev->measured_pos();
         hDev->rotDevice = hDev->measured_rot();
 
         if(bGripper->gripper_pinch_btn >= 0){
             if(hDev->is_button_pressed(bGripper->gripper_pinch_btn)){
                 hDev->enable_force_feedback(true);
+                bGripper->set_gripper_angle(hDev->measured_gripper_angle());
             }
         }
 
