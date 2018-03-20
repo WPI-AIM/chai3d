@@ -212,7 +212,7 @@ class Sim{
 public:
     Sim(){
         workspaceScaleFactor = 30.0;
-        K_lh = 0.05;
+        K_lh = 0.02;
         K_lh_ramp = 0.0;
         K_ah_ramp = 0.0;
         K_ah = 0.03;
@@ -270,6 +270,8 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
         act_2_btn     =  2;
         mode_next_btn =  3;
         mode_prev_btn =  4;
+        K_lh = 0.04;
+        K_ah = 0.0;
     }
 
     if (strcmp(a_hInfo.m_modelName.c_str(), "Falcon") == 0)
@@ -279,6 +281,15 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo){
         act_2_btn     = 2;
         mode_next_btn = 3;
         mode_prev_btn = 1;
+        K_lh = 0.05;
+        K_ah - 0.0;
+    }
+
+    if (strcmp(a_hInfo.m_modelName.c_str(), "PHANTOM Omni") == 0)
+    {
+        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
+        K_lh = 0.01;
+        K_ah = 0.0;
     }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1623,14 +1634,14 @@ void updateHaptics(void* a_arg){
 
         force  = - bGripper->K_lh_ramp * force;
         torque = - bGripper->K_ah_ramp * torque;
-        force.set(0,0,0);
-        torque.set(0,0,0);
+//        force.set(0,0,0);
+//        torque.set(0,0,0);
 
         hDev->apply_wrench(force, torque);
 
         if (bGripper->K_lh_ramp < bGripper->K_lh)
         {
-            bGripper->K_lh_ramp = bGripper->K_lh_ramp + 0.1 * dt * bGripper->K_lh;
+            bGripper->K_lh_ramp = bGripper->K_lh_ramp + 0.01 * dt * bGripper->K_lh;
         }
         else
         {
@@ -1639,7 +1650,7 @@ void updateHaptics(void* a_arg){
 
         if (bGripper->K_ah_ramp < bGripper->K_ah)
         {
-            bGripper->K_ah_ramp = bGripper->K_ah_ramp + 0.1 * dt * bGripper->K_ah;
+            bGripper->K_ah_ramp = bGripper->K_ah_ramp + 0.01 * dt * bGripper->K_ah;
         }
         else
         {
