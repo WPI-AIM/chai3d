@@ -1544,9 +1544,9 @@ void updateHaptics(void* a_arg){
         hDev->rotDevice = hDev->measured_rot();
 
         if(bGripper->gripper_pinch_btn >= 0){
+            bGripper->set_gripper_angle(hDev->measured_gripper_angle());
             if(hDev->is_button_pressed(bGripper->gripper_pinch_btn)){
                 hDev->enable_force_feedback(true);
-                bGripper->set_gripper_angle(hDev->measured_gripper_angle());
             }
         }
 
