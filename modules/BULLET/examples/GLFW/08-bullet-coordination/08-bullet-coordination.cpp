@@ -1653,17 +1653,14 @@ void updateHaptics(void* a_arg){
 
         cVector3d force, torque;
 
-        force = bGripper->K_lc * dpos + (bGripper->B_lc) * ddpos;
-        torque = (bGripper->K_ac * angle) * axis;
-
-        force  = - bGripper->K_lh_ramp * force;
-        torque = - bGripper->K_ah_ramp * torque;
+        force  = - force_enable * bGripper->K_lh_ramp * (bGripper->K_lc * dpos + (bGripper->B_lc) * ddpos);
+        torque = - force_enable * bGripper->K_ah_ramp * ((bGripper->K_ac * angle) * axis);
 
         hDev->apply_wrench(force, torque);
 
         if (bGripper->K_lh_ramp < bGripper->K_lh)
         {
-            bGripper->K_lh_ramp = bGripper->K_lh_ramp + 0.01 * dt * bGripper->K_lh;
+            bGripper->K_lh_ramp = bGripper->K_lh_ramp + 0.1 * dt * bGripper->K_lh;
         }
         else
         {
@@ -1672,7 +1669,7 @@ void updateHaptics(void* a_arg){
 
         if (bGripper->K_ah_ramp < bGripper->K_ah)
         {
-            bGripper->K_ah_ramp = bGripper->K_ah_ramp + 0.01 * dt * bGripper->K_ah;
+            bGripper->K_ah_ramp = bGripper->K_ah_ramp + 0.1 * dt * bGripper->K_ah;
         }
         else
         {
