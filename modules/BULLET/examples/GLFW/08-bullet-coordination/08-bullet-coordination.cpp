@@ -45,6 +45,7 @@
 #include "chai3d.h"
 //---------------------------------------------------------------------------
 #include <GLFW/glfw3.h>
+#include <boost/program_options.hpp>
 //---------------------------------------------------------------------------
 using namespace chai3d;
 using namespace std;
@@ -96,6 +97,7 @@ cVector3d camPos(0,0,0);
 cVector3d dev_vel;
 cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
 double dt_fixed = 0;
+bool force_enable = true;
 // Default switch index for clutches
 
 
@@ -825,34 +827,36 @@ std::shared_ptr<Coordination> coordPtr;
     Framework (AF) to allow query and control via external applications.
  */
 //===========================================================================
-
 int main(int argc, char* argv[])
 {
     //-----------------------------------------------------------------------
     // INITIALIZATION
     //-----------------------------------------------------------------------
+    namespace p_opt = boost::program_options;
+
+    p_opt::options_description cmd_opts("Coordination Application Usage");
+    cmd_opts.add_options()
+            ("help,h", "Show help")
+            ("ndevs,n", p_opt::value<int>(), "Number of Haptic Devices to Load")
+            ("timestep,t", p_opt::value<double>(), "Value in secs for fixed Simulation time step(dt)")
+            ("enableforces,f", p_opt::value<bool>(), "Enable Force Feedback on Devices");
+    p_opt::variables_map var_map;
+    p_opt::store(p_opt::command_line_parser(argc, argv).options(cmd_opts).run(), var_map);
+    p_opt::notify(var_map);
+
+    int num_devices_to_load = MAX_DEVICES;
+    if(var_map.count("help")){ std::cout<< cmd_opts << std::endl; return 0;}
+    if(var_map.count("ndevs")){ num_devices_to_load = var_map["ndevs"].as<int>();}
+    if (var_map.count("timestep")){ dt_fixed = var_map["timestep"].as<double>();}
+    if (var_map.count("enableforces")){ force_enable = var_map["enableforces"].as<bool>();}
 
     cout << endl;
     cout << "-----------------------------------" << endl;
     cout << "CHAI3D" << endl;
-    cout << "Demo: 08-bullet-coordination" << endl;
+    cout << "Application: 08-bullet-coordination" << endl;
     cout << "Copyright 2003-2016" << endl;
     cout << "-----------------------------------" << endl << endl << endl;
-    cout << "Keyboard Options:" << endl << endl;
-    cout << "[h] - Display help menu" << endl;
-    cout << "[1] - Enable gravity" << endl;
-    cout << "[2] - Disable gravity" << endl << endl;
-    cout << "[3] - decrease linear haptic gain" << endl;
-    cout << "[4] - increase linear haptic gain" << endl;
-    cout << "[5] - decrease angular haptic gain" << endl;
-    cout << "[6] - increase angular haptic gain" << endl  << endl;
-    cout << "[7] - decrease linear stiffness" << endl;
-    cout << "[8] - increase linear stiffness" << endl;
-    cout << "[9] - decrease angular stiffness" << endl;
-    cout << "[0] - increase angular stiffness" << endl << endl;
-    cout << "[q] - Exit application\n" << endl;
     cout << endl << endl;
-
 
     //-----------------------------------------------------------------------
     // OPEN GL - WINDOW DISPLAY
@@ -1061,12 +1065,7 @@ int main(int argc, char* argv[])
     bulletBase->setMaterial(meshMat);
     bulletBase->m_bulletRigidBody->setFriction(1);
 
-    if (argc > 1) coordPtr = std::make_shared<Coordination>(bulletWorld, std::atoi(argv[1]));
-    else coordPtr = std::make_shared<Coordination>(bulletWorld);
-
-    if (argc > 2) dt_fixed = atof(argv[2]);
-    usleep(100);
-
+    coordPtr = std::make_shared<Coordination>(bulletWorld, num_devices_to_load);
 
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS
