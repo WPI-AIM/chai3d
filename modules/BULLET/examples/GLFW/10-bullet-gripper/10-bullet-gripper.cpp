@@ -77,7 +77,7 @@ bool mirroredDisplay = false;
 //---------------------------------------------------------------------------
 
 // bullet world
-cBulletWorld* bulletWorld;
+cBulletWorld* g_bulletWorld;
 
 // bullet objects
 cBulletBox* bulletBox1;
@@ -90,7 +90,7 @@ cBulletStaticPlane* bulletInvisibleWall2;
 cBulletStaticPlane* bulletInvisibleWall3;
 cBulletStaticPlane* bulletInvisibleWall4;
 cBulletStaticPlane* bulletInvisibleWall5;
-cBulletStaticPlane* bulletGround;
+cBulletStaticPlane* g_bulletGround;
 
 // stiffness of virtual spring
 double linGain = 0.05;
@@ -102,9 +102,9 @@ double angStiffness = 30;
 
 double grip_angle = 3.0;
 
-cVector3d camPos(0,0,0);
-cVector3d dev_vel;
-cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
+cVector3d g_camPos(0,0,0);
+cVector3d g_dev_vel;
+cMatrix3d g_cam_rot_last, g_dev_rot_last, g_dev_rot_cur;
 
 
 //---------------------------------------------------------------------------
@@ -113,10 +113,10 @@ cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
 
 
 // a camera to render the world in the window display
-cCamera* camera;
+cCamera* g_camera;
 
 // a light source to illuminate the objects in the world
-cSpotLight *light;
+cSpotLight *g_light;
 
 // a haptic device handler
 cHapticDeviceHandler* handler;
@@ -128,7 +128,7 @@ shared_ptr<cGenericHapticDevice> hapticDevice;
 double workspaceScaleFactor = 30.0;
 
 // a label to display the rates [Hz] at which the simulation is running
-cLabel* labelRates;
+cLabel* g_labelRates;
 
 
 //---------------------------------------------------------------------------
@@ -136,31 +136,31 @@ cLabel* labelRates;
 //---------------------------------------------------------------------------
 
 // flag to indicate if the haptic simulation currently running
-bool simulationRunning = false;
+bool g_simulationRunning = false;
 
 // flag to indicate if the haptic simulation has terminated
-bool simulationFinished = true;
+bool g_simulationFinished = true;
 
 // a frequency counter to measure the simulation graphic rate
-cFrequencyCounter freqCounterGraphics;
+cFrequencyCounter g_freqCounterGraphics;
 
 // a frequency counter to measure the simulation haptic rate
-cFrequencyCounter freqCounterHaptics;
+cFrequencyCounter g_freqCounterHaptics;
 
 // haptic thread
-cThread* hapticsThread;
+cThread* g_hapticsThreads;
 
 // a handle to window display context
-GLFWwindow* window = NULL;
+GLFWwindow* g_window = NULL;
 
 // current width of window
-int width = 0;
+int g_width = 0;
 
 // current height of window
-int height = 0;
+int g_height = 0;
 
 // swap interval for the display context (vertical synchronization)
-int swapInterval = 1;
+int g_swapInterval = 1;
 
 
 //---------------------------------------------------------------------------
@@ -262,8 +262,8 @@ int main(int argc, char* argv[])
     }
 
     // create display context
-    window = glfwCreateWindow(w, h, "CHAI3D", NULL, NULL);
-    if (!window)
+    g_window = glfwCreateWindow(w, h, "CHAI3D", NULL, NULL);
+    if (!g_window)
     {
         cout << "failed to create window" << endl;
         cSleepMs(1000);
@@ -272,22 +272,22 @@ int main(int argc, char* argv[])
     }
 
     // get width and height of window
-    glfwGetWindowSize(window, &width, &height);
+    glfwGetWindowSize(g_window, &g_width, &g_height);
 
     // set position of window
-    glfwSetWindowPos(window, x, y);
+    glfwSetWindowPos(g_window, x, y);
 
     // set key callback
-    glfwSetKeyCallback(window, keyCallback);
+    glfwSetKeyCallback(g_window, keyCallback);
 
     // set resize callback
-    glfwSetWindowSizeCallback(window, windowSizeCallback);
+    glfwSetWindowSizeCallback(g_window, windowSizeCallback);
 
     // set current display context
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(g_window);
 
     // sets the swap interval for the current display context
-    glfwSwapInterval(swapInterval);
+    glfwSwapInterval(g_swapInterval);
 
     // initialize GLEW library
 #ifdef GLEW_VERSION
@@ -305,60 +305,60 @@ int main(int argc, char* argv[])
     //-----------------------------------------------------------------------
 
     // create a dynamic world.
-    bulletWorld = new cBulletWorld();
+    g_bulletWorld = new cBulletWorld();
 
     // set the background color of the environment
-    bulletWorld->m_backgroundColor.setWhite();
+    g_bulletWorld->m_backgroundColor.setWhite();
 
     // create a camera and insert it into the virtual world
-    camera = new cCamera(bulletWorld);
-    bulletWorld->addChild(camera);
+    g_camera = new cCamera(g_bulletWorld);
+    g_bulletWorld->addChild(g_camera);
 
     // position and orient the camera
-    camera->set(cVector3d(2.5, 0.0, 0.3),    // camera position (eye)
+    g_camera->set(cVector3d(2.5, 0.0, 0.3),    // camera position (eye)
                 cVector3d(0.0, 0.0,-0.5),    // lookat position (target)
                 cVector3d(0.0, 0.0, 1.0));   // direction of the "up" vector
 
     // set the near and far clipping planes of the camera
-    camera->setClippingPlanes(0.01, 10.0);
+    g_camera->setClippingPlanes(0.01, 10.0);
 
     // set stereo mode
-    camera->setStereoMode(stereoMode);
+    g_camera->setStereoMode(stereoMode);
 
     // set stereo eye separation and focal length (applies only if stereo is enabled)
-    camera->setStereoEyeSeparation(0.02);
-    camera->setStereoFocalLength(2.0);
+    g_camera->setStereoEyeSeparation(0.02);
+    g_camera->setStereoFocalLength(2.0);
 
     // set vertical mirrored display mode
-    camera->setMirrorVertical(mirroredDisplay);
+    g_camera->setMirrorVertical(mirroredDisplay);
 
     // create a light source
-    light = new cSpotLight(bulletWorld);
+    g_light = new cSpotLight(g_bulletWorld);
 
     // attach light to camera
-    bulletWorld->addChild(light);
+    g_bulletWorld->addChild(g_light);
 
     // enable light source
-    light->setEnabled(true);
+    g_light->setEnabled(true);
 
     // position the light source
-    light->setLocalPos( 0, 0, 1.2);
+    g_light->setLocalPos( 0, 0, 1.2);
 
     // define the direction of the light beam
-    light->setDir(0,0,-1.0);
+    g_light->setDir(0,0,-1.0);
 
     // set uniform concentration level of light 
-    light->setSpotExponent(0.0);
+    g_light->setSpotExponent(0.0);
 
     // enable this light source to generate shadows
-    light->setShadowMapEnabled(true);
+    g_light->setShadowMapEnabled(true);
 
     // set the resolution of the shadow map
-    light->m_shadowMap->setQualityLow();
+    g_light->m_shadowMap->setQualityLow();
     //light->m_shadowMap->setQualityMedium();
 
     // set light cone half angle
-    light->setCutOffAngleDeg(45);
+    g_light->setCutOffAngleDeg(45);
 
 
     //-----------------------------------------------------------------------
@@ -383,9 +383,9 @@ int main(int argc, char* argv[])
     cFontPtr font = NEW_CFONTCALIBRI20();
 
     // create a label to display the haptic and graphic rate of the simulation
-    labelRates = new cLabel(font);
-    labelRates->m_fontColor.setBlack();
-    camera->m_frontLayer->addChild(labelRates);
+    g_labelRates = new cLabel(font);
+    g_labelRates->m_fontColor.setBlack();
+    g_camera->m_frontLayer->addChild(g_labelRates);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -398,7 +398,7 @@ int main(int argc, char* argv[])
     linGain = cMin(linGain, maxStiffness / linStiffness);
 
     // set some gravity
-    bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
+    g_bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -412,11 +412,11 @@ int main(int argc, char* argv[])
 
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double planeWidth = 3.0;
-    bulletInvisibleWall1 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
-    bulletInvisibleWall2 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, -1.0, 0.0), -planeWidth);
-    bulletInvisibleWall3 = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 1.0, 0.0), -planeWidth);
-    bulletInvisibleWall4 = new cBulletStaticPlane(bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
-    bulletInvisibleWall5 = new cBulletStaticPlane(bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
+    bulletInvisibleWall1 = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
+    bulletInvisibleWall2 = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -planeWidth);
+    bulletInvisibleWall3 = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -planeWidth);
+    bulletInvisibleWall4 = new cBulletStaticPlane(g_bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
+    bulletInvisibleWall5 = new cBulletStaticPlane(g_bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -424,25 +424,25 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
 
     // create ground plane
-    bulletGround = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 0.0, 1.0), -1.0);
+    g_bulletGround = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, 1.0), -1.0);
 
     // add plane to world as we will want to make it visibe
-    bulletWorld->addChild(bulletGround);
+    g_bulletWorld->addChild(g_bulletGround);
 
     // create a mesh plane where the static plane is located
-    cCreatePlane(bulletGround, 3.0, 3.0, bulletGround->getPlaneConstant() * bulletGround->getPlaneNormal());
+    cCreatePlane(g_bulletGround, 3.0, 3.0, g_bulletGround->getPlaneConstant() * g_bulletGround->getPlaneNormal());
 
     // define some material properties and apply to mesh
     cMaterial matGround;
     matGround.setGreenChartreuse();
     matGround.m_emission.setGrayLevel(0.3);
-    bulletGround->setMaterial(matGround);
+    g_bulletGround->setMaterial(matGround);
 
     cMaterial mat;
     mat.setRedCrimson();
-    bulletBox1 = new cBulletBox(bulletWorld, 0.25,0.25,0.25);
+    bulletBox1 = new cBulletBox(g_bulletWorld, 0.25,0.25,0.25);
     bulletBox1->setLocalPos(-0.5,0.0,0.0);
-    bulletWorld->addChild(bulletBox1);
+    g_bulletWorld->addChild(bulletBox1);
     bulletBox1->setMass(0.5);
     bulletBox1->buildContactTriangles(0.001);
     bulletBox1->estimateInertia();
@@ -450,9 +450,9 @@ int main(int argc, char* argv[])
     bulletBox1->setMaterial(mat);
 
     mat.setYellowPeachPuff();
-    bulletBox2 = new cBulletBox(bulletWorld, 0.25,0.25,0.25);
+    bulletBox2 = new cBulletBox(g_bulletWorld, 0.25,0.25,0.25);
     bulletBox2->setLocalPos(0.5,0.0,0.0);
-    bulletWorld->addChild(bulletBox2);
+    g_bulletWorld->addChild(bulletBox2);
     bulletBox2->setMass(0.5);
     bulletBox2->buildContactTriangles(0.001);
     bulletBox2->estimateInertia();
@@ -462,7 +462,7 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // TOOL
     //////////////////////////////////////////////////////////////////////////
-    bulletTool = new cBulletGripper(bulletWorld);
+    bulletTool = new cBulletGripper(g_bulletWorld);
     bulletTool->build();
     cMatrix3d rotMat;
     rotMat.setAxisAngleRotationDeg(0.0,0.0,1.0,180);
@@ -473,8 +473,8 @@ int main(int argc, char* argv[])
     //-----------------------------------------------------------------------
 
     // create a thread which starts the main haptics rendering loop
-    hapticsThread = new cThread();
-    hapticsThread->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS);
+    g_hapticsThreads = new cThread();
+    g_hapticsThreads->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS);
 
     // setup callback when application exits
     atexit(close);
@@ -485,29 +485,29 @@ int main(int argc, char* argv[])
     //--------------------------------------------------------------------------
 
     // call window size callback at initialization
-    windowSizeCallback(window, width, height);
+    windowSizeCallback(g_window, g_width, g_height);
 
     // main graphic loop
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(g_window))
     {
         // get width and height of window
-        glfwGetWindowSize(window, &width, &height);
+        glfwGetWindowSize(g_window, &g_width, &g_height);
 
         // render graphics
         updateGraphics();
 
         // swap buffers
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(g_window);
 
         // process events
         glfwPollEvents();
 
         // signal frequency counter
-        freqCounterGraphics.signal(1);
+        g_freqCounterGraphics.signal(1);
     }
 
     // close window
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(g_window);
 
     // terminate GLFW library
     glfwTerminate();
@@ -521,8 +521,8 @@ int main(int argc, char* argv[])
 void windowSizeCallback(GLFWwindow* a_window, int a_width, int a_height)
 {
     // update window size
-    width = a_width;
-    height = a_height;
+    g_width = a_width;
+    g_height = a_height;
 }
 
 //---------------------------------------------------------------------------
@@ -563,8 +563,8 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         // set fullscreen or window mode
         if (fullscreen)
         {
-            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-            glfwSwapInterval(swapInterval);
+            glfwSetWindowMonitor(g_window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            glfwSwapInterval(g_swapInterval);
         }
         else
         {
@@ -572,8 +572,8 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
             int h = 0.5 * mode->height;
             int x = 0.5 * (mode->width - w);
             int y = 0.5 * (mode->height - h);
-            glfwSetWindowMonitor(window, NULL, x, y, w, h, mode->refreshRate);
-            glfwSwapInterval(swapInterval);
+            glfwSetWindowMonitor(g_window, NULL, x, y, w, h, mode->refreshRate);
+            glfwSwapInterval(g_swapInterval);
         }
     }
 
@@ -581,7 +581,7 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_M)
     {
         mirroredDisplay = !mirroredDisplay;
-        camera->setMirrorVertical(mirroredDisplay);
+        g_camera->setMirrorVertical(mirroredDisplay);
     }
 
     // option - help menu
@@ -607,7 +607,7 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_1)
     {
         // enable gravity
-        bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
+        g_bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
         printf("gravity ON:\n");
     }
 
@@ -615,7 +615,7 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_2)
     {
         // disable gravity
-        bulletWorld->setGravity(cVector3d(0.0, 0.0, 0.0));
+        g_bulletWorld->setGravity(cVector3d(0.0, 0.0, 0.0));
         printf("gravity OFF:\n");
     }
 
@@ -701,17 +701,17 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
 void close(void)
 {
     // stop the simulation
-    simulationRunning = false;
+    g_simulationRunning = false;
 
     // wait for graphics and haptics loops to terminate
-    while (!simulationFinished) { cSleepMs(100); }
+    while (!g_simulationFinished) { cSleepMs(100); }
 
     // close haptic device
     hapticDevice->close();
 
     // delete resources
-    delete hapticsThread;
-    delete bulletWorld;
+    delete g_hapticsThreads;
+    delete g_bulletWorld;
     delete handler;
 }
 
@@ -724,24 +724,24 @@ void updateGraphics(void)
     /////////////////////////////////////////////////////////////////////
 
     // update haptic and graphic rate data
-    labelRates->setText(cStr(freqCounterGraphics.getFrequency(), 0) + " Hz / " +
-        cStr(freqCounterHaptics.getFrequency(), 0) + " Hz");
+    g_labelRates->setText(cStr(g_freqCounterGraphics.getFrequency(), 0) + " Hz / " +
+        cStr(g_freqCounterHaptics.getFrequency(), 0) + " Hz");
 
     // update position of label
-    labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 15);
+    g_labelRates->setLocalPos((int)(0.5 * (g_width - g_labelRates->getWidth())), 15);
 
     bool _pressed;
     hapticDevice->getUserSwitch(1, _pressed);
     if(_pressed){
         double scale = 0.3;
-        hapticDevice->getLinearVelocity(dev_vel);
-        hapticDevice->getRotation(dev_rot_cur);
-        camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(camera->getGlobalRot(),dev_vel)));
-        camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
+        hapticDevice->getLinearVelocity(g_dev_vel);
+        hapticDevice->getRotation(g_dev_rot_cur);
+        g_camera->setLocalPos(g_camera->getLocalPos() + cMul(scale, cMul(g_camera->getGlobalRot(),g_dev_vel)));
+        g_camera->setLocalRot(cMul(g_cam_rot_last, cMul(cTranspose(g_dev_rot_last), g_dev_rot_cur)));
     }
     if(!_pressed){
-        cam_rot_last = camera->getGlobalRot();
-        hapticDevice->getRotation(dev_rot_last);
+        g_cam_rot_last = g_camera->getGlobalRot();
+        hapticDevice->getRotation(g_dev_rot_last);
     }
 
 
@@ -750,10 +750,10 @@ void updateGraphics(void)
     /////////////////////////////////////////////////////////////////////
 
     // update shadow maps (if any)
-    bulletWorld->updateShadowMaps(false, mirroredDisplay);
+    g_bulletWorld->updateShadowMaps(false, mirroredDisplay);
 
     // render world
-    camera->renderView(width, height);
+    g_camera->renderView(g_width, g_height);
 
     // wait until all GL commands are completed
     glFinish();
@@ -768,8 +768,8 @@ void updateGraphics(void)
 void updateHaptics(void)
 {
     // simulation in now running
-    simulationRunning = true;
-    simulationFinished = false;
+    g_simulationRunning = true;
+    g_simulationFinished = false;
 
     // start haptic device
     hapticDevice->open();
@@ -790,10 +790,10 @@ void updateHaptics(void)
     rotSimLast = rotDevice;
 
     // main haptic simulation loop
-    while(simulationRunning)
+    while(g_simulationRunning)
     {
         // signal frequency counter
-        freqCounterHaptics.signal(1);
+        g_freqCounterHaptics.signal(1);
 
         // retrieve simulation time and compute next interval
         double time = simClock.getCurrentTimeSeconds();
@@ -805,7 +805,7 @@ void updateHaptics(void)
         //bulletHinge->setMotorTarget(0.5, 0.01);
 
         // compute global reference frames for each object
-        bulletWorld->computeGlobalPositions(true);
+        g_bulletWorld->computeGlobalPositions(true);
 
         hapticDevice->getPosition(posDevice);
         hapticDevice->getRotation(rotDevice);
@@ -839,8 +839,8 @@ void updateHaptics(void)
         }
         else{_firstPosClutchPress = true;}
 
-        posSim = cAdd(posSimLast, cMul(camera->getLocalRot(), cSub(posDevice, posDeviceClutched)));
-        rotSim = rotSimLast * camera->getLocalRot() * cTranspose(rotDeviceClutched) * rotDevice * cTranspose(camera->getLocalRot());
+        posSim = cAdd(posSimLast, cMul(g_camera->getLocalRot(), cSub(posDevice, posDeviceClutched)));
+        rotSim = rotSimLast * g_camera->getLocalRot() * cTranspose(rotDeviceClutched) * rotDevice * cTranspose(g_camera->getLocalRot());
         posSim.mul(workspaceScaleFactor);
 
         // read position of tool
@@ -886,10 +886,10 @@ void updateHaptics(void)
         }
 
         // update simulation
-        bulletWorld->updateDynamics(nextSimInterval);
+        g_bulletWorld->updateDynamics(nextSimInterval);
     }
 
     // exit haptics thread
-    simulationFinished = true;
+    g_simulationFinished = true;
 }
 

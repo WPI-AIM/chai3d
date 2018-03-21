@@ -78,26 +78,26 @@ bool mirroredDisplay = false;
 //---------------------------------------------------------------------------
 
 // bullet world
-cBulletWorld* bulletWorld;
+cBulletWorld* g_bulletWorld;
 
 // bullet objects
-cBulletMesh* bulletMesh1;
-cBulletMesh* bulletMesh2;
-cBulletMesh* bulletCylinder;
-cBulletMultiMesh* bulletGear;
-cBulletMultiMesh* bulletTorus;
-cBulletMultiMesh* bulletBase;
+cBulletMesh* g_bulletMesh1;
+cBulletMesh* g_bulletMesh2;
+cBulletMesh* g_bulletCylinder;
+cBulletMultiMesh* g_bulletGear;
+cBulletMultiMesh* g_bulletTorus;
+cBulletMultiMesh* g_bulletBase;
 
 // bullet static walls and ground
-cBulletStaticPlane* bulletGround;
+cBulletStaticPlane* g_bulletGround;
 
-cBulletStaticPlane* bulletBoxWall[5];
+cBulletStaticPlane* g_bulletBoxWall[5];
 
-cVector3d camPos(0,0,0);
-cVector3d dev_vel;
-cMatrix3d cam_rot_last, dev_rot_last, dev_rot_cur;
-double dt_fixed = 0;
-bool force_enable = true;
+cVector3d g_camPos(0,0,0);
+cVector3d g_dev_vel;
+cMatrix3d g_cam_rot_last, g_dev_rot_last, g_dev_rot_cur;
+double g_dt_fixed = 0;
+bool g_force_enable = true;
 // Default switch index for clutches
 
 
@@ -107,21 +107,21 @@ bool force_enable = true;
 
 
 // a camera to render the world in the window display
-cCamera* camera;
+cCamera* g_camera;
 
 // a light source to illuminate the objects in the world
-cSpotLight *light;
+cSpotLight *g_light;
 
 // a label to display the rates [Hz] at which the simulation is running
-cLabel* labelRates;
-cLabel* labelDevRates[10];
-cLabel* labelTimes;
-cLabel* labelModes;
-cLabel* labelBtnAction;
-std::string btn_action_str = "";
-bool cam_btn_pressed = false;
-bool clutch_btn_pressed = false;
-cPrecisionClock clockWorld;
+cLabel* g_labelRates;
+cLabel* g_labelDevRates[10];
+cLabel* g_labelTimes;
+cLabel* g_labelModes;
+cLabel* g_labelBtnAction;
+std::string g_btn_action_str = "";
+bool g_cam_btn_pressed = false;
+bool g_clutch_btn_pressed = false;
+cPrecisionClock g_clockWorld;
 
 
 //---------------------------------------------------------------------------
@@ -129,33 +129,33 @@ cPrecisionClock clockWorld;
 //---------------------------------------------------------------------------
 
 // flag to indicate if the haptic simulation currently running
-bool simulationRunning = false;
+bool g_simulationRunning = false;
 
 // flag to indicate if the haptic simulation has terminated
-bool simulationFinished = true;
+bool g_simulationFinished = true;
 
 // a frequency counter to measure the simulation graphic rate
-cFrequencyCounter freqCounterGraphics;
+cFrequencyCounter g_freqCounterGraphics;
 
 // a frequency counter to measure the simulation haptic rate
-cFrequencyCounter freqCounterHaptics;
+cFrequencyCounter g_freqCounterHaptics;
 
 // haptic thread
-cThread* hapticsThread[10];
+cThread* g_hapticsThreads[10];
 // bullet simulation thread
-cThread* bulletSimThread;
+cThread* g_bulletSimThread;
 
 // a handle to window display context
-GLFWwindow* window = NULL;
+GLFWwindow* g_window = NULL;
 
 // current width of window
-int width = 0;
+int g_width = 0;
 
 // current height of window
-int height = 0;
+int g_height = 0;
 
 // swap interval for the display context (vertical synchronization)
-int swapInterval = 1;
+int g_swapInterval = 1;
 
 // root resource path
 string resourceRoot;
@@ -611,9 +611,9 @@ void Coordination::next_mode(){
     m_mode_idx = (m_mode_idx + 1) % m_modes_enum_vec.size();
     m_mode = m_modes_enum_vec[m_mode_idx];
     m_mode_str = m_modes_enum_str[m_mode_idx];
-    btn_action_str = "";
-    cam_btn_pressed = false;
-    clutch_btn_pressed = false;
+    g_btn_action_str = "";
+    g_cam_btn_pressed = false;
+    g_clutch_btn_pressed = false;
     std::cout << m_mode_str << std::endl;
 }
 
@@ -622,9 +622,9 @@ void Coordination::prev_mode(){
     m_mode_idx = (m_mode_idx - 1) % m_modes_enum_vec.size();
     m_mode = m_modes_enum_vec[m_mode_idx];
     m_mode_str = m_modes_enum_str[m_mode_idx];
-    btn_action_str = "";
-    cam_btn_pressed = false;
-    clutch_btn_pressed = false;
+    g_btn_action_str = "";
+    g_cam_btn_pressed = false;
+    g_clutch_btn_pressed = false;
     std::cout << m_mode_str << std::endl;
 }
 
@@ -693,7 +693,7 @@ double Coordination::increment_K_lh(double a_offset){
     //Set the return value to the gain of the last device
     if(m_num_devices > 0){
         a_offset = bulletTools[m_num_devices-1].K_lh;
-        btn_action_str = "K_lh = " + cStr(a_offset, 4);
+        g_btn_action_str = "K_lh = " + cStr(a_offset, 4);
     }
     return a_offset;
 }
@@ -710,7 +710,7 @@ double Coordination::increment_K_ah(double a_offset){
     //Set the return value to the gain of the last device
     if(m_num_devices > 0){
         a_offset = bulletTools[m_num_devices-1].K_ah;
-        btn_action_str = "K_ah = " + cStr(a_offset, 4);
+        g_btn_action_str = "K_ah = " + cStr(a_offset, 4);
     }
     return a_offset;
 }
@@ -727,7 +727,7 @@ double Coordination::increment_K_lc(double a_offset){
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
         a_offset = bulletTools[m_num_devices-1].K_lc;
-        btn_action_str = "K_lc = " + cStr(a_offset, 4);
+        g_btn_action_str = "K_lc = " + cStr(a_offset, 4);
     }
     return a_offset;
 }
@@ -744,7 +744,7 @@ double Coordination::increment_K_ac(double a_offset){
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
         a_offset = bulletTools[m_num_devices-1].K_ac;
-        btn_action_str = "K_ac = " + cStr(a_offset, 4);
+        g_btn_action_str = "K_ac = " + cStr(a_offset, 4);
     }
     return a_offset;
 }
@@ -761,7 +761,7 @@ double Coordination::increment_B_lc(double a_offset){
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
         a_offset = bulletTools[m_num_devices-1].B_lc;
-        btn_action_str = "B_lc = " + cStr(a_offset, 4);
+        g_btn_action_str = "B_lc = " + cStr(a_offset, 4);
     }
     return a_offset;
 }
@@ -778,7 +778,7 @@ double Coordination::increment_B_ac(double a_offset){
     //Set the return value to the stiffness of the last device
     if(m_num_devices > 0){
         a_offset = bulletTools[m_num_devices-1].B_ac;
-        btn_action_str = "B_ac = " + cStr(a_offset, 4);
+        g_btn_action_str = "B_ac = " + cStr(a_offset, 4);
     }
     return a_offset;
 }
@@ -847,8 +847,8 @@ int main(int argc, char* argv[])
     int num_devices_to_load = MAX_DEVICES;
     if(var_map.count("help")){ std::cout<< cmd_opts << std::endl; return 0;}
     if(var_map.count("ndevs")){ num_devices_to_load = var_map["ndevs"].as<int>();}
-    if (var_map.count("timestep")){ dt_fixed = var_map["timestep"].as<double>();}
-    if (var_map.count("enableforces")){ force_enable = var_map["enableforces"].as<bool>();}
+    if (var_map.count("timestep")){ g_dt_fixed = var_map["timestep"].as<double>();}
+    if (var_map.count("enableforces")){ g_force_enable = var_map["enableforces"].as<bool>();}
 
     cout << endl;
     cout << "-----------------------------------" << endl;
@@ -895,8 +895,8 @@ int main(int argc, char* argv[])
     }
 
     // create display context
-    window = glfwCreateWindow(w, h, "CHAI3D", NULL, NULL);
-    if (!window)
+    g_window = glfwCreateWindow(w, h, "CHAI3D", NULL, NULL);
+    if (!g_window)
     {
         cout << "failed to create window" << endl;
         cSleepMs(1000);
@@ -905,22 +905,22 @@ int main(int argc, char* argv[])
     }
 
     // get width and height of window
-    glfwGetWindowSize(window, &width, &height);
+    glfwGetWindowSize(g_window, &g_width, &g_height);
 
     // set position of window
-    glfwSetWindowPos(window, x, y);
+    glfwSetWindowPos(g_window, x, y);
 
     // set key callback
-    glfwSetKeyCallback(window, keyCallback);
+    glfwSetKeyCallback(g_window, keyCallback);
 
     // set resize callback
-    glfwSetWindowSizeCallback(window, windowSizeCallback);
+    glfwSetWindowSizeCallback(g_window, windowSizeCallback);
 
     // set current display context
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(g_window);
 
     // sets the swap interval for the current display context
-    glfwSwapInterval(swapInterval);
+    glfwSwapInterval(g_swapInterval);
 
     // initialize GLEW library
 #ifdef GLEW_VERSION
@@ -938,60 +938,60 @@ int main(int argc, char* argv[])
     //-----------------------------------------------------------------------
 
     // create a dynamic world.
-    bulletWorld = new cBulletWorld("World");
+    g_bulletWorld = new cBulletWorld("World");
 
     // set the background color of the environment
-    bulletWorld->m_backgroundColor.setWhite();
+    g_bulletWorld->m_backgroundColor.setWhite();
 
     // create a camera and insert it into the virtual world
-    camera = new cCamera(bulletWorld);
-    bulletWorld->addChild(camera);
+    g_camera = new cCamera(g_bulletWorld);
+    g_bulletWorld->addChild(g_camera);
 
     // position and orient the camera
-    camera->set(cVector3d(3.0, 0.0, 0.3),    // camera position (eye)
+    g_camera->set(cVector3d(3.0, 0.0, 0.3),    // camera position (eye)
                 cVector3d(0.0, 0.0,-0.5),    // lookat position (target)
                 cVector3d(0.0, 0.0, 1.0));   // direction of the "up" vector
 
     // set the near and far clipping planes of the camera
-    camera->setClippingPlanes(0.01, 10.0);
+    g_camera->setClippingPlanes(0.01, 10.0);
 
     // set stereo mode
-    camera->setStereoMode(stereoMode);
+    g_camera->setStereoMode(stereoMode);
 
     // set stereo eye separation and focal length (applies only if stereo is enabled)
-    camera->setStereoEyeSeparation(0.02);
-    camera->setStereoFocalLength(2.0);
+    g_camera->setStereoEyeSeparation(0.02);
+    g_camera->setStereoFocalLength(2.0);
 
     // set vertical mirrored display mode
-    camera->setMirrorVertical(mirroredDisplay);
+    g_camera->setMirrorVertical(mirroredDisplay);
 
     // create a light source
-    light = new cSpotLight(bulletWorld);
+    g_light = new cSpotLight(g_bulletWorld);
 
     // attach light to camera
-    bulletWorld->addChild(light);
+    g_bulletWorld->addChild(g_light);
 
     // enable light source
-    light->setEnabled(true);
+    g_light->setEnabled(true);
 
     // position the light source
-    light->setLocalPos( 0, 0, 1.2);
+    g_light->setLocalPos( 0, 0, 1.2);
 
     // define the direction of the light beam
-    light->setDir(0,0,-1.0);
+    g_light->setDir(0,0,-1.0);
 
     // set uniform concentration level of light
-    light->setSpotExponent(0.0);
+    g_light->setSpotExponent(0.0);
 
     // enable this light source to generate shadows
-    light->setShadowMapEnabled(true);
+    g_light->setShadowMapEnabled(true);
 
     // set the resolution of the shadow map
-    light->m_shadowMap->setQualityLow();
+    g_light->m_shadowMap->setQualityLow();
     //light->m_shadowMap->setQualityMedium();
 
     // set light cone half angle
-    light->setCutOffAngleDeg(45);
+    g_light->setCutOffAngleDeg(45);
 
 
     //--------------------------------------------------------------------------
@@ -1002,24 +1002,24 @@ int main(int argc, char* argv[])
     cFontPtr font = NEW_CFONTCALIBRI20();
 
     // create a label to display the haptic and graphic rate of the simulation
-    labelRates = new cLabel(font);
-    labelTimes = new cLabel(font);
-    labelModes = new cLabel(font);
-    labelBtnAction = new cLabel(font);
-    labelRates->m_fontColor.setBlack();
-    labelTimes->m_fontColor.setBlack();
-    labelModes->m_fontColor.setBlack();
-    labelBtnAction->m_fontColor.setBlack();
-    camera->m_frontLayer->addChild(labelRates);
-    camera->m_frontLayer->addChild(labelTimes);
-    camera->m_frontLayer->addChild(labelModes);
-    camera->m_frontLayer->addChild(labelBtnAction);
+    g_labelRates = new cLabel(font);
+    g_labelTimes = new cLabel(font);
+    g_labelModes = new cLabel(font);
+    g_labelBtnAction = new cLabel(font);
+    g_labelRates->m_fontColor.setBlack();
+    g_labelTimes->m_fontColor.setBlack();
+    g_labelModes->m_fontColor.setBlack();
+    g_labelBtnAction->m_fontColor.setBlack();
+    g_camera->m_frontLayer->addChild(g_labelRates);
+    g_camera->m_frontLayer->addChild(g_labelTimes);
+    g_camera->m_frontLayer->addChild(g_labelModes);
+    g_camera->m_frontLayer->addChild(g_labelBtnAction);
 
     //////////////////////////////////////////////////////////////////////////
     // BULLET WORLD
     //////////////////////////////////////////////////////////////////////////
     // set some gravity
-    bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
+    g_bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -1028,44 +1028,44 @@ int main(int argc, char* argv[])
     double size = 0.40;
     cMaterial meshMat;
 
-    bulletGear = new cBulletMultiMesh(bulletWorld, "Gear");
-    bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
-    bulletGear->scale(0.0014);
-    bulletWorld->addChild(bulletGear);
-    bulletGear->buildContactTriangles(0.001);
-    bulletGear->setMass(0.3);
-    bulletGear->estimateInertia();
-    bulletGear->buildDynamicModel();
+    g_bulletGear = new cBulletMultiMesh(g_bulletWorld, "Gear");
+    g_bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
+    g_bulletGear->scale(0.0014);
+    g_bulletWorld->addChild(g_bulletGear);
+    g_bulletGear->buildContactTriangles(0.001);
+    g_bulletGear->setMass(0.3);
+    g_bulletGear->estimateInertia();
+    g_bulletGear->buildDynamicModel();
     meshMat.setPinkDeep();
-    bulletGear->setMaterial(meshMat);
-    bulletGear->m_bulletRigidBody->setFriction(1);
+    g_bulletGear->setMaterial(meshMat);
+    g_bulletGear->m_bulletRigidBody->setFriction(1);
 
-    bulletTorus = new cBulletMultiMesh(bulletWorld, "Torus");
-    bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
-    bulletTorus->scale(0.2);
-    bulletTorus->setLocalPos(cVector3d(0.3,0,0));
-    bulletWorld->addChild(bulletTorus);
-    bulletTorus->buildContactTriangles(0.001);
-    bulletTorus->setMass(0.8);
-    bulletTorus->estimateInertia();
-    bulletTorus->buildDynamicModel();
+    g_bulletTorus = new cBulletMultiMesh(g_bulletWorld, "Torus");
+    g_bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
+    g_bulletTorus->scale(0.2);
+    g_bulletTorus->setLocalPos(cVector3d(0.3,0,0));
+    g_bulletWorld->addChild(g_bulletTorus);
+    g_bulletTorus->buildContactTriangles(0.001);
+    g_bulletTorus->setMass(0.8);
+    g_bulletTorus->estimateInertia();
+    g_bulletTorus->buildDynamicModel();
     meshMat.setOrangeTomato();
-    bulletTorus->setMaterial(meshMat);
+    g_bulletTorus->setMaterial(meshMat);
 
-    bulletBase = new cBulletMultiMesh(bulletWorld, "Base");
-    bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/gear/base.3ds"));
-    bulletBase->scale(0.3);
-    bulletBase->setLocalPos(cVector3d(-0.3,0,0));
-    bulletWorld->addChild(bulletBase);
-    bulletBase->buildContactTriangles(0.001);
-    bulletBase->setMass(10);
-    bulletBase->estimateInertia();
-    bulletBase->buildDynamicModel();
+    g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "Base");
+    g_bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/gear/base.3ds"));
+    g_bulletBase->scale(0.3);
+    g_bulletBase->setLocalPos(cVector3d(-0.3,0,0));
+    g_bulletWorld->addChild(g_bulletBase);
+    g_bulletBase->buildContactTriangles(0.001);
+    g_bulletBase->setMass(10);
+    g_bulletBase->estimateInertia();
+    g_bulletBase->buildDynamicModel();
     meshMat.setBlueNavy();
-    bulletBase->setMaterial(meshMat);
-    bulletBase->m_bulletRigidBody->setFriction(1);
+    g_bulletBase->setMaterial(meshMat);
+    g_bulletBase->m_bulletRigidBody->setFriction(1);
 
-    coordPtr = std::make_shared<Coordination>(bulletWorld, num_devices_to_load);
+    coordPtr = std::make_shared<Coordination>(g_bulletWorld, num_devices_to_load);
 
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS
@@ -1073,27 +1073,27 @@ int main(int argc, char* argv[])
 
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double planeWidth = 1.0;
-    bulletBoxWall[0] = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
-    bulletBoxWall[1] = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, -1.0, 0.0), -1.5*planeWidth);
-    bulletBoxWall[2] = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 1.0, 0.0), -1.5*planeWidth);
-    bulletBoxWall[3] = new cBulletStaticPlane(bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
-    bulletBoxWall[4] = new cBulletStaticPlane(bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
+    g_bulletBoxWall[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
+    g_bulletBoxWall[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -1.5*planeWidth);
+    g_bulletBoxWall[2] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -1.5*planeWidth);
+    g_bulletBoxWall[3] = new cBulletStaticPlane(g_bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
+    g_bulletBoxWall[4] = new cBulletStaticPlane(g_bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
 
     for (int i = 0 ; i < 5 ; i++){
         cVector3d worldZ;
         worldZ.set(0,0,1);
-        cVector3d planeOri = cCross(bulletBoxWall[i]->getPlaneNormal(), worldZ);
+        cVector3d planeOri = cCross(g_bulletBoxWall[i]->getPlaneNormal(), worldZ);
         cMatrix3d planeRot;
         planeRot.setAxisAngleRotationDeg(planeOri, 90);
         worldZ.set(0,0,1);
-        bulletWorld->addChild(bulletBoxWall[i]);
-        cCreatePlane(bulletBoxWall[i], 2.0, 3.0,
-                     bulletBoxWall[i]->getPlaneConstant() * bulletBoxWall[i]->getPlaneNormal(),
+        g_bulletWorld->addChild(g_bulletBoxWall[i]);
+        cCreatePlane(g_bulletBoxWall[i], 2.0, 3.0,
+                     g_bulletBoxWall[i]->getPlaneConstant() * g_bulletBoxWall[i]->getPlaneNormal(),
                      planeRot);
         cMaterial matPlane;
         matPlane.setBlueSky();
-        bulletBoxWall[i]->setMaterial(matPlane);
-        bulletBoxWall[i]->setTransparencyLevel(0.5, true, true);
+        g_bulletBoxWall[i]->setMaterial(matPlane);
+        g_bulletBoxWall[i]->setTransparencyLevel(0.5, true, true);
     }
 
 
@@ -1102,20 +1102,20 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
 
     // create ground plane
-    bulletGround = new cBulletStaticPlane(bulletWorld, cVector3d(0.0, 0.0, 1.0), -planeWidth);
+    g_bulletGround = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, 1.0), -planeWidth);
 
     // add plane to world as we will want to make it visibe
-    bulletWorld->addChild(bulletGround);
+    g_bulletWorld->addChild(g_bulletGround);
 
     // create a mesh plane where the static plane is located
-    cCreatePlane(bulletGround, 3.0, 3.0, bulletGround->getPlaneConstant() * bulletGround->getPlaneNormal());
+    cCreatePlane(g_bulletGround, 3.0, 3.0, g_bulletGround->getPlaneConstant() * g_bulletGround->getPlaneNormal());
 
     // define some material properties and apply to mesh
     cMaterial matGround;
     matGround.setGreenChartreuse();
     matGround.m_emission.setGrayLevel(0.3);
-    bulletGround->setMaterial(matGround);
-    bulletGround->m_bulletRigidBody->setFriction(1);
+    g_bulletGround->setMaterial(matGround);
+    g_bulletGround->m_bulletRigidBody->setFriction(1);
 
     //-----------------------------------------------------------------------
     // START SIMULATION
@@ -1125,18 +1125,18 @@ int main(int argc, char* argv[])
     // create a thread which starts the main haptics rendering loop
     int dev_num[10] = {0,1,2,3,4,5,6,7,8,9};
     for (int i = 0 ; i < coordPtr->m_num_devices ; i++){
-        hapticsThread[i] = new cThread();
-        hapticsThread[i]->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS, &dev_num[i]);
+        g_hapticsThreads[i] = new cThread();
+        g_hapticsThreads[i]->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS, &dev_num[i]);
     }
     //create a thread which starts the Bullet Simulation loop
-    bulletSimThread = new cThread();
-    bulletSimThread->start(updateBulletSim, CTHREAD_PRIORITY_HAPTICS);
+    g_bulletSimThread = new cThread();
+    g_bulletSimThread->start(updateBulletSim, CTHREAD_PRIORITY_HAPTICS);
 
     for (int i = 0 ; i < coordPtr->m_num_devices ; i++){
-        labelDevRates[i] = new cLabel(font);
-        labelDevRates[i]->m_fontColor.setBlack();
-        labelDevRates[i]->setFontScale(0.8);
-        camera->m_frontLayer->addChild(labelDevRates[i]);
+        g_labelDevRates[i] = new cLabel(font);
+        g_labelDevRates[i]->m_fontColor.setBlack();
+        g_labelDevRates[i]->setFontScale(0.8);
+        g_camera->m_frontLayer->addChild(g_labelDevRates[i]);
     }
 
     // setup callback when application exits
@@ -1148,29 +1148,29 @@ int main(int argc, char* argv[])
     //--------------------------------------------------------------------------
 
     // call window size callback at initialization
-    windowSizeCallback(window, width, height);
+    windowSizeCallback(g_window, g_width, g_height);
 
     // main graphic loop
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(g_window))
     {
         // get width and height of window
-        glfwGetWindowSize(window, &width, &height);
+        glfwGetWindowSize(g_window, &g_width, &g_height);
 
         // render graphics
         updateGraphics();
 
         // swap buffers
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(g_window);
 
         // process events
         glfwPollEvents();
 
         // signal frequency counter
-        freqCounterGraphics.signal(1);
+        g_freqCounterGraphics.signal(1);
     }
 
     // close window
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(g_window);
 
     // terminate GLFW library
     glfwTerminate();
@@ -1184,8 +1184,8 @@ int main(int argc, char* argv[])
 void windowSizeCallback(GLFWwindow* a_window, int a_width, int a_height)
 {
     // update window size
-    width = a_width;
-    height = a_height;
+    g_width = a_width;
+    g_height = a_height;
 }
 
 //---------------------------------------------------------------------------
@@ -1226,8 +1226,8 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         // set fullscreen or window mode
         if (fullscreen)
         {
-            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-            glfwSwapInterval(swapInterval);
+            glfwSetWindowMonitor(g_window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            glfwSwapInterval(g_swapInterval);
         }
         else
         {
@@ -1235,8 +1235,8 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
             int h = 0.5 * mode->height;
             int x = 0.5 * (mode->width - w);
             int y = 0.5 * (mode->height - h);
-            glfwSetWindowMonitor(window, NULL, x, y, w, h, mode->refreshRate);
-            glfwSwapInterval(swapInterval);
+            glfwSetWindowMonitor(g_window, NULL, x, y, w, h, mode->refreshRate);
+            glfwSwapInterval(g_swapInterval);
         }
     }
 
@@ -1244,7 +1244,7 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_M)
     {
         mirroredDisplay = !mirroredDisplay;
-        camera->setMirrorVertical(mirroredDisplay);
+        g_camera->setMirrorVertical(mirroredDisplay);
     }
 
     // option - help menu
@@ -1270,7 +1270,7 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_1)
     {
         // enable gravity
-        bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
+        g_bulletWorld->setGravity(cVector3d(0.0, 0.0, -9.8));
         printf("gravity ON:\n");
     }
 
@@ -1278,7 +1278,7 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_2)
     {
         // disable gravity
-        bulletWorld->setGravity(cVector3d(0.0, 0.0, 0.0));
+        g_bulletWorld->setGravity(cVector3d(0.0, 0.0, 0.0));
         printf("gravity OFF:\n");
     }
 
@@ -1356,15 +1356,15 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
 void close(void)
 {
     // stop the simulation
-    simulationRunning = false;
+    g_simulationRunning = false;
 
     // wait for graphics and haptics loops to terminate
-    while (!simulationFinished) { cSleepMs(100); }
+    while (!g_simulationFinished) { cSleepMs(100); }
 
     // delete resources
     coordPtr->close_devices();
-    for(int i = 0 ; i < coordPtr->m_num_devices ; i ++){delete hapticsThread[i];}
-    delete bulletWorld;
+    for(int i = 0 ; i < coordPtr->m_num_devices ; i ++){delete g_hapticsThreads[i];}
+    delete g_bulletWorld;
     delete coordPtr->device_handler;
 }
 
@@ -1377,35 +1377,35 @@ void updateGraphics(void)
     /////////////////////////////////////////////////////////////////////
 
     // update haptic and graphic rate data
-    labelTimes->setText("Wall Time: " + cStr(clockWorld.getCurrentTimeSeconds(),2) + " s" +
-                        + " / "+" Simulation Time: " + cStr(bulletWorld->getSimulationTime(),2) + " s");
-    labelRates->setText(cStr(freqCounterGraphics.getFrequency(), 0) + " Hz / " + cStr(freqCounterHaptics.getFrequency(), 0) + " Hz");
-    labelModes->setText("MODE: " + coordPtr->m_mode_str);
-    labelBtnAction->setText(" : " + btn_action_str);
+    g_labelTimes->setText("Wall Time: " + cStr(g_clockWorld.getCurrentTimeSeconds(),2) + " s" +
+                        + " / "+" Simulation Time: " + cStr(g_bulletWorld->getSimulationTime(),2) + " s");
+    g_labelRates->setText(cStr(g_freqCounterGraphics.getFrequency(), 0) + " Hz / " + cStr(g_freqCounterHaptics.getFrequency(), 0) + " Hz");
+    g_labelModes->setText("MODE: " + coordPtr->m_mode_str);
+    g_labelBtnAction->setText(" : " + g_btn_action_str);
 
     for (int i = 0 ; i < coordPtr->m_num_devices ; i++){
-        labelDevRates[i]->setText(coordPtr->hapticDevices[i].hInfo.m_modelName + ": " + cStr(coordPtr->hapticDevices[i].m_freq_ctr.getFrequency(), 0) + " Hz");
-        labelDevRates[i]->setLocalPos(10, (int)(height - (i+1)*20));
+        g_labelDevRates[i]->setText(coordPtr->hapticDevices[i].hInfo.m_modelName + ": " + cStr(coordPtr->hapticDevices[i].m_freq_ctr.getFrequency(), 0) + " Hz");
+        g_labelDevRates[i]->setLocalPos(10, (int)(g_height - (i+1)*20));
     }
 
     // update position of label
-    labelTimes->setLocalPos((int)(0.5 * (width - labelTimes->getWidth())), 30);
-    labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 10);
-    labelModes->setLocalPos((int)(0.5 * (width - labelModes->getWidth())), 50);
-    labelBtnAction->setLocalPos((int)(0.5 * (width - labelModes->getWidth()) + labelModes->getWidth()), 50);
+    g_labelTimes->setLocalPos((int)(0.5 * (g_width - g_labelTimes->getWidth())), 30);
+    g_labelRates->setLocalPos((int)(0.5 * (g_width - g_labelRates->getWidth())), 10);
+    g_labelModes->setLocalPos((int)(0.5 * (g_width - g_labelModes->getWidth())), 50);
+    g_labelBtnAction->setLocalPos((int)(0.5 * (g_width - g_labelModes->getWidth()) + g_labelModes->getWidth()), 50);
     bool _pressed;
     if (coordPtr->m_num_devices > 0){
         coordPtr->hapticDevices[0].hDevice->getUserSwitch(coordPtr->bulletTools[0].act_2_btn, _pressed);
         if(_pressed && coordPtr->m_mode == MODES::CAM_CLUTCH_CONTROL){
             double scale = 0.3;
-            dev_vel = coordPtr->hapticDevices[0].measured_lin_vel();
-            coordPtr->hapticDevices[0].hDevice->getRotation(dev_rot_cur);
-            camera->setLocalPos(camera->getLocalPos() + cMul(scale, cMul(camera->getGlobalRot(),dev_vel)));
-            camera->setLocalRot(cMul(cam_rot_last, cMul(cTranspose(dev_rot_last), dev_rot_cur)));
+            g_dev_vel = coordPtr->hapticDevices[0].measured_lin_vel();
+            coordPtr->hapticDevices[0].hDevice->getRotation(g_dev_rot_cur);
+            g_camera->setLocalPos(g_camera->getLocalPos() + cMul(scale, cMul(g_camera->getGlobalRot(),g_dev_vel)));
+            g_camera->setLocalRot(cMul(g_cam_rot_last, cMul(cTranspose(g_dev_rot_last), g_dev_rot_cur)));
         }
         if(!_pressed){
-            cam_rot_last = camera->getGlobalRot();
-            coordPtr->hapticDevices[0].hDevice->getRotation(dev_rot_last);
+            g_cam_rot_last = g_camera->getGlobalRot();
+            coordPtr->hapticDevices[0].hDevice->getRotation(g_dev_rot_last);
         }
     }
 
@@ -1414,10 +1414,10 @@ void updateGraphics(void)
     /////////////////////////////////////////////////////////////////////
 
     // update shadow maps (if any)
-    bulletWorld->updateShadowMaps(false, mirroredDisplay);
+    g_bulletWorld->updateShadowMaps(false, mirroredDisplay);
 
     // render world
-    camera->renderView(width, height);
+    g_camera->renderView(g_width, g_height);
 
     // wait until all GL commands are completed
     glFinish();
@@ -1430,16 +1430,16 @@ void updateGraphics(void)
 // Function to fix time dilation
 
 double compute_dt(bool adjust_int_steps = false){
-    double dt = clockWorld.getCurrentTimeSeconds() - bulletWorld->getSimulationTime();
+    double dt = g_clockWorld.getCurrentTimeSeconds() - g_bulletWorld->getSimulationTime();
     int min_steps = 2;
     int max_steps = 10;
     if (adjust_int_steps){
-        if (dt >= bulletWorld->getIntegrationTimeStep() * min_steps){
-            int int_steps_max =  dt / bulletWorld->getIntegrationTimeStep();
+        if (dt >= g_bulletWorld->getIntegrationTimeStep() * min_steps){
+            int int_steps_max =  dt / g_bulletWorld->getIntegrationTimeStep();
             if (int_steps_max > max_steps){
                 int_steps_max = max_steps;
             }
-            bulletWorld->setIntegrationMaxIterations(int_steps_max + min_steps);        }
+            g_bulletWorld->setIntegrationMaxIterations(int_steps_max + min_steps);        }
     }
     return dt;
 }
@@ -1447,11 +1447,11 @@ double compute_dt(bool adjust_int_steps = false){
 //---------------------------------------------------------------------------
 
 void updateBulletSim(){
-    simulationRunning = true;
-    simulationFinished = false;
+    g_simulationRunning = true;
+    g_simulationFinished = false;
 
     // start haptic device
-    clockWorld.start(true);
+    g_clockWorld.start(true);
     // main Bullet simulation loop
     int n = coordPtr->m_num_devices;
     cVector3d dpos[n], ddpos[n], dposLast[n];
@@ -1462,12 +1462,12 @@ void updateBulletSim(){
         drot[i].identity(); ddrot[i].identity(); drotLast[i].identity();
     }
     RateSleep rateSleep(1000);
-    while(simulationRunning)
+    while(g_simulationRunning)
     {
         // signal frequency counter
-        freqCounterHaptics.signal(1);
+        g_freqCounterHaptics.signal(1);
         double dt;
-        if (dt_fixed > 0.0) dt = dt_fixed;
+        if (g_dt_fixed > 0.0) dt = g_dt_fixed;
         else dt = compute_dt(true);
         for (int i = 0 ; i<coordPtr->m_num_devices ; i++){
             // update position of tool
@@ -1496,19 +1496,19 @@ void updateBulletSim(){
             coordPtr->bulletTools[i].apply_force(force);
             coordPtr->bulletTools[i].apply_torque(torque);
         }
-        bulletWorld->updateDynamics(dt, clockWorld.getCurrentTimeSeconds(), freqCounterHaptics.getFrequency(), coordPtr->m_num_devices);
+        g_bulletWorld->updateDynamics(dt, g_clockWorld.getCurrentTimeSeconds(), g_freqCounterHaptics.getFrequency(), coordPtr->m_num_devices);
         coordPtr->clear_all_haptics_loop_exec_flags();
         rateSleep.sleep();
     }
-    simulationFinished = true;
+    g_simulationFinished = true;
 }
 
 
 void updateHaptics(void* a_arg){
     int i = *(int*) a_arg;
     // simulation in now running
-    simulationRunning = true;
-    simulationFinished = false;
+    g_simulationRunning = true;
+    g_simulationFinished = false;
 
     // update position and orientation of tool
     Device *hDev = & coordPtr->hapticDevices[i];
@@ -1531,12 +1531,12 @@ void updateHaptics(void* a_arg){
     double K_ah_offset = 1;
 
     // main haptic simulation loop
-    while(simulationRunning)
+    while(g_simulationRunning)
     {
         hDev->m_freq_ctr.signal(1);
         // Adjust time dilation by computing dt from clockWorld time and the simulationTime
         double dt;
-        if (dt_fixed > 0.0) dt = dt_fixed;
+        if (g_dt_fixed > 0.0) dt = g_dt_fixed;
         else dt = compute_dt();
 
         hDev->posDevice = hDev->measured_pos();
@@ -1560,11 +1560,11 @@ void updateHaptics(void* a_arg){
         double gripper_offset = 0;
         switch (coordPtr->m_mode){
         case MODES::CAM_CLUTCH_CONTROL:
-            clutch_btn_pressed  = hDev->is_button_pressed(bGripper->act_1_btn);
-            cam_btn_pressed     = hDev->is_button_pressed(bGripper->act_2_btn);
-            if(clutch_btn_pressed) btn_action_str = "Clutch Pressed";
-            if(cam_btn_pressed)   {btn_action_str = "Cam Pressed";}
-            if(btn_1_falling_edge || btn_2_falling_edge) btn_action_str = "";
+            g_clutch_btn_pressed  = hDev->is_button_pressed(bGripper->act_1_btn);
+            g_cam_btn_pressed     = hDev->is_button_pressed(bGripper->act_2_btn);
+            if(g_clutch_btn_pressed) g_btn_action_str = "Clutch Pressed";
+            if(g_cam_btn_pressed)   {g_btn_action_str = "Cam Pressed";}
+            if(btn_1_falling_edge || btn_2_falling_edge) g_btn_action_str = "";
             break;
         case MODES::GRIPPER_JAW_CONTROL:
             if (btn_1_rising_edge) gripper_offset = 0.1;
@@ -1598,7 +1598,7 @@ void updateHaptics(void* a_arg){
         }
 
 
-        if(cam_btn_pressed){
+        if(g_cam_btn_pressed){
             if(bGripper->btn_cam_rising_edge){
                 bGripper->btn_cam_rising_edge = false;
                 bGripper->posRefLast = bGripper->posRef / bGripper->workspaceScaleFactor;
@@ -1610,7 +1610,7 @@ void updateHaptics(void* a_arg){
         else{
             bGripper->btn_cam_rising_edge = true;
         }
-        if(clutch_btn_pressed){
+        if(g_clutch_btn_pressed){
             if(bGripper->btn_clutch_rising_edge){
                 bGripper->btn_clutch_rising_edge = false;
                 bGripper->posRefLast = bGripper->posRef / bGripper->workspaceScaleFactor;
@@ -1624,11 +1624,11 @@ void updateHaptics(void* a_arg){
         }
 
         bGripper->posRef = bGripper->posRefLast +
-                (camera->getLocalRot() * (hDev->posDevice - hDev->posDeviceClutched));
+                (g_camera->getLocalRot() * (hDev->posDevice - hDev->posDeviceClutched));
         if (!coordPtr->_useCamFrameRot){
-            bGripper->rotRef = bGripper->rotRefLast * camera->getLocalRot() *
+            bGripper->rotRef = bGripper->rotRefLast * g_camera->getLocalRot() *
                     cTranspose(hDev->rotDeviceClutched) * hDev->rotDevice *
-                    cTranspose(camera->getLocalRot());
+                    cTranspose(g_camera->getLocalRot());
         }
         else{
             bGripper->rotRef = hDev->rotDevice;
@@ -1653,8 +1653,8 @@ void updateHaptics(void* a_arg){
 
         cVector3d force, torque;
 
-        force  = - force_enable * bGripper->K_lh_ramp * (bGripper->K_lc * dpos + (bGripper->B_lc) * ddpos);
-        torque = - force_enable * bGripper->K_ah_ramp * ((bGripper->K_ac * angle) * axis);
+        force  = - g_force_enable * bGripper->K_lh_ramp * (bGripper->K_lc * dpos + (bGripper->B_lc) * ddpos);
+        torque = - g_force_enable * bGripper->K_ah_ramp * ((bGripper->K_ac * angle) * axis);
 
         hDev->apply_wrench(force, torque);
 
