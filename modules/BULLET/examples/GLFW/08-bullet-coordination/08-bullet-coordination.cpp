@@ -1125,14 +1125,14 @@ int main(int argc, char* argv[])
     g_coordApp->open_devices();
 
     // create a thread which starts the main haptics rendering loop
-    int dev_num[10] = {0,1,2,3,4,5,6,7,8,9};
-    for (int i = 0 ; i < g_coordApp->m_num_devices ; i++){
-        g_hapticsThreads[i] = new cThread();
-        g_hapticsThreads[i]->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS, &dev_num[i]);
-    }
+//    int dev_num[10] = {0,1,2,3,4,5,6,7,8,9};
+//    for (int i = 0 ; i < g_coordApp->m_num_devices ; i++){
+        g_hapticsThreads[0] = new cThread();
+        g_hapticsThreads[0]->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS, 0);
+//    }
     //create a thread which starts the Bullet Simulation loop
-    g_bulletSimThread = new cThread();
-    g_bulletSimThread->start(updateBulletSim, CTHREAD_PRIORITY_HAPTICS);
+//    g_bulletSimThread = new cThread();
+//    g_bulletSimThread->start(updateBulletSim, CTHREAD_PRIORITY_HAPTICS);
 
     for (int i = 0 ; i < g_coordApp->m_num_devices ; i++){
         g_labelDevRates[i] = new cLabel(font);
@@ -1508,23 +1508,30 @@ void updateBulletSim(){
 
 
 void updateHaptics(void* a_arg){
-    int i = *(int*) a_arg;
+    int iiii = *(int*) a_arg;
     // simulation in now running
     g_simulationRunning = true;
     g_simulationFinished = false;
 
-    // update position and orientation of tool
-    Device *hDev = & g_coordApp->m_hapticDevices[i];
-    ToolGripper* bGripper = & g_coordApp->m_bulletGrippers[i];
-    hDev->m_posDeviceClutched.set(0.0,0.0,0.0);
-    hDev->measured_rot();
-    hDev->m_rotDeviceClutched.identity();
-    bGripper->m_rotRefLast = hDev->m_rotDevice;
+    // start haptic device
+    g_clockWorld.start(true);
 
-    cVector3d dpos, ddpos, dposLast;
-    cMatrix3d drot, ddrot, drotLast;
-    dpos.set(0,0,0); ddpos.set(0,0,0); dposLast.set(0,0,0);
-    drot.identity(); ddrot.identity(); drotLast.identity();
+    int ndevs = g_coordApp->m_num_devices;
+    cVector3d dpos[ndevs], ddpos[ndevs], dposLast[ndevs];
+    cMatrix3d drot[ndevs], ddrot[ndevs], drotLast[ndevs];
+
+    for (int i = 0 ; i < ndevs ; i++){
+        Device *hDev = & g_coordApp->m_hapticDevices[i];
+        ToolGripper* bGripper = & g_coordApp->m_bulletGrippers[i];
+    // update position and orientation of tool
+        hDev->m_posDeviceClutched.set(0.0,0.0,0.0);
+        hDev->measured_rot();
+        hDev->m_rotDeviceClutched.identity();
+        bGripper->m_rotRefLast = hDev->m_rotDevice;
+        dpos[i].set(0,0,0); ddpos[i].set(0,0,0); dposLast[i].set(0,0,0);
+        drot[i].identity(); ddrot[i].identity(); drotLast[i].identity();
+    }
+
 
     double K_lc_offset = 10;
     double K_ac_offset = 1;
@@ -1536,149 +1543,166 @@ void updateHaptics(void* a_arg){
     // main haptic simulation loop
     while(g_simulationRunning)
     {
-        hDev->m_freq_ctr.signal(1);
+        g_freqCounterHaptics.signal(1);
         // Adjust time dilation by computing dt from clockWorld time and the simulationTime
         double dt;
         if (g_dt_fixed > 0.0) dt = g_dt_fixed;
         else dt = compute_dt();
 
-        hDev->m_posDevice = hDev->measured_pos();
-        hDev->m_rotDevice = hDev->measured_rot();
+        for (int i = 0 ; i < ndevs ; i++){
+            Device *hDev = & g_coordApp->m_hapticDevices[i];
+            ToolGripper* bGripper = & g_coordApp->m_bulletGrippers[i];
 
-        if(bGripper->m_gripper_pinch_btn >= 0){
-            bGripper->set_gripper_angle(hDev->measured_gripper_angle());
-            if(hDev->is_button_pressed(bGripper->m_gripper_pinch_btn)){
-                hDev->enable_force_feedback(true);
+            hDev->m_freq_ctr.signal(1);
+            hDev->m_posDevice = hDev->measured_pos();
+            hDev->m_rotDevice = hDev->measured_rot();
+
+            if(bGripper->m_gripper_pinch_btn >= 0){
+                bGripper->set_gripper_angle(hDev->measured_gripper_angle());
+                if(hDev->is_button_pressed(bGripper->m_gripper_pinch_btn)){
+                    hDev->enable_force_feedback(true);
+                }
             }
-        }
 
-        if(hDev->is_button_press_rising_edge(bGripper->mode_next_btn)) g_coordApp->next_mode();
-        if(hDev->is_button_press_rising_edge(bGripper->mode_prev_btn)) g_coordApp->prev_mode();
+            if(hDev->is_button_press_rising_edge(bGripper->mode_next_btn)) g_coordApp->next_mode();
+            if(hDev->is_button_press_rising_edge(bGripper->mode_prev_btn)) g_coordApp->prev_mode();
 
-        bool btn_1_rising_edge = hDev->is_button_press_rising_edge(bGripper->act_1_btn);
-        bool btn_1_falling_edge = hDev->is_button_press_falling_edge(bGripper->act_1_btn);
-        bool btn_2_rising_edge = hDev->is_button_press_rising_edge(bGripper->act_2_btn);
-        bool btn_2_falling_edge = hDev->is_button_press_falling_edge(bGripper->act_2_btn);
+            bool btn_1_rising_edge = hDev->is_button_press_rising_edge(bGripper->act_1_btn);
+            bool btn_1_falling_edge = hDev->is_button_press_falling_edge(bGripper->act_1_btn);
+            bool btn_2_rising_edge = hDev->is_button_press_rising_edge(bGripper->act_2_btn);
+            bool btn_2_falling_edge = hDev->is_button_press_falling_edge(bGripper->act_2_btn);
 
-        double gripper_offset = 0;
-        switch (g_coordApp->m_simModes){
-        case MODES::CAM_CLUTCH_CONTROL:
-            g_clutch_btn_pressed  = hDev->is_button_pressed(bGripper->act_1_btn);
-            g_cam_btn_pressed     = hDev->is_button_pressed(bGripper->act_2_btn);
-            if(g_clutch_btn_pressed) g_btn_action_str = "Clutch Pressed";
-            if(g_cam_btn_pressed)   {g_btn_action_str = "Cam Pressed";}
-            if(btn_1_falling_edge || btn_2_falling_edge) g_btn_action_str = "";
-            break;
-        case MODES::GRIPPER_JAW_CONTROL:
-            if (btn_1_rising_edge) gripper_offset = 0.1;
-            if (btn_2_rising_edge) gripper_offset = -0.1;
-            bGripper->offset_gripper_angle(gripper_offset);
-            break;
-        case MODES::CHANGE_CONT_LIN_GAIN:
-            if(btn_1_rising_edge) g_coordApp->increment_K_lc(K_lc_offset);
-            if(btn_2_rising_edge) g_coordApp->increment_K_lc(-K_lc_offset);
-            break;
-        case MODES::CHANGE_CONT_ANG_GAIN:
-            if(btn_1_rising_edge) g_coordApp->increment_K_ac(K_ac_offset);
-            if(btn_2_rising_edge) g_coordApp->increment_K_ac(-K_ac_offset);
-            break;
-        case MODES::CHANGE_CONT_LIN_DAMP:
-            if(btn_1_rising_edge) g_coordApp->increment_B_lc(B_lc_offset);
-            if(btn_2_rising_edge) g_coordApp->increment_B_lc(-B_lc_offset);
-            break;
-        case MODES::CHANGE_CONT_ANG_DAMP:
-            if(btn_1_rising_edge) g_coordApp->increment_B_ac(B_ac_offset);
-            if(btn_2_rising_edge) g_coordApp->increment_B_ac(-B_ac_offset);
-            break;
-        case MODES::CHANGE_DEV_LIN_GAIN:
-            if(btn_1_rising_edge) g_coordApp->increment_K_lh(K_lh_offset);
-            if(btn_2_rising_edge) g_coordApp->increment_K_lh(-K_lh_offset);
-            break;
-        case MODES::CHANGE_DEV_ANG_GAIN:
-            if(btn_1_rising_edge) g_coordApp->increment_K_ah(K_ah_offset);
-            if(btn_2_rising_edge) g_coordApp->increment_K_ah(-K_ah_offset);
-            break;
-        }
-
-
-        if(g_cam_btn_pressed){
-            if(bGripper->btn_cam_rising_edge){
-                bGripper->btn_cam_rising_edge = false;
-                bGripper->m_posRefLast = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
-                bGripper->m_rotRefLast = bGripper->m_rotRef;
+            double gripper_offset = 0;
+            switch (g_coordApp->m_simModes){
+            case MODES::CAM_CLUTCH_CONTROL:
+                g_clutch_btn_pressed  = hDev->is_button_pressed(bGripper->act_1_btn);
+                g_cam_btn_pressed     = hDev->is_button_pressed(bGripper->act_2_btn);
+                if(g_clutch_btn_pressed) g_btn_action_str = "Clutch Pressed";
+                if(g_cam_btn_pressed)   {g_btn_action_str = "Cam Pressed";}
+                if(btn_1_falling_edge || btn_2_falling_edge) g_btn_action_str = "";
+                break;
+            case MODES::GRIPPER_JAW_CONTROL:
+                if (btn_1_rising_edge) gripper_offset = 0.1;
+                if (btn_2_rising_edge) gripper_offset = -0.1;
+                bGripper->offset_gripper_angle(gripper_offset);
+                break;
+            case MODES::CHANGE_CONT_LIN_GAIN:
+                if(btn_1_rising_edge) g_coordApp->increment_K_lc(K_lc_offset);
+                if(btn_2_rising_edge) g_coordApp->increment_K_lc(-K_lc_offset);
+                break;
+            case MODES::CHANGE_CONT_ANG_GAIN:
+                if(btn_1_rising_edge) g_coordApp->increment_K_ac(K_ac_offset);
+                if(btn_2_rising_edge) g_coordApp->increment_K_ac(-K_ac_offset);
+                break;
+            case MODES::CHANGE_CONT_LIN_DAMP:
+                if(btn_1_rising_edge) g_coordApp->increment_B_lc(B_lc_offset);
+                if(btn_2_rising_edge) g_coordApp->increment_B_lc(-B_lc_offset);
+                break;
+            case MODES::CHANGE_CONT_ANG_DAMP:
+                if(btn_1_rising_edge) g_coordApp->increment_B_ac(B_ac_offset);
+                if(btn_2_rising_edge) g_coordApp->increment_B_ac(-B_ac_offset);
+                break;
+            case MODES::CHANGE_DEV_LIN_GAIN:
+                if(btn_1_rising_edge) g_coordApp->increment_K_lh(K_lh_offset);
+                if(btn_2_rising_edge) g_coordApp->increment_K_lh(-K_lh_offset);
+                break;
+            case MODES::CHANGE_DEV_ANG_GAIN:
+                if(btn_1_rising_edge) g_coordApp->increment_K_ah(K_ah_offset);
+                if(btn_2_rising_edge) g_coordApp->increment_K_ah(-K_ah_offset);
+                break;
             }
-            hDev->m_posDeviceClutched = hDev->m_posDevice;
-            hDev->m_rotDeviceClutched = hDev->m_rotDevice;
-        }
-        else{
-            bGripper->btn_cam_rising_edge = true;
-        }
-        if(g_clutch_btn_pressed){
-            if(bGripper->btn_clutch_rising_edge){
-                bGripper->btn_clutch_rising_edge = false;
-                bGripper->m_posRefLast = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
-                bGripper->m_rotRefLast = bGripper->m_rotRef;
+
+
+            if(g_cam_btn_pressed){
+                if(bGripper->btn_cam_rising_edge){
+                    bGripper->btn_cam_rising_edge = false;
+                    bGripper->m_posRefLast = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
+                    bGripper->m_rotRefLast = bGripper->m_rotRef;
+                }
+                hDev->m_posDeviceClutched = hDev->m_posDevice;
+                hDev->m_rotDeviceClutched = hDev->m_rotDevice;
             }
-            hDev->m_posDeviceClutched = hDev->m_posDevice;
-            hDev->m_rotDeviceClutched = hDev->m_rotDevice;
+            else{
+                bGripper->btn_cam_rising_edge = true;
+            }
+            if(g_clutch_btn_pressed){
+                if(bGripper->btn_clutch_rising_edge){
+                    bGripper->btn_clutch_rising_edge = false;
+                    bGripper->m_posRefLast = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
+                    bGripper->m_rotRefLast = bGripper->m_rotRef;
+                }
+                hDev->m_posDeviceClutched = hDev->m_posDevice;
+                hDev->m_rotDeviceClutched = hDev->m_rotDevice;
+            }
+            else{
+                bGripper->btn_clutch_rising_edge = true;
+            }
+
+            bGripper->m_posRef = bGripper->m_posRefLast +
+                    (g_camera->getLocalRot() * (hDev->m_posDevice - hDev->m_posDeviceClutched));
+            if (!g_coordApp->m_use_cam_frame_rot){
+                bGripper->m_rotRef = bGripper->m_rotRefLast * g_camera->getLocalRot() *
+                        cTranspose(hDev->m_rotDeviceClutched) * hDev->m_rotDevice *
+                        cTranspose(g_camera->getLocalRot());
+            }
+            else{
+                bGripper->m_rotRef = hDev->m_rotDevice;
+            }
+            bGripper->m_posRef.mul(bGripper->m_workspaceScaleFactor);
+
+            // update position of tool
+            bGripper->update_measured_pose();
+
+            dposLast[i] = dpos[i];
+            dpos[i] = bGripper->m_posRef - bGripper->m_posGripper;
+            ddpos[i] = (dpos[i] - dposLast[i]) / dt;
+
+            drotLast[i] = drot[i];
+            drot[i] = cTranspose(bGripper->m_rotGripper) * bGripper->m_rotRef;
+            ddrot[i] = (cTranspose(drot[i]) * drotLast[i]);
+
+            double angle, dangle;
+            cVector3d axis, daxis;
+            drot[i].toAxisAngle(axis, angle);
+            ddrot[i].toAxisAngle(daxis, dangle);
+
+            cVector3d force, torque;
+
+            force = bGripper->K_lc * dpos[i] +
+                    (bGripper->B_lc) * ddpos[i];
+            torque = (bGripper->K_ac * angle) * axis;
+            bGripper->m_rotGripper.mul(torque);
+
+            bGripper->apply_force(force);
+            bGripper->apply_torque(torque);
+
+
+            force  = - g_force_enable * bGripper->K_lh_ramp * (bGripper->K_lc * dpos[i] + (bGripper->B_lc) * ddpos[i]);
+            torque = - g_force_enable * bGripper->K_ah_ramp * ((bGripper->K_ac * angle) * axis);
+
+            hDev->apply_wrench(force, torque);
+
+            if (bGripper->K_lh_ramp < bGripper->K_lh)
+            {
+                bGripper->K_lh_ramp = bGripper->K_lh_ramp + 0.1 * dt * bGripper->K_lh;
+            }
+            else
+            {
+                bGripper->K_lh_ramp = bGripper->K_lh;
+            }
+
+            if (bGripper->K_ah_ramp < bGripper->K_ah)
+            {
+                bGripper->K_ah_ramp = bGripper->K_ah_ramp + 0.1 * dt * bGripper->K_ah;
+            }
+            else
+            {
+                bGripper->K_ah_ramp = bGripper->K_ah;
+            }
+            bGripper->set_loop_exec_flag();
         }
-        else{
-            bGripper->btn_clutch_rising_edge = true;
-        }
-
-        bGripper->m_posRef = bGripper->m_posRefLast +
-                (g_camera->getLocalRot() * (hDev->m_posDevice - hDev->m_posDeviceClutched));
-        if (!g_coordApp->m_use_cam_frame_rot){
-            bGripper->m_rotRef = bGripper->m_rotRefLast * g_camera->getLocalRot() *
-                    cTranspose(hDev->m_rotDeviceClutched) * hDev->m_rotDevice *
-                    cTranspose(g_camera->getLocalRot());
-        }
-        else{
-            bGripper->m_rotRef = hDev->m_rotDevice;
-        }
-        bGripper->m_posRef.mul(bGripper->m_workspaceScaleFactor);
-
-        // update position of tool
-       bGripper->update_measured_pose();
-
-        dposLast = dpos;
-        dpos = bGripper->m_posRef - bGripper->m_posGripper;
-        ddpos = (dpos - dposLast) / dt;
-
-        drotLast = drot;
-        drot = cTranspose(bGripper->m_rotGripper) * bGripper->m_rotRef;
-        ddrot = (cTranspose(drot) * drotLast);
-
-        double angle, dangle;
-        cVector3d axis, daxis;
-        drot.toAxisAngle(axis, angle);
-        ddrot.toAxisAngle(daxis, dangle);
-
-        cVector3d force, torque;
-
-        force  = - g_force_enable * bGripper->K_lh_ramp * (bGripper->K_lc * dpos + (bGripper->B_lc) * ddpos);
-        torque = - g_force_enable * bGripper->K_ah_ramp * ((bGripper->K_ac * angle) * axis);
-
-        hDev->apply_wrench(force, torque);
-
-        if (bGripper->K_lh_ramp < bGripper->K_lh)
-        {
-            bGripper->K_lh_ramp = bGripper->K_lh_ramp + 0.1 * dt * bGripper->K_lh;
-        }
-        else
-        {
-            bGripper->K_lh_ramp = bGripper->K_lh;
-        }
-
-        if (bGripper->K_ah_ramp < bGripper->K_ah)
-        {
-            bGripper->K_ah_ramp = bGripper->K_ah_ramp + 0.1 * dt * bGripper->K_ah;
-        }
-        else
-        {
-            bGripper->K_ah_ramp = bGripper->K_ah;
-        }
-        bGripper->set_loop_exec_flag();
+        g_bulletWorld->updateDynamics(dt, g_clockWorld.getCurrentTimeSeconds(), g_freqCounterHaptics.getFrequency(), g_coordApp->m_num_devices);
     }
+    g_simulationFinished = true;
     // exit haptics thread
 }
