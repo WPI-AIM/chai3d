@@ -74,10 +74,15 @@ public:
     double rolling_friction;
 };
 
+enum GripperType{
+    SINGLE_JOINT,
+    MULTI_JOINT
+};
+
 class cBulletWorld;
 class cBulletGripper:public cBulletMultiMesh{
 public:
-    cBulletGripper(cBulletWorld *bulletWorld, std::string gripper_name = "Gripper");
+    cBulletGripper(cBulletWorld *bulletWorld, std::string gripper_name = "Gripper", GripperType a_type = GripperType::MULTI_JOINT);
     ~cBulletGripper(){}
 
 public:
@@ -87,13 +92,21 @@ public:
     void build();
     virtual void updateCmdFromROS(double dt=0.001);
 public:
-    cBulletMultiMesh* bulletMeshGripperL2;
-    btHingeConstraint* bulletHinge;
+    cBulletMultiMesh* link2, *link1a, *link2a;
+    btHingeConstraint* hinge1, *hinge1a, *hinge2a;
 
 private:
-    btVector3 axisA, axisB, pvtA, pvtB;
+    btVector3 axis1, axis2, pvt1, pvt2;
+    btVector3 axis1a, axis2a, pvt1a, pvt2a;
+    btVector3 axis1aa, axis2aa, pvt1aa, pvt2aa;
     cMaterial mat;
-    double jaw_open_lim, jaw_close_lim;
+    double j1_low_lim, j1_high_lim;
+    double j1a_low_lim, j1a_high_lim;
+    double j2a_low_lim, j2a_high_lim;
+    double l1_len, l2_len;
+
+    double gScale;
+    double gA;
 };
 
 }
