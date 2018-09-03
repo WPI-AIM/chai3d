@@ -268,7 +268,7 @@ cBulletSphere* Device::create_af_cursor(cBulletWorld *a_world, string a_name){
     cMaterial mat;
     mat.setGreenLightSea();
     m_af_cursor->setMaterial(mat);
-    m_af_cursor->buildDynamicModel();
+//    m_af_cursor->buildDynamicModel();
     a_world->addChild(m_af_cursor);
     return m_af_cursor;
 }
