@@ -1551,6 +1551,9 @@ void updateHaptics(void* a_arg){
                 hDev->enable_force_feedback(true);
             }
         }
+        else{
+            bGripper->set_gripper_angle(0.5);
+        }
 
         if(hDev->is_button_press_rising_edge(bGripper->mode_next_btn)) g_coordApp->next_mode();
         if(hDev->is_button_press_rising_edge(bGripper->mode_prev_btn)) g_coordApp->prev_mode();
