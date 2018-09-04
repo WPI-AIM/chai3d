@@ -91,7 +91,9 @@ cBulletMultiMesh* g_bulletBase;
 // bullet static walls and ground
 cBulletStaticPlane* g_bulletGround;
 
-cBulletStaticPlane* g_bulletBoxWall[5];
+cBulletStaticPlane* g_bulletBoxWallX[2];
+cBulletStaticPlane* g_bulletBoxWallY[2];
+cBulletStaticPlane* g_bulletBoxWallZ[1];
 
 cVector3d g_camPos(0,0,0);
 cVector3d g_dev_vel;
@@ -977,10 +979,10 @@ int main(int argc, char* argv[])
     g_light->setEnabled(true);
 
     // position the light source
-    g_light->setLocalPos( 0, 0, 1.2);
+    g_light->setLocalPos( 0, -0.5, 2.5);
 
     // define the direction of the light beam
-    g_light->setDir(0,0,-1.0);
+    g_light->setDir(0, 0, -1.0);
 
     // set uniform concentration level of light
     g_light->setSpotExponent(0.0);
@@ -989,7 +991,7 @@ int main(int argc, char* argv[])
     g_light->setShadowMapEnabled(true);
 
     // set the resolution of the shadow map
-    g_light->m_shadowMap->setQualityLow();
+    g_light->m_shadowMap->setQualityMedium();
     //light->m_shadowMap->setQualityMedium();
 
     // set light cone half angle
@@ -1074,28 +1076,44 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
 
     // we create 5 static walls to contain the dynamic objects within a limited workspace
-    double planeWidth = 1.0;
-    g_bulletBoxWall[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -2.0 * planeWidth);
-    g_bulletBoxWall[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -1.5*planeWidth);
-    g_bulletBoxWall[2] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -1.5*planeWidth);
-    g_bulletBoxWall[3] = new cBulletStaticPlane(g_bulletWorld, cVector3d(-1.0, 0.0, 0.0), -planeWidth);
-    g_bulletBoxWall[4] = new cBulletStaticPlane(g_bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.8 * planeWidth);
+    double box_l, box_w, box_h;
+    box_l = 2.0;
+    box_w = 4.0;
+    box_h = 1.5;
+    g_bulletBoxWallZ[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -0.5 * box_h);
+    g_bulletBoxWallY[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -0.5 * box_w);
+    g_bulletBoxWallY[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -0.5 * box_w);
+    g_bulletBoxWallX[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(-1.0, 0.0, 0.0), -0.5 * box_l);
+    g_bulletBoxWallX[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(1.0, 0.0, 0.0), -0.5 * box_l);
 
-    for (int i = 0 ; i < 5 ; i++){
-        cVector3d worldZ;
-        worldZ.set(0,0,1);
-        cVector3d planeOri = cCross(g_bulletBoxWall[i]->getPlaneNormal(), worldZ);
-        cMatrix3d planeRot;
-        planeRot.setAxisAngleRotationDeg(planeOri, 90);
-        worldZ.set(0,0,1);
-        g_bulletWorld->addChild(g_bulletBoxWall[i]);
-        cCreatePlane(g_bulletBoxWall[i], 2.0, 3.0,
-                     g_bulletBoxWall[i]->getPlaneConstant() * g_bulletBoxWall[i]->getPlaneNormal(),
+    cVector3d worldZ(0.0, 0.0, 1.0);
+    cMaterial matPlane;
+    matPlane.setWhiteIvory();
+    matPlane.setShininess(0.3);
+    cVector3d planeNorm;
+    cMatrix3d planeRot;
+
+    for (int i = 0 ; i < 2 ; i++){
+        planeNorm = cCross(g_bulletBoxWallX[i]->getPlaneNormal(), worldZ);
+        planeRot.setAxisAngleRotationDeg(planeNorm, 90);
+        g_bulletWorld->addChild(g_bulletBoxWallX[i]);
+        cCreatePlane(g_bulletBoxWallX[i], box_h, box_w,
+                     g_bulletBoxWallX[i]->getPlaneConstant() * g_bulletBoxWallX[i]->getPlaneNormal(),
                      planeRot);
-        cMaterial matPlane;
-        matPlane.setBlueSky();
-        g_bulletBoxWall[i]->setMaterial(matPlane);
-        g_bulletBoxWall[i]->setTransparencyLevel(0.5, true, true);
+        g_bulletBoxWallX[i]->setMaterial(matPlane);
+        if (i == 0) g_bulletBoxWallX[i]->setTransparencyLevel(0.3, true, true);
+        else g_bulletBoxWallX[i]->setTransparencyLevel(0.5, true, true);
+    }
+
+    for (int i = 0 ; i < 2 ; i++){
+        planeNorm = cCross(g_bulletBoxWallY[i]->getPlaneNormal(), worldZ);
+        planeRot.setAxisAngleRotationDeg(planeNorm, 90);
+        g_bulletWorld->addChild(g_bulletBoxWallY[i]);
+        cCreatePlane(g_bulletBoxWallY[i], box_l, box_h,
+                     g_bulletBoxWallY[i]->getPlaneConstant() * g_bulletBoxWallY[i]->getPlaneNormal(),
+                     planeRot);
+        g_bulletBoxWallY[i]->setMaterial(matPlane);
+        g_bulletBoxWallY[i]->setTransparencyLevel(0.5, true, true);
     }
 
 
@@ -1104,13 +1122,13 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
 
     // create ground plane
-    g_bulletGround = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, 1.0), -planeWidth);
+    g_bulletGround = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, 1.0), -0.5 * box_h);
 
     // add plane to world as we will want to make it visibe
     g_bulletWorld->addChild(g_bulletGround);
 
     // create a mesh plane where the static plane is located
-    cCreatePlane(g_bulletGround, 3.0, 3.0, g_bulletGround->getPlaneConstant() * g_bulletGround->getPlaneNormal());
+    cCreatePlane(g_bulletGround, box_l + 0.4, box_w + 0.8, g_bulletGround->getPlaneConstant() * g_bulletGround->getPlaneNormal());
 
     // define some material properties and apply to mesh
     cMaterial matGround;
