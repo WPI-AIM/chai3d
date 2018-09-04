@@ -129,7 +129,7 @@ void cBulletGripper::build(){
     double a_mass = 0.05;
     setMass(a_mass);
     buildContactTriangles(0.001);
-    setShowFrame(true);
+//    setShowFrame(true);
     estimateInertia();
     buildDynamicModel();
     m_dynamicWorld->addChild(this);
@@ -139,7 +139,7 @@ void cBulletGripper::build(){
     if (g_2){
     link2->setMass(a_mass);
     link2->buildContactTriangles(0.001);
-    link2->setShowFrame(true);
+//    link2->setShowFrame(true);
     link2->estimateInertia();
     link2->buildDynamicModel();
     m_dynamicWorld->addChild(link2);
@@ -164,7 +164,7 @@ void cBulletGripper::build(){
     if (g_1a){
     link1a->setMass(a_mass);
     link1a->buildContactTriangles(0.001);
-    link1a->setShowFrame(true);
+//    link1a->setShowFrame(true);
     link1a->estimateInertia();
     link1a->buildDynamicModel();
     m_dynamicWorld->addChild(link1a);
@@ -188,7 +188,7 @@ void cBulletGripper::build(){
     if (g_2a){
     link2a->setMass(a_mass);
     link2a->buildContactTriangles(0.001);
-    link2a->setShowFrame(true);
+//    link2a->setShowFrame(true);
     link2a->estimateInertia();
     link2a->buildDynamicModel();
     m_dynamicWorld->addChild(link2a);
