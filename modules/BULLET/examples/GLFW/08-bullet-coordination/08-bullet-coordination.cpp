@@ -88,6 +88,12 @@ cBulletMultiMesh* g_bulletGear;
 cBulletMultiMesh* g_bulletTorus;
 cBulletMultiMesh* g_bulletBase;
 
+cBulletMultiMesh* g_meshBase;
+cBulletMultiMesh* g_meshPuzzleBase;
+cBulletMultiMesh* g_meshCirclePuzzle;
+cBulletMultiMesh* g_meshSquarePuzzle;
+cBulletMultiMesh* g_meshTrianglePuzzle;
+
 // bullet static walls and ground
 cBulletStaticPlane* g_bulletGround;
 
@@ -1032,17 +1038,18 @@ int main(int argc, char* argv[])
     double size = 0.40;
     cMaterial meshMat;
 
-    g_bulletGear = new cBulletMultiMesh(g_bulletWorld, "Gear");
-    g_bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
-    g_bulletGear->scale(0.0014);
-    g_bulletWorld->addChild(g_bulletGear);
-    g_bulletGear->buildContactTriangles(0.001);
-    g_bulletGear->setMass(0.3);
-    g_bulletGear->estimateInertia();
-    g_bulletGear->buildDynamicModel();
-    meshMat.setPinkDeep();
-    g_bulletGear->setMaterial(meshMat);
-    g_bulletGear->m_bulletRigidBody->setFriction(1);
+//    g_bulletGear = new cBulletMultiMesh(g_bulletWorld, "Gear");
+//    g_bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
+//    g_bulletGear->scale(0.0014);
+//    g_bulletWorld->addChild(g_bulletGear);
+//    g_bulletGear->buildContactTriangles(0.001);
+//    g_bulletGear->setMass(0.3);
+//    g_bulletGear->estimateInertia();
+//    g_bulletGear->buildDynamicModel();
+//    meshMat.setPinkDeep();
+//    g_bulletGear->setMaterial(meshMat);
+//    g_bulletGear->m_bulletRigidBody->setFriction(1);
+//    g_bulletGear->setLocalPos(-0.3, -0.5, -0.5);
 
     g_bulletTorus = new cBulletMultiMesh(g_bulletWorld, "Torus");
     g_bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
@@ -1055,8 +1062,9 @@ int main(int argc, char* argv[])
     g_bulletTorus->buildDynamicModel();
     meshMat.setOrangeTomato();
     g_bulletTorus->setMaterial(meshMat);
+    g_bulletTorus->setLocalPos(-0.3, 0.0, -0.5);
 
-    g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "Base");
+    g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "RoundBase");
     g_bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/gear/base.3ds"));
     g_bulletBase->scale(0.3);
     g_bulletBase->setLocalPos(cVector3d(-0.3,0,0));
@@ -1068,18 +1076,82 @@ int main(int argc, char* argv[])
     meshMat.setBlueNavy();
     g_bulletBase->setMaterial(meshMat);
     g_bulletBase->m_bulletRigidBody->setFriction(1);
+    g_bulletBase->setLocalPos(-0.3, 0.5, -0.5);
 
+    //////////////////////////////////////////////////////////////////////////
+    // PUZZLE MESHES
+    //////////////////////////////////////////////////////////////////////////
+    g_meshBase = new cBulletMultiMesh(g_bulletWorld, "SolidBase");
+    g_meshBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/BaseMount.3ds"));
+    g_bulletWorld->addChild(g_meshBase);
+    g_meshBase->buildContactTriangles(0.001);
+    g_meshBase->setMass(10);
+    g_meshBase->estimateInertia();
+    g_meshBase->buildDynamicModel();
+    meshMat.setPinkDeep();
+    g_meshBase->setMaterial(meshMat);
+    g_meshBase->m_bulletRigidBody->setFriction(1);
+    g_meshBase->setLocalPos(0.4, 0.0, -0.8);
+
+    g_meshPuzzleBase = new cBulletMultiMesh(g_bulletWorld, "PuzzleBase");
+    g_meshPuzzleBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PuzzleBase.3ds"));
+    g_bulletWorld->addChild(g_meshPuzzleBase);
+    g_meshPuzzleBase->buildContactTriangles(0.001);
+    g_meshPuzzleBase->setMass(8);
+    g_meshPuzzleBase->estimateInertia();
+    g_meshPuzzleBase->buildDynamicModel();
+    meshMat.setYellowGold();
+    g_meshPuzzleBase->setMaterial(meshMat);
+    g_meshPuzzleBase->m_bulletRigidBody->setFriction(1);
+    g_meshPuzzleBase->setLocalPos(0.4, 0.0, -0.6);
+
+    g_meshCirclePuzzle = new cBulletMultiMesh(g_bulletWorld, "CirclePuzzle");
+    g_meshCirclePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/CirclePuzzle.3ds"));
+    g_bulletWorld->addChild(g_meshCirclePuzzle);
+    g_meshCirclePuzzle->buildContactTriangles(0.001);
+    g_meshCirclePuzzle->setMass(0.1);
+    g_meshCirclePuzzle->estimateInertia();
+    g_meshCirclePuzzle->buildDynamicModel();
+    meshMat.setPinkPaleVioletRed();
+    g_meshCirclePuzzle->setMaterial(meshMat);
+    g_meshCirclePuzzle->m_bulletRigidBody->setFriction(1);
+    g_meshCirclePuzzle->setLocalPos(0.5, -0.8, -0.5);
+
+    g_meshSquarePuzzle = new cBulletMultiMesh(g_bulletWorld, "SquarePuzzle");
+    g_meshSquarePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/SquarePuzzle.3ds"));
+    g_bulletWorld->addChild(g_meshSquarePuzzle);
+    g_meshSquarePuzzle->buildContactTriangles(0.001);
+    g_meshSquarePuzzle->setMass(0.1);
+    g_meshSquarePuzzle->estimateInertia();
+    g_meshSquarePuzzle->buildDynamicModel();
+    meshMat.setBlueCornflower();
+    g_meshSquarePuzzle->setMaterial(meshMat);
+    g_meshSquarePuzzle->m_bulletRigidBody->setFriction(1);
+    g_meshSquarePuzzle->setLocalPos(0.5, 0.0, -0.5);
+
+    g_meshTrianglePuzzle = new cBulletMultiMesh(g_bulletWorld, "TrianglePuzzle");
+    g_meshTrianglePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/TrianglePuzzle.3ds"));
+    g_bulletWorld->addChild(g_meshTrianglePuzzle);
+    g_meshTrianglePuzzle->buildContactTriangles(0.001);
+    g_meshTrianglePuzzle->setMass(0.1);
+    g_meshTrianglePuzzle->estimateInertia();
+    g_meshTrianglePuzzle->buildDynamicModel();
+    meshMat.setGreenMediumSpring();
+    g_meshTrianglePuzzle->setMaterial(meshMat);
+    g_meshTrianglePuzzle->m_bulletRigidBody->setFriction(1);
+    g_meshTrianglePuzzle->setLocalPos(0.5, 0.8, -0.5);
+
+    // end puzzle meshes
     g_coordApp = std::make_shared<Coordination>(g_bulletWorld, num_devices_to_load);
 
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS
     //////////////////////////////////////////////////////////////////////////
-
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double box_l, box_w, box_h;
-    box_l = 2.0;
+    box_l = 3.0;
     box_w = 4.0;
-    box_h = 1.5;
+    box_h = 2.0;
     g_bulletBoxWallZ[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -0.5 * box_h);
     g_bulletBoxWallY[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -0.5 * box_w);
     g_bulletBoxWallY[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -0.5 * box_w);
