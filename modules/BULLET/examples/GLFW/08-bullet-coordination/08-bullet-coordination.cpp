@@ -1429,6 +1429,10 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         g_coordApp->m_use_cam_frame_rot = false;
         printf("Gripper Rotation w.r.t World Frame:\n");
     }
+    else if (a_key == GLFW_KEY_N){
+        g_coordApp->next_mode();
+        printf("Changing to next device mode:\n");
+    }
 //    // option - open gripper
 //    else if (a_key == GLFW_KEY_S)
 //    {
