@@ -1052,7 +1052,7 @@ int main(int argc, char* argv[])
 //    g_bulletGear->setLocalPos(-0.3, -0.5, -0.5);
 
     g_bulletTorus = new cBulletMultiMesh(g_bulletWorld, "Torus");
-    g_bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/gear/torus.3ds"));
+    g_bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/Torus.STL"));
     g_bulletTorus->scale(0.2);
     g_bulletTorus->setLocalPos(cVector3d(0.3,0,0));
     g_bulletWorld->addChild(g_bulletTorus);
@@ -1065,7 +1065,7 @@ int main(int argc, char* argv[])
     g_bulletTorus->setLocalPos(-0.3, 0.0, -0.5);
 
     g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "RoundBase");
-    g_bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/gear/base.3ds"));
+    g_bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PegBase.STL"));
     g_bulletBase->scale(0.3);
     g_bulletBase->setLocalPos(cVector3d(-0.3,0,0));
     g_bulletWorld->addChild(g_bulletBase);
@@ -1082,7 +1082,7 @@ int main(int argc, char* argv[])
     // PUZZLE MESHES
     //////////////////////////////////////////////////////////////////////////
     g_meshBase = new cBulletMultiMesh(g_bulletWorld, "SolidBase");
-    g_meshBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/BaseMount.3ds"));
+    g_meshBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/BaseMount.STL"));
     g_bulletWorld->addChild(g_meshBase);
     g_meshBase->buildContactTriangles(0.001);
     g_meshBase->setMass(10);
@@ -1091,10 +1091,10 @@ int main(int argc, char* argv[])
     meshMat.setPinkDeep();
     g_meshBase->setMaterial(meshMat);
     g_meshBase->m_bulletRigidBody->setFriction(1);
-    g_meshBase->setLocalPos(0.4, 0.0, -0.8);
+    g_meshBase->setLocalPos(0.4, 0.0, -1.0);
 
     g_meshPuzzleBase = new cBulletMultiMesh(g_bulletWorld, "PuzzleBase");
-    g_meshPuzzleBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PuzzleBase.3ds"));
+    g_meshPuzzleBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PuzzleBase2.STL"));
     g_bulletWorld->addChild(g_meshPuzzleBase);
     g_meshPuzzleBase->buildContactTriangles(0.001);
     g_meshPuzzleBase->setMass(8);
@@ -1106,9 +1106,9 @@ int main(int argc, char* argv[])
     g_meshPuzzleBase->setLocalPos(0.4, 0.0, -0.6);
 
     g_meshCirclePuzzle = new cBulletMultiMesh(g_bulletWorld, "CirclePuzzle");
-    g_meshCirclePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/CirclePuzzle.3ds"));
+    g_meshCirclePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/CirclePuzzle2.STL"));
     g_bulletWorld->addChild(g_meshCirclePuzzle);
-    g_meshCirclePuzzle->buildContactTriangles(0.001);
+    g_meshCirclePuzzle->buildContactTriangles(0);
     g_meshCirclePuzzle->setMass(0.1);
     g_meshCirclePuzzle->estimateInertia();
     g_meshCirclePuzzle->buildDynamicModel();
@@ -1118,7 +1118,7 @@ int main(int argc, char* argv[])
     g_meshCirclePuzzle->setLocalPos(0.5, -0.8, -0.5);
 
     g_meshSquarePuzzle = new cBulletMultiMesh(g_bulletWorld, "SquarePuzzle");
-    g_meshSquarePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/SquarePuzzle.3ds"));
+    g_meshSquarePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/SquarePuzzle2.STL"));
     g_bulletWorld->addChild(g_meshSquarePuzzle);
     g_meshSquarePuzzle->buildContactTriangles(0.001);
     g_meshSquarePuzzle->setMass(0.1);
@@ -1130,7 +1130,7 @@ int main(int argc, char* argv[])
     g_meshSquarePuzzle->setLocalPos(0.5, 0.0, -0.5);
 
     g_meshTrianglePuzzle = new cBulletMultiMesh(g_bulletWorld, "TrianglePuzzle");
-    g_meshTrianglePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/TrianglePuzzle.3ds"));
+    g_meshTrianglePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/TrianglePuzzle2.STL"));
     g_bulletWorld->addChild(g_meshTrianglePuzzle);
     g_meshTrianglePuzzle->buildContactTriangles(0.001);
     g_meshTrianglePuzzle->setMass(0.1);

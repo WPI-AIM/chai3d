@@ -64,7 +64,7 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperN
         g_2 =  true;
         g_1a = false;
         g_2a = false;
-        _link_1_str = "../resources/models/gripper/L1.3ds";
+        _link_1_str = "../resources/models/gripper/SingleLinkL1.STL";
         gScale = 1.0;
 
         j1_low_lim = 178.0 * (PI / 180.0);
@@ -75,8 +75,8 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperN
         g_2 =  true;
         g_1a = true;
         g_2a = true;
-        _link_1_str = "../resources/models/gripper2/L1.3ds";
-        _link_2_str = "../resources/models/gripper2/L2.3ds";
+        _link_1_str = "../resources/models/gripper/MultiLinkL1.STL";
+        _link_2_str = "../resources/models/gripper/MultiLinkL2.STL";
 
         gScale = 1.0;
         gA = 15 * (PI / 180);
@@ -128,7 +128,7 @@ void cBulletGripper::build(){
 
     double a_mass = 0.05;
     setMass(a_mass);
-    buildContactTriangles(0.001);
+    buildContactTriangles(0.0001);
 //    setShowFrame(true);
     estimateInertia();
     buildDynamicModel();
@@ -138,7 +138,7 @@ void cBulletGripper::build(){
 
     if (g_2){
     link2->setMass(a_mass);
-    link2->buildContactTriangles(0.001);
+    link2->buildContactTriangles(0.0001);
 //    link2->setShowFrame(true);
     link2->estimateInertia();
     link2->buildDynamicModel();
@@ -163,7 +163,7 @@ void cBulletGripper::build(){
 
     if (g_1a){
     link1a->setMass(a_mass);
-    link1a->buildContactTriangles(0.001);
+    link1a->buildContactTriangles(0.0001);
 //    link1a->setShowFrame(true);
     link1a->estimateInertia();
     link1a->buildDynamicModel();
@@ -187,7 +187,7 @@ void cBulletGripper::build(){
 
     if (g_2a){
     link2a->setMass(a_mass);
-    link2a->buildContactTriangles(0.001);
+    link2a->buildContactTriangles(0.0001);
 //    link2a->setShowFrame(true);
     link2a->estimateInertia();
     link2a->buildDynamicModel();
