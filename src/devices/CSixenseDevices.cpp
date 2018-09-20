@@ -44,6 +44,8 @@
 //------------------------------------------------------------------------------
 #include "system/CGlobals.h"
 #include "devices/CSixenseDevices.h"
+#include <sixense.h>
+#include <iostream>
 //------------------------------------------------------------------------------
 #if defined(C_ENABLE_SIXENSE_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
@@ -103,35 +105,6 @@ extern "C"
 #else
 
     void * SixenseSO = NULL;
-
-extern "C"
-{
-    int (*sixenseInit                         ) (void);
-    int (*sixenseExit                         ) (void);
-    int (*sixenseGetMaxBases                  ) ();
-    int (*sixenseSetActiveBase                ) (int i);
-    int (*sixenseIsBaseConnected              ) (int i);
-    int (*sixenseGetMaxControllers            ) (void);
-    int (*sixenseIsControllerEnabled          ) (int which);
-    int (*sixenseGetNumActiveControllers      ) ();
-    int (*sixenseGetHistorySize               ) ();
-    int (*sixenseGetData                      ) (int which, int index_back, sixenseControllerData *);
-    int (*sixenseGetAllData                   ) (int index_back, sixenseAllControllerData *);
-    int (*sixenseGetNewestData                ) (int which, sixenseControllerData *);
-    int (*sixenseGetAllNewestData             ) (sixenseAllControllerData *);
-    int (*sixenseSetHemisphereTrackingMode    ) (int which_controller, int state);
-    int (*sixenseGetHemisphereTrackingMode    ) (int which_controller, int *state);
-    int (*sixenseAutoEnableHemisphereTracking ) (int which_controller);
-    int (*sixenseSetHighPriorityBindingEnabled) (int on_or_off);
-    int (*sixenseGetHighPriorityBindingEnabled) (int *on_or_off);
-    int (*sixenseTriggerVibration             ) (int controller_id, int duration_100ms, int pattern_id);
-    int (*sixenseSetFilterEnabled             ) (int on_or_off);
-    int (*sixenseGetFilterEnabled             ) (int *on_or_off);
-    int (*sixenseSetFilterParams              ) (float near_range, float near_val, float far_range, float far_val);
-    int (*sixenseGetFilterParams              ) (float *near_range, float *near_val, float *far_range, float *far_val);
-    int (*sixenseSetBaseColor                 ) (unsigned char red, unsigned char green, unsigned char blue);
-    int (*sixenseGetBaseColor                 ) (unsigned char *red, unsigned char *green, unsigned char *blue);
-}
 
 #endif
 //------------------------------------------------------------------------------
@@ -210,9 +183,7 @@ bool cSixenseDevice::openLibraries()
 
     // load shared library
     #ifdef __LP64__
-    SixenseSO = dlopen ("libsixense_x64.so", RTLD_NOW);
     #else
-    SixenseSO = dlopen ("libsixense.so", RTLD_NOW);
     #endif
 
 #endif
@@ -232,43 +203,14 @@ bool cSixenseDevice::openLibraries()
 #if defined(LINUX) | defined(MACOSX)
 
     // check that it loaded correctly
-    if (SixenseSO == NULL)
-    {
-        s_libraryCounter = 0;
-        return (C_ERROR);
-    }
-
-
-    // load different callbacks
-    *(void**)(&sixenseInit                         ) = dlsym (SixenseSO, "sixenseInit");
-    *(void**)(&sixenseExit                         ) = dlsym (SixenseSO, "sixenseExit");
-    *(void**)(&sixenseGetMaxBases                  ) = dlsym (SixenseSO, "sixenseGetMaxBases");
-    *(void**)(&sixenseSetActiveBase                ) = dlsym (SixenseSO, "sixenseSetActiveBase");
-    *(void**)(&sixenseIsBaseConnected              ) = dlsym (SixenseSO, "sixenseIsBaseConnected");
-    *(void**)(&sixenseGetMaxControllers            ) = dlsym (SixenseSO, "sixenseGetMaxControllers");
-    *(void**)(&sixenseIsControllerEnabled          ) = dlsym (SixenseSO, "sixenseIsControllerEnabled");
-    *(void**)(&sixenseGetNumActiveControllers      ) = dlsym (SixenseSO, "sixenseGetNumActiveControllers");
-    *(void**)(&sixenseGetHistorySize               ) = dlsym (SixenseSO, "sixenseGetHistorySize");
-    *(void**)(&sixenseGetData                      ) = dlsym (SixenseSO, "sixenseGetData");
-    *(void**)(&sixenseGetAllData                   ) = dlsym (SixenseSO, "sixenseGetAllData");
-    *(void**)(&sixenseGetNewestData                ) = dlsym (SixenseSO, "sixenseGetNewestData");
-    *(void**)(&sixenseGetAllNewestData             ) = dlsym (SixenseSO, "sixenseGetAllNewestData");
-    *(void**)(&sixenseSetHemisphereTrackingMode    ) = dlsym (SixenseSO, "sixenseSetHemisphereTrackingMode");
-    *(void**)(&sixenseGetHemisphereTrackingMode    ) = dlsym (SixenseSO, "sixenseGetHemisphereTrackingMode");
-    *(void**)(&sixenseAutoEnableHemisphereTracking ) = dlsym (SixenseSO, "sixenseAutoEnableHemisphereTracking");
-    *(void**)(&sixenseSetHighPriorityBindingEnabled) = dlsym (SixenseSO, "sixenseSetHighPriorityBindingEnabled");
-    *(void**)(&sixenseGetHighPriorityBindingEnabled) = dlsym (SixenseSO, "sixenseGetHighPriorityBindingEnabled");
-    *(void**)(&sixenseTriggerVibration             ) = dlsym (SixenseSO, "sixenseTriggerVibration");
-    *(void**)(&sixenseSetFilterEnabled             ) = dlsym (SixenseSO, "sixenseSetFilterEnabled");
-    *(void**)(&sixenseGetFilterEnabled             ) = dlsym (SixenseSO, "sixenseGetFilterEnabled");
-    *(void**)(&sixenseSetFilterParams              ) = dlsym (SixenseSO, "sixenseSetFilterParams");
-    *(void**)(&sixenseGetFilterParams              ) = dlsym (SixenseSO, "sixenseGetFilterParams");
-    *(void**)(&sixenseSetBaseColor                 ) = dlsym (SixenseSO, "sixenseSetBaseColor");
-    *(void**)(&sixenseGetBaseColor                 ) = dlsym (SixenseSO, "sixenseGetBaseColor");
-
 #endif
 
     // initialize libraries
+    std::cerr << "Initializing \n";
+    sleep(1);
+    std::cerr << sixenseGetMaxBases() << std::endl;
+    sleep(1);
+    std::cerr << sixenseGetMaxControllers() << std::endl;
     if (sixenseInit() == SIXENSE_SUCCESS)
     {
         return (C_SUCCESS);
@@ -277,7 +219,7 @@ bool cSixenseDevice::openLibraries()
     {
         s_libraryCounter = 0;
         return (C_ERROR);
-    } 
+    }
 }
 
 
@@ -314,11 +256,9 @@ bool cSixenseDevice::closeLibraries()
     #endif
 
     #if defined(LINUX) | defined(MACOSX)
-    if ((s_libraryCounter == 0) && (SixenseSO != NULL))
+    if (s_libraryCounter == 0)
     {
         sixenseExit ();
-        dlclose (SixenseSO);
-        SixenseSO = 0;
     }
     #endif
 
@@ -348,7 +288,10 @@ unsigned int cSixenseDevice::getNumDevices()
     int counter = 0;
     while ((counter < 20) && (!found))
     {
-        int value = sixenseIsBaseConnected(0);
+//        int value = sixenseIsBaseConnected(0);
+        int value;
+        sleep(1);
+        std::cerr << "Connected" << std::endl;
         if (value > 0)
         {
             result = 2;
@@ -713,7 +656,7 @@ bool cSixenseDevice::updateData()
     // update data
     if (m_timeguard.timeoutOccurred())
     {
-        sixenseGetAllNewestData(&m_data);
+//        sixenseGetAllNewestData(&m_data);
         m_timeguard.start(true);
     }
 

@@ -44,12 +44,38 @@
 //------------------------------------------------------------------------------
 #ifndef CSixenseDevicesH
 #define CSixenseDevicesH
+#include <sixense.h>
 //------------------------------------------------------------------------------
 #if defined(C_ENABLE_SIXENSE_DEVICE_SUPPORT)
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
 //------------------------------------------------------------------------------
+/*    typedef struct _sixenseControllerData 
+    {
+        float pos[3];
+        float rot_mat[3][3];
+        float joystick_x;
+        float joystick_y;
+        float trigger;
+        unsigned int buttons;
+        unsigned char sequence_number;
+        float rot_quat[4];
+        unsigned short firmware_revision;
+        unsigned short hardware_revision;
+        unsigned short packet_type;
+        unsigned short magnetic_frequency;
+        int enabled;
+        int controller_index;
+        unsigned char is_docked;
+        unsigned char which_hand;
+        unsigned char hemi_tracking_enabled;
+    } sixenseControllerData;
 
+    typedef struct _sixenseAllControllerData
+    {
+        sixenseControllerData controllers[4];
+    } sixenseAllControllerData;
+*/
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
@@ -78,31 +104,6 @@ namespace chai3d {
 #define SIXENSE_FAILURE        -1
 #define SIXENSE_MAX_CONTROLLERS 4
 
-    typedef struct _sixenseControllerData 
-    {
-        float pos[3];
-        float rot_mat[3][3];
-        float joystick_x;
-        float joystick_y;
-        float trigger;
-        unsigned int buttons;
-        unsigned char sequence_number;
-        float rot_quat[4];
-        unsigned short firmware_revision;
-        unsigned short hardware_revision;
-        unsigned short packet_type;
-        unsigned short magnetic_frequency;
-        int enabled;
-        int controller_index;
-        unsigned char is_docked;
-        unsigned char which_hand;
-        unsigned char hemi_tracking_enabled;
-    } sixenseControllerData;
-
-    typedef struct _sixenseAllControllerData
-    {
-        sixenseControllerData controllers[4];
-    } sixenseAllControllerData;
 
 //------------------------------------------------------------------------------
 #endif  // DOXYGEN_SHOULD_SKIP_THIS

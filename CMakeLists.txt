@@ -90,10 +90,14 @@ find_package(catkin REQUIRED COMPONENTS
   dvrk_arm
   chai_env
 )
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(sixense libsixense REQUIRED)
 include_directories (OPENGL_INCLUDE_DIR)
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
+include_directories(${sixense_INCLUDE_DIRS})
+message ("SIXENSE INCLUDES = " ${sixense_INCLUDE_DIRS} " SIXENSE LIBS = " ${sixense_LIBRARIES})
 # on non-Windows, DHD dependency
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES Windows)
   include_directories (${PROJECT_SOURCE_DIR}/external/DHD/include)
@@ -162,7 +166,6 @@ include_directories (${PROJECT_SOURCE_DIR}/external/theoraplayer/external/theora
 include_directories (${PROJECT_SOURCE_DIR}/external/theoraplayer/external/vorbis/include)
 include_directories (${PROJECT_SOURCE_DIR}/external/theoraplayer/external/vorbis/lib)
 include_directories (${PROJECT_SOURCE_DIR}/external/theoraplayer/src/Theora)
-
 # static library source files
 file (GLOB_RECURSE source RELATIVE ${CHAI3D_SOURCE_DIR} ${CHAI3D_SOURCE_DIR}/src/*.cpp ${CHAI3D_SOURCE_DIR}/src/*.h)
 
@@ -196,8 +199,10 @@ endforeach ()
 # build flags
 add_definitions (${PROJECT_DEFINITIONS} -DGLEW_STATIC -DAL_ALEXT_PROTOTYPES -DAL_BUILD_LIBRARY -DAL_LIBTYPE_STATIC -D__THEORA -D_LIB)
 
+message("Here Yolo ::: " ${sixense_LIBRARIES})
 # static library
 add_library (chai3d STATIC ${source} ${source_eigen} ${source_gif} ${source_glew} ${source_3ds} ${source_jpeg} ${source_png} ${source_pugixml} ${source_openal} ${source_theora})
+target_link_libraries(chai3d ${sixense_LIBRARIES})
 # library exports
 set (CHAI3D_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external/Eigen" "${PROJECT_SOURCE_DIR}/external/glew/include" "${OPENGL_INCLUDE_DIR}" "${catkin_INCLUDE_DIRS}")
 set (CHAI3D_LIBRARIES chai3d ${OPENGL_LIBRARIES} ${catkin_LIBRARIES})
