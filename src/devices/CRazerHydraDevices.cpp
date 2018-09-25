@@ -54,6 +54,7 @@ namespace chai3d {
 
 // Number of instances for this class of devices currently using the libraries.
 unsigned int cRazerHydraDevice::s_libraryCounter = 0;
+std::shared_ptr<razer_hydra::RazerHydra> cRazerHydraDevice::s_hydra_dev;
 
 // Allocation table for devices of this class.
 bool cRazerHydraDevice::s_allocationTable[C_MAX_DEVICES] = {false, false, false, false,
