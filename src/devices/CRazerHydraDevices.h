@@ -208,6 +208,7 @@ protected:
     //! Update data from controllers.
     bool updateData();
 private:
+    static std::shared_ptr<razer_hydra::RazerHydra> s_hydra_dev;
     std::shared_ptr<razer_hydra::RazerHydra> m_hydra_dev;
 };
 

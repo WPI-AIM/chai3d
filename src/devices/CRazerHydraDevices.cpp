@@ -54,6 +54,7 @@ namespace chai3d {
 
 // Number of instances for this class of devices currently using the libraries.
 unsigned int cRazerHydraDevice::s_libraryCounter = 0;
+std::shared_ptr<razer_hydra::RazerHydra> cRazerHydraDevice::s_hydra_dev;
 
 // Allocation table for devices of this class.
 bool cRazerHydraDevice::s_allocationTable[C_MAX_DEVICES] = {false, false, false, false,
@@ -133,16 +134,18 @@ bool cRazerHydraDevice::openLibraries()
 #endif
 
     // initialize libraries
-//    if (sixenseInit() == SIXENSE_SUCCESS)
-//    {
-//        return (C_SUCCESS);
-//    }
-//    else
-//    {
-//        s_libraryCounter = 0;
-//        return (C_ERROR);
-//    }
-    return  C_SUCCESS;
+    std::string dev_name = "/dev/hydra";
+    s_hydra_dev.reset(new razer_hydra::RazerHydra());
+    if (s_hydra_dev->init(dev_name.c_str()) == true)
+    {
+        return (C_SUCCESS);
+    }
+    else
+    {
+        s_libraryCounter = 0;
+        return (C_ERROR);
+    }
+
 }
 
 
@@ -172,9 +175,6 @@ bool cRazerHydraDevice::closeLibraries()
     #if defined(LINUX) | defined(MACOSX)
     if ((s_libraryCounter == 0) && (RazerHydraSO != NULL))
     {
-//        sixenseExit ();
-//        dlclose (RazerHydraSO);
-//        RazerHydraSO = 0;
     }
     #endif
 
@@ -197,22 +197,9 @@ unsigned int cRazerHydraDevice::getNumDevices()
     openLibraries();
 
     // sanity check
+    unsigned int result = 0;
     if (s_libraryCounter < 1) return (C_ERROR);
-
-    unsigned int result = 2;
-//    bool found = false;
-//    int counter = 0;
-//    while ((counter < 20) && (!found))
-//    {
-//        int value = sixenseIsBaseConnected(0);
-//        if (value > 0)
-//        {
-//            result = 2;
-//            found = true;
-//        }
-//        counter++;
-//        cSleepMs(10);
-//    }
+    else{result = 2;}
 
     // close libraries
     closeLibraries();
@@ -320,7 +307,6 @@ bool cRazerHydraDevice::open()
     {
         return (C_ERROR);
     }
-    std::string dev_name = "/dev/hydra";
     // if system is already opened then return
     if (m_deviceReady)
     {
@@ -332,14 +318,15 @@ bool cRazerHydraDevice::open()
     {
         return (C_ERROR);
     }
-    m_hydra_dev.reset(new razer_hydra::RazerHydra);
+
+    m_hydra_dev.reset(new razer_hydra::RazerHydra());
+    std::string dev_name = "/dev/hydra";
 
     // flag the device as ready for use
-    m_deviceReady = true;
+    m_deviceReady = m_hydra_dev->init(dev_name.c_str());
 
     // return success
-    bool res = m_hydra_dev->init(dev_name.c_str());
-    return (res);
+    return (C_SUCCESS);
 }
 
 
