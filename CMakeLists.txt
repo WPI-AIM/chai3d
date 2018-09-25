@@ -85,15 +85,20 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_SOURCE_DIR}/bin/${O
 
 # OpenGL dependency
 find_package (OpenGL REQUIRED)
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  dvrk_arm
-  chai_env
-)
+
+# ROS Dependency
+if (${CMAKE_SYSTEM_NAME} MATCHES Linux)
+    message("***Found OS to be " ${CMAKE_SYSTEM_NAME})
+    find_package(catkin REQUIRED COMPONENTS
+      roscpp
+      dvrk_arm
+      chai_env
+      razer_hydra
+    )
+    include_directories(${catkin_INCLUDE_DIRS})
+endif()
+
 include_directories (OPENGL_INCLUDE_DIR)
-include_directories(
-  ${catkin_INCLUDE_DIRS}
-)
 # on non-Windows, DHD dependency
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES Windows)
   include_directories (${PROJECT_SOURCE_DIR}/external/DHD/include)
@@ -199,8 +204,13 @@ add_definitions (${PROJECT_DEFINITIONS} -DGLEW_STATIC -DAL_ALEXT_PROTOTYPES -DAL
 # static library
 add_library (chai3d STATIC ${source} ${source_eigen} ${source_gif} ${source_glew} ${source_3ds} ${source_jpeg} ${source_png} ${source_pugixml} ${source_openal} ${source_theora})
 # library exports
-set (CHAI3D_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external/Eigen" "${PROJECT_SOURCE_DIR}/external/glew/include" "${OPENGL_INCLUDE_DIR}" "${catkin_INCLUDE_DIRS}")
-set (CHAI3D_LIBRARIES chai3d ${OPENGL_LIBRARIES} ${catkin_LIBRARIES})
+set (CHAI3D_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external/Eigen" "${PROJECT_SOURCE_DIR}/external/glew/include" "${OPENGL_INCLUDE_DIR}")
+set (CHAI3D_LIBRARIES chai3d ${OPENGL_LIBRARIES})
+# ROS CATKIN INCLUDES AND LIBRARIES
+if (${CMAKE_SYSTEM_NAME} MATCHES Linux)
+    set (CHAI3D_INCLUDE_DIRS "${CHAI3D_INCLUDE_DIRS}" "${catkin_INCLUDE_DIRS}")
+    set (CHAI3D_LIBRARIES ${CHAI3D_LIBRARIES} ${catkin_LIBRARIES})
+endif()
 set (CHAI3D_DEFINITIONS ${PROJECT_DEFINITIONS})
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES Windows)
   set (CHAI3D_LIBRARIES ${CHAI3D_LIBRARIES} drd)

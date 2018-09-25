@@ -75,6 +75,10 @@
 #if defined(C_ENABLE_DVRK_DEVICE_SUPPORT)
 #include "devices/CdVRKDevices.h"
 #endif
+
+#if defined(C_ENABLE_RAZER_HYDRA_DEVICE_SUPPORT)
+#include "devices/CRazerHydraDevices.h"
+#endif
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -251,6 +255,24 @@ void cHapticDeviceHandler::update()
     for (int i=0; i<count; i++)
     {
         device = cDvrkDevice::create(i);
+        m_devices[m_numDevices] = device;
+        m_numDevices++;
+    }
+
+    #endif
+
+    //--------------------------------------------------------------------------
+    // search for Razer Hydra device
+    //--------------------------------------------------------------------------
+    #if defined(C_ENABLE_RAZER_HYDRA_DEVICE_SUPPORT)
+
+    // check for how many devices are available for this class of devices
+    count = cRazerHydraDevice::getNumDevices();
+
+    // open all remaining devices
+    for (int i=0; i<count; i++)
+    {
+        device = cRazerHydraDevice::create(i);
         m_devices[m_numDevices] = device;
         m_numDevices++;
     }

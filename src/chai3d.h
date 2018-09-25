@@ -78,6 +78,7 @@
 #include "devices/CPhantomDevices.h"
 #include "devices/CSixenseDevices.h"
 #include "devices/CdVRKDevices.h"
+#include "devices/CRazerHydraDevices.h"
 
 
 //---------------------------------------------------------------------------
