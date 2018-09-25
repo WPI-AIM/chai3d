@@ -467,6 +467,12 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
         K_lh = 0.01;
         K_ah = 0.0;
     }
+
+    if (strcmp(a_hInfo.m_modelName.c_str(), "Razer Hydra") == 0)
+    {
+        std::cout << "Device " << a_hInfo.m_modelName << " DETECTED, CHANGING BUTTON AND WORKSPACE MAPPING" << std::endl;
+        m_workspaceScaleFactor = 10.0;
+    }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
@@ -1640,10 +1646,12 @@ void updateHaptics(void* a_arg){
         hDev->m_rotDevice = hDev->measured_rot();
 
         if(bGripper->m_gripper_pinch_btn >= 0){
-            bGripper->set_gripper_angle(hDev->measured_gripper_angle());
             if(hDev->is_button_pressed(bGripper->m_gripper_pinch_btn)){
                 hDev->enable_force_feedback(true);
             }
+        }
+        if (hDev->m_hInfo.m_sensedGripper){
+            bGripper->set_gripper_angle(hDev->measured_gripper_angle());
         }
         else{
             bGripper->set_gripper_angle(0.5);
