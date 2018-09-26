@@ -88,13 +88,20 @@ find_package (OpenGL REQUIRED)
 
 # ROS Dependency
 if (${CMAKE_SYSTEM_NAME} MATCHES Linux)
-    message("***Found OS to be " ${CMAKE_SYSTEM_NAME})
     find_package(catkin REQUIRED COMPONENTS
       roscpp
       dvrk_arm
       chai_env
-      razer_hydra
     )
+    find_package(razer_hydra)
+    if (${razer_hydra_FOUND})
+        message("-- ***Found Razer Hydra")
+        add_definitions(-DC_ENABLE_RAZER_HYDRA_DEVICE_SUPPORT)
+        set(catkin_INCLUDE_DIRS ${catkin_INCLUDE_DIRS} ${razer_hydra_INCLUDE_DIRS})
+        set(catkin_LIBRARIES ${catkin_LIBRARIES} ${razer_hydra_LIBRARIES})
+    else()
+        message("Didn't find Razer Hydra")
+    endif()
     include_directories(${catkin_INCLUDE_DIRS})
 endif()
 
