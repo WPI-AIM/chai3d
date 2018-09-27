@@ -128,7 +128,7 @@ public:
     virtual void buildContactConvexTriangles(const double a_margin = 0.01);
 
     //! This method creates a Bullet collision model for this object.
-    virtual void buildContactTriangles(const double a_margin = 0.01);
+    virtual void buildContactTriangles(const double a_margin = 0.01, cMultiMesh *lowResMesh = NULL) ;
 
     //! This method creates a Bullet collision model for this object.
     virtual void buildContactHull(const double a_margin = 0.01);

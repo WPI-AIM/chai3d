@@ -178,15 +178,24 @@ void cBulletMultiMesh::updatePositionFromDynamics()
     This method creates a Bullet collision model for this object.
 */
 //==============================================================================
-void cBulletMultiMesh::buildContactTriangles(const double a_margin)
+void cBulletMultiMesh::buildContactTriangles(const double a_margin, cMultiMesh* lowResMesh)
 {
     // create compound shape
     btCompoundShape* compound = new btCompoundShape();
     m_bulletCollisionShape = compound;
 
+    std::vector<cMesh*> *v_meshes;
+    if (lowResMesh ){
+        v_meshes = lowResMesh->m_meshes;
+        std::cerr << "Using Low Res Mesh for collision\n";
+    }
+    else{
+        v_meshes = m_meshes;
+    }
+
     // create collision detector for each mesh
     std::vector<cMesh*>::iterator it;
-    for (it = m_meshes->begin(); it < m_meshes->end(); it++)
+    for (it = v_meshes->begin(); it < v_meshes->end(); it++)
     {
         cMesh* mesh = (*it);
 
@@ -246,6 +255,9 @@ void cBulletMultiMesh::buildContactTriangles(const double a_margin)
 
         // add collision shape to compound
         compound->addChildShape(localTrans, collisionShape);
+    }
+    if(lowResMesh){
+        lowResMesh->m_meshes->clear();
     }
 }
 
