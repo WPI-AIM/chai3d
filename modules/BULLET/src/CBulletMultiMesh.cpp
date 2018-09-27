@@ -187,7 +187,6 @@ void cBulletMultiMesh::buildContactTriangles(const double a_margin, cMultiMesh* 
     std::vector<cMesh*> *v_meshes;
     if (lowResMesh ){
         v_meshes = lowResMesh->m_meshes;
-        std::cerr << "Using Low Res Mesh for collision\n";
     }
     else{
         v_meshes = m_meshes;

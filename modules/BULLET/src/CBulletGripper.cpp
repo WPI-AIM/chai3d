@@ -58,13 +58,18 @@ namespace chai3d {
 
 cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperName, GripperType a_type):cBulletMultiMesh(bulletWorld, a_gripperName){
 
+    std::string hres_path_pre = "../resources/models/gripper/high_res/";
+    std::string lres_path_pre = "../resources/models/gripper/low_res/";
     std::string _link_1_str = "";
     std::string _link_2_str = "";
+    std::string hres_file, lres_file;
+    cMultiMesh lowResColMesh;
+
     if (a_type == GripperType::SINGLE_JOINT){
         g_2 =  true;
         g_1a = false;
         g_2a = false;
-        _link_1_str = "../resources/models/gripper/SingleLinkL1.STL";
+        _link_1_str = "SingleLinkL1.STL";
         gScale = 1.0;
 
         j1_low_lim = 178.0 * (PI / 180.0);
@@ -75,8 +80,8 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperN
         g_2 =  true;
         g_1a = true;
         g_2a = true;
-        _link_1_str = "../resources/models/gripper/MultiLinkL1.STL";
-        _link_2_str = "../resources/models/gripper/MultiLinkL2.STL";
+        _link_1_str = "MultiLinkL1.STL";
+        _link_2_str = "MultiLinkL2.STL";
 
         gScale = 1.0;
         gA = 15 * (PI / 180);
@@ -87,15 +92,25 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperN
         l1_len = 0.27;
 
     }
-    loadFromFile(RESOURCE_PATH(_link_1_str.c_str()));
+    hres_file = hres_path_pre + _link_1_str;
+    lres_file = lres_path_pre + _link_1_str;
+    loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     scale(gScale);
+    lowResColMesh.scale(gScale);
+    buildContactTriangles(0.001, &lowResColMesh);
     setLocalPos(0.0,0.0,0.0);
     cMatrix3d rotMat;
 
     if(g_2){
     link2 = new cBulletMultiMesh(bulletWorld);
-    link2->loadFromFile(RESOURCE_PATH(_link_1_str.c_str()));
+    hres_file = hres_path_pre + _link_1_str;
+    lres_file = lres_path_pre + _link_1_str;
+    link2->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     link2->scale(gScale);
+    lowResColMesh.scale(gScale);
+    link2->buildContactTriangles(0.001, &lowResColMesh);
     link2->setLocalPos(0.0,0.0,0.0);
     rotMat.setAxisAngleRotationDeg(1,0,0,180);
     link2->setLocalRot(rotMat);
@@ -103,8 +118,13 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperN
 
     if (g_1a){
     link1a = new cBulletMultiMesh(bulletWorld);
-    link1a->loadFromFile(RESOURCE_PATH(_link_2_str.c_str()));
+    hres_file = hres_path_pre + _link_2_str;
+    lres_file = lres_path_pre + _link_2_str;
+    link1a->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     link1a->scale(gScale);
+    lowResColMesh.scale(gScale);
+    link1a->buildContactTriangles(0.001, &lowResColMesh);
     link1a->setLocalPos(-gScale * l1_len * cos(gA), -gScale * l1_len * sin(gA), 0.0);
     rotMat.setAxisAngleRotationDeg(1,0,0,0);
     link1a->setLocalRot(rotMat);
@@ -114,8 +134,13 @@ cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperN
 
     if (g_2a){
     link2a = new cBulletMultiMesh(bulletWorld);
-    link2a->loadFromFile(RESOURCE_PATH(_link_2_str.c_str()));
+    hres_file = hres_path_pre + _link_2_str;
+    lres_file = lres_path_pre + _link_2_str;
+    link2a->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     link2a->scale(gScale);
+    lowResColMesh.scale(gScale);
+    link2a->buildContactTriangles(0.001, &lowResColMesh);
     link2a->setLocalPos(gScale * l1_len * cos(gA), gScale * l1_len * sin(gA), 0.0);
     rotMat.setAxisAngleRotationDeg(1,0,0,180);
     link2a->setLocalRot(rotMat);
@@ -128,7 +153,6 @@ void cBulletGripper::build(){
 
     double a_mass = 0.05;
     setMass(a_mass);
-    buildContactTriangles(0.0001);
 //    setShowFrame(true);
     estimateInertia();
     buildDynamicModel();
@@ -138,7 +162,6 @@ void cBulletGripper::build(){
 
     if (g_2){
     link2->setMass(a_mass);
-    link2->buildContactTriangles(0.0001);
 //    link2->setShowFrame(true);
     link2->estimateInertia();
     link2->buildDynamicModel();
@@ -163,7 +186,6 @@ void cBulletGripper::build(){
 
     if (g_1a){
     link1a->setMass(a_mass);
-    link1a->buildContactTriangles(0.0001);
 //    link1a->setShowFrame(true);
     link1a->estimateInertia();
     link1a->buildDynamicModel();
@@ -187,7 +209,6 @@ void cBulletGripper::build(){
 
     if (g_2a){
     link2a->setMass(a_mass);
-    link2a->buildContactTriangles(0.0001);
 //    link2a->setShowFrame(true);
     link2a->estimateInertia();
     link2a->buildDynamicModel();

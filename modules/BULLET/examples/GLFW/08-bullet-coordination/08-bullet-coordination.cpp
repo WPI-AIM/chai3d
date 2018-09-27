@@ -1047,6 +1047,10 @@ int main(int argc, char* argv[])
     cMaterial meshMat;
     cMultiMesh lowResColMesh;
 
+    std::string hres_path_pre = "../resources/models/puzzle/high_res/";
+    std::string lres_path_pre = "../resources/models/puzzle/low_res/";
+    std::string hres_file, lres_file;
+
 //    g_bulletGear = new cBulletMultiMesh(g_bulletWorld, "Gear");
 //    g_bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
 //    g_bulletGear->scale(0.0014);
@@ -1060,32 +1064,34 @@ int main(int argc, char* argv[])
 //    g_bulletGear->m_bulletRigidBody->setFriction(1);
 //    g_bulletGear->setLocalPos(-0.3, -0.5, -0.5);
 
-//    g_bulletTorus = new cBulletMultiMesh(g_bulletWorld, "Torus");
-//    g_bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/Torus.STL"));
-//    g_bulletTorus->scale(0.2);
-//    g_bulletTorus->setLocalPos(cVector3d(0.3,0,0));
-//    g_bulletWorld->addChild(g_bulletTorus);
-//    g_bulletTorus->buildContactTriangles(0.001);
-//    g_bulletTorus->setMass(0.8);
-//    g_bulletTorus->estimateInertia();
-//    g_bulletTorus->buildDynamicModel();
-//    meshMat.setOrangeTomato();
-//    g_bulletTorus->setMaterial(meshMat);
-//    g_bulletTorus->setLocalPos(-0.3, 0.0, -0.5);
+    g_bulletTorus = new cBulletMultiMesh(g_bulletWorld, "Torus");
+    hres_file = hres_path_pre + "Torus.STL";
+    lres_file = lres_path_pre + "Torus.STL";
+    g_bulletTorus->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+    g_bulletWorld->addChild(g_bulletTorus);
+    g_bulletTorus->buildContactTriangles(0.001, &lowResColMesh);
+    g_bulletTorus->setMass(0.8);
+    g_bulletTorus->estimateInertia();
+    g_bulletTorus->buildDynamicModel();
+    meshMat.setOrangeTomato();
+    g_bulletTorus->setMaterial(meshMat);
+    g_bulletTorus->setLocalPos(-0.3, 0.0, -0.5);
 
-//    g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "RoundBase");
-//    g_bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PegBase.STL"));
-//    g_bulletBase->scale(0.3);
-//    g_bulletBase->setLocalPos(cVector3d(-0.3,0,0));
-//    g_bulletWorld->addChild(g_bulletBase);
-//    g_bulletBase->buildContactTriangles(0.001);
-//    g_bulletBase->setMass(10);
-//    g_bulletBase->estimateInertia();
-//    g_bulletBase->buildDynamicModel();
-//    meshMat.setBlueNavy();
-//    g_bulletBase->setMaterial(meshMat);
-//    g_bulletBase->m_bulletRigidBody->setFriction(1);
-//    g_bulletBase->setLocalPos(-0.3, 0.5, -0.5);
+    g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "RoundBase");
+    hres_file = hres_path_pre + "PegBase.STL";
+    lres_file = lres_path_pre + "PegBase.STL";
+    g_bulletBase->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+    g_bulletWorld->addChild(g_bulletBase);
+    g_bulletBase->buildContactTriangles(0.001, &lowResColMesh);
+    g_bulletBase->setMass(10);
+    g_bulletBase->estimateInertia();
+    g_bulletBase->buildDynamicModel();
+    meshMat.setBlueNavy();
+    g_bulletBase->setMaterial(meshMat);
+    g_bulletBase->m_bulletRigidBody->setFriction(1);
+    g_bulletBase->setLocalPos(-0.3, 0.5, -0.5);
 
 //    //////////////////////////////////////////////////////////////////////////
 //    // PUZZLE MESHES
@@ -1102,10 +1108,6 @@ int main(int argc, char* argv[])
 //    g_meshBase->m_bulletRigidBody->setFriction(1);
 //    g_meshBase->setLocalPos(0.4, 0.0, -1.0);
 
-    std::string hres_path_pre = "../resources/models/puzzle/high_res/";
-    std::string lres_path_pre = "../resources/models/puzzle/low_res/";
-    std::string hres_file, lres_file;
-
     g_meshPuzzleBase = new cBulletMultiMesh(g_bulletWorld, "PuzzleBase");
     hres_file = hres_path_pre + "PuzzleBase.STL";
     lres_file = lres_path_pre + "PuzzleBase.STL";
@@ -1116,9 +1118,9 @@ int main(int argc, char* argv[])
     g_meshPuzzleBase->setMass(8);
     g_meshPuzzleBase->estimateInertia();
     g_meshPuzzleBase->buildDynamicModel();
-    meshMat.setYellowGold();
+    meshMat.setYellow();
     g_meshPuzzleBase->setMaterial(meshMat);
-    g_meshPuzzleBase->m_bulletRigidBody->setFriction(0.5);
+    g_meshPuzzleBase->m_bulletRigidBody->setFriction(0.9);
     g_meshPuzzleBase->setLocalPos(0.4, 0.0, -1.0);
 
     g_meshCirclePuzzle = new cBulletMultiMesh(g_bulletWorld, "CirclePuzzle");
@@ -1133,7 +1135,7 @@ int main(int argc, char* argv[])
     g_meshCirclePuzzle->buildDynamicModel();
     meshMat.setPinkPaleVioletRed();
     g_meshCirclePuzzle->setMaterial(meshMat);
-    g_meshCirclePuzzle->m_bulletRigidBody->setFriction(0.5);
+    g_meshCirclePuzzle->m_bulletRigidBody->setFriction(0.8);
     g_meshCirclePuzzle->setLocalPos(0.5, -0.8, -0.5);
 
     g_meshSquarePuzzle = new cBulletMultiMesh(g_bulletWorld, "SquarePuzzle");
@@ -1148,7 +1150,7 @@ int main(int argc, char* argv[])
     g_meshSquarePuzzle->buildDynamicModel();
     meshMat.setBlueCornflower();
     g_meshSquarePuzzle->setMaterial(meshMat);
-    g_meshSquarePuzzle->m_bulletRigidBody->setFriction(0.5);
+    g_meshSquarePuzzle->m_bulletRigidBody->setFriction(0.8);
     g_meshSquarePuzzle->setLocalPos(0.5, 0.0, -0.5);
 
     g_meshTrianglePuzzle = new cBulletMultiMesh(g_bulletWorld, "TrianglePuzzle");
@@ -1163,7 +1165,7 @@ int main(int argc, char* argv[])
     g_meshTrianglePuzzle->buildDynamicModel();
     meshMat.setGreenMediumSpring();
     g_meshTrianglePuzzle->setMaterial(meshMat);
-    g_meshTrianglePuzzle->m_bulletRigidBody->setFriction(0.5);
+    g_meshTrianglePuzzle->m_bulletRigidBody->setFriction(0.8);
     g_meshTrianglePuzzle->setLocalPos(0.5, 0.8, -0.5);
 
     g_puzzle3Meshes[0] = new cBulletMultiMesh(g_bulletWorld, "CenterPuzzle");
@@ -1178,7 +1180,7 @@ int main(int argc, char* argv[])
     g_puzzle3Meshes[0]->buildDynamicModel();
     meshMat.setGreenMediumSpring();
     g_puzzle3Meshes[0]->setMaterial(meshMat);
-    g_puzzle3Meshes[0]->m_bulletRigidBody->setFriction(0.5);
+    g_puzzle3Meshes[0]->m_bulletRigidBody->setFriction(0.8);
     g_puzzle3Meshes[0]->setLocalPos(0.0, 0.0, -0.5);
 
     g_puzzle3Meshes[1] = new cBulletMultiMesh(g_bulletWorld, "HandleLeft");
