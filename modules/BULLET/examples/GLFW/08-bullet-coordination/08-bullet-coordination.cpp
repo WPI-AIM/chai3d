@@ -94,6 +94,8 @@ cBulletMultiMesh* g_meshCirclePuzzle;
 cBulletMultiMesh* g_meshSquarePuzzle;
 cBulletMultiMesh* g_meshTrianglePuzzle;
 
+cBulletMultiMesh* g_puzzle3Meshes[3];
+
 // bullet static walls and ground
 cBulletStaticPlane* g_bulletGround;
 
@@ -964,7 +966,7 @@ int main(int argc, char* argv[])
     g_bulletWorld->addChild(g_camera);
 
     // position and orient the camera
-    g_camera->set(cVector3d(3.0, 0.0, 2.0),    // camera position (eye)
+    g_camera->set(cVector3d(4.0, 0.0, 2.0),    // camera position (eye)
                 cVector3d(0.0, 0.0,-0.5),    // lookat position (target)
                 cVector3d(0.0, 0.0, 1.0));   // direction of the "up" vector
 
@@ -1043,6 +1045,7 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     double size = 0.40;
     cMaterial meshMat;
+    cMultiMesh lowResColMesh;
 
 //    g_bulletGear = new cBulletMultiMesh(g_bulletWorld, "Gear");
 //    g_bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));
@@ -1057,95 +1060,182 @@ int main(int argc, char* argv[])
 //    g_bulletGear->m_bulletRigidBody->setFriction(1);
 //    g_bulletGear->setLocalPos(-0.3, -0.5, -0.5);
 
-    g_bulletTorus = new cBulletMultiMesh(g_bulletWorld, "Torus");
-    g_bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/Torus.STL"));
-    g_bulletTorus->scale(0.2);
-    g_bulletTorus->setLocalPos(cVector3d(0.3,0,0));
-    g_bulletWorld->addChild(g_bulletTorus);
-    g_bulletTorus->buildContactTriangles(0.001);
-    g_bulletTorus->setMass(0.8);
-    g_bulletTorus->estimateInertia();
-    g_bulletTorus->buildDynamicModel();
-    meshMat.setOrangeTomato();
-    g_bulletTorus->setMaterial(meshMat);
-    g_bulletTorus->setLocalPos(-0.3, 0.0, -0.5);
+//    g_bulletTorus = new cBulletMultiMesh(g_bulletWorld, "Torus");
+//    g_bulletTorus->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/Torus.STL"));
+//    g_bulletTorus->scale(0.2);
+//    g_bulletTorus->setLocalPos(cVector3d(0.3,0,0));
+//    g_bulletWorld->addChild(g_bulletTorus);
+//    g_bulletTorus->buildContactTriangles(0.001);
+//    g_bulletTorus->setMass(0.8);
+//    g_bulletTorus->estimateInertia();
+//    g_bulletTorus->buildDynamicModel();
+//    meshMat.setOrangeTomato();
+//    g_bulletTorus->setMaterial(meshMat);
+//    g_bulletTorus->setLocalPos(-0.3, 0.0, -0.5);
 
-    g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "RoundBase");
-    g_bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PegBase.STL"));
-    g_bulletBase->scale(0.3);
-    g_bulletBase->setLocalPos(cVector3d(-0.3,0,0));
-    g_bulletWorld->addChild(g_bulletBase);
-    g_bulletBase->buildContactTriangles(0.001);
-    g_bulletBase->setMass(10);
-    g_bulletBase->estimateInertia();
-    g_bulletBase->buildDynamicModel();
-    meshMat.setBlueNavy();
-    g_bulletBase->setMaterial(meshMat);
-    g_bulletBase->m_bulletRigidBody->setFriction(1);
-    g_bulletBase->setLocalPos(-0.3, 0.5, -0.5);
+//    g_bulletBase = new cBulletMultiMesh(g_bulletWorld, "RoundBase");
+//    g_bulletBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PegBase.STL"));
+//    g_bulletBase->scale(0.3);
+//    g_bulletBase->setLocalPos(cVector3d(-0.3,0,0));
+//    g_bulletWorld->addChild(g_bulletBase);
+//    g_bulletBase->buildContactTriangles(0.001);
+//    g_bulletBase->setMass(10);
+//    g_bulletBase->estimateInertia();
+//    g_bulletBase->buildDynamicModel();
+//    meshMat.setBlueNavy();
+//    g_bulletBase->setMaterial(meshMat);
+//    g_bulletBase->m_bulletRigidBody->setFriction(1);
+//    g_bulletBase->setLocalPos(-0.3, 0.5, -0.5);
 
-    //////////////////////////////////////////////////////////////////////////
-    // PUZZLE MESHES
-    //////////////////////////////////////////////////////////////////////////
-    g_meshBase = new cBulletMultiMesh(g_bulletWorld, "SolidBase");
-    g_meshBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/BaseMount.STL"));
-    g_bulletWorld->addChild(g_meshBase);
-    g_meshBase->buildContactTriangles(0.001);
-    g_meshBase->setMass(10);
-    g_meshBase->estimateInertia();
-    g_meshBase->buildDynamicModel();
-    meshMat.setPinkDeep();
-    g_meshBase->setMaterial(meshMat);
-    g_meshBase->m_bulletRigidBody->setFriction(1);
-    g_meshBase->setLocalPos(0.4, 0.0, -1.0);
+//    //////////////////////////////////////////////////////////////////////////
+//    // PUZZLE MESHES
+//    //////////////////////////////////////////////////////////////////////////
+//    g_meshBase = new cBulletMultiMesh(g_bulletWorld, "SolidBase");
+//    g_meshBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/BaseMount.STL"));
+//    g_bulletWorld->addChild(g_meshBase);
+//    g_meshBase->buildContactTriangles(0.001);
+//    g_meshBase->setMass(10);
+//    g_meshBase->estimateInertia();
+//    g_meshBase->buildDynamicModel();
+//    meshMat.setPinkDeep();
+//    g_meshBase->setMaterial(meshMat);
+//    g_meshBase->m_bulletRigidBody->setFriction(1);
+//    g_meshBase->setLocalPos(0.4, 0.0, -1.0);
+
+    std::string hres_path_pre = "../resources/models/puzzle/high_res/";
+    std::string lres_path_pre = "../resources/models/puzzle/low_res/";
+    std::string hres_file, lres_file;
 
     g_meshPuzzleBase = new cBulletMultiMesh(g_bulletWorld, "PuzzleBase");
-    g_meshPuzzleBase->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/PuzzleBase2.STL"));
+    hres_file = hres_path_pre + "PuzzleBase.STL";
+    lres_file = lres_path_pre + "PuzzleBase.STL";
+    g_meshPuzzleBase->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     g_bulletWorld->addChild(g_meshPuzzleBase);
-    g_meshPuzzleBase->buildContactTriangles(0.001);
+    g_meshPuzzleBase->buildContactTriangles(0.001, &lowResColMesh);
     g_meshPuzzleBase->setMass(8);
     g_meshPuzzleBase->estimateInertia();
     g_meshPuzzleBase->buildDynamicModel();
     meshMat.setYellowGold();
     g_meshPuzzleBase->setMaterial(meshMat);
-    g_meshPuzzleBase->m_bulletRigidBody->setFriction(1);
-    g_meshPuzzleBase->setLocalPos(0.4, 0.0, -0.6);
+    g_meshPuzzleBase->m_bulletRigidBody->setFriction(0.5);
+    g_meshPuzzleBase->setLocalPos(0.4, 0.0, -1.0);
 
     g_meshCirclePuzzle = new cBulletMultiMesh(g_bulletWorld, "CirclePuzzle");
-    g_meshCirclePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/CirclePuzzle2.STL"));
+    hres_file = hres_path_pre + "CirclePuzzle.STL";
+    lres_file = lres_path_pre + "CirclePuzzle.STL";
+    g_meshCirclePuzzle->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     g_bulletWorld->addChild(g_meshCirclePuzzle);
-    g_meshCirclePuzzle->buildContactTriangles(0);
+    g_meshCirclePuzzle->buildContactTriangles(0.001, &lowResColMesh);
     g_meshCirclePuzzle->setMass(0.1);
     g_meshCirclePuzzle->estimateInertia();
     g_meshCirclePuzzle->buildDynamicModel();
     meshMat.setPinkPaleVioletRed();
     g_meshCirclePuzzle->setMaterial(meshMat);
-    g_meshCirclePuzzle->m_bulletRigidBody->setFriction(1);
+    g_meshCirclePuzzle->m_bulletRigidBody->setFriction(0.5);
     g_meshCirclePuzzle->setLocalPos(0.5, -0.8, -0.5);
 
     g_meshSquarePuzzle = new cBulletMultiMesh(g_bulletWorld, "SquarePuzzle");
-    g_meshSquarePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/SquarePuzzle2.STL"));
+    hres_file = hres_path_pre + "SquarePuzzle.STL";
+    lres_file = lres_path_pre + "SquarePuzzle.STL";
+    g_meshSquarePuzzle->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     g_bulletWorld->addChild(g_meshSquarePuzzle);
-    g_meshSquarePuzzle->buildContactTriangles(0.001);
+    g_meshSquarePuzzle->buildContactTriangles(0.001, &lowResColMesh);
     g_meshSquarePuzzle->setMass(0.1);
     g_meshSquarePuzzle->estimateInertia();
     g_meshSquarePuzzle->buildDynamicModel();
     meshMat.setBlueCornflower();
     g_meshSquarePuzzle->setMaterial(meshMat);
-    g_meshSquarePuzzle->m_bulletRigidBody->setFriction(1);
+    g_meshSquarePuzzle->m_bulletRigidBody->setFriction(0.5);
     g_meshSquarePuzzle->setLocalPos(0.5, 0.0, -0.5);
 
     g_meshTrianglePuzzle = new cBulletMultiMesh(g_bulletWorld, "TrianglePuzzle");
-    g_meshTrianglePuzzle->loadFromFile(RESOURCE_PATH("../resources/models/puzzle/TrianglePuzzle2.STL"));
+    hres_file = hres_path_pre + "TrianglePuzzle.STL";
+    lres_file = lres_path_pre + "TrianglePuzzle.STL";
+    g_meshTrianglePuzzle->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     g_bulletWorld->addChild(g_meshTrianglePuzzle);
-    g_meshTrianglePuzzle->buildContactTriangles(0.001);
+    g_meshTrianglePuzzle->buildContactTriangles(0.001, &lowResColMesh);
     g_meshTrianglePuzzle->setMass(0.1);
     g_meshTrianglePuzzle->estimateInertia();
     g_meshTrianglePuzzle->buildDynamicModel();
     meshMat.setGreenMediumSpring();
     g_meshTrianglePuzzle->setMaterial(meshMat);
-    g_meshTrianglePuzzle->m_bulletRigidBody->setFriction(1);
+    g_meshTrianglePuzzle->m_bulletRigidBody->setFriction(0.5);
     g_meshTrianglePuzzle->setLocalPos(0.5, 0.8, -0.5);
+
+    g_puzzle3Meshes[0] = new cBulletMultiMesh(g_bulletWorld, "CenterPuzzle");
+    hres_file = hres_path_pre + "Center.STL";
+    lres_file = lres_path_pre + "Center.STL";
+    g_puzzle3Meshes[0]->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+    g_bulletWorld->addChild(g_puzzle3Meshes[0]);
+    g_puzzle3Meshes[0]->buildContactTriangles(0.001, &lowResColMesh);
+    g_puzzle3Meshes[0]->setMass(1);
+    g_puzzle3Meshes[0]->estimateInertia();
+    g_puzzle3Meshes[0]->buildDynamicModel();
+    meshMat.setGreenMediumSpring();
+    g_puzzle3Meshes[0]->setMaterial(meshMat);
+    g_puzzle3Meshes[0]->m_bulletRigidBody->setFriction(0.5);
+    g_puzzle3Meshes[0]->setLocalPos(0.0, 0.0, -0.5);
+
+    g_puzzle3Meshes[1] = new cBulletMultiMesh(g_bulletWorld, "HandleLeft");
+    hres_file = hres_path_pre + "HandleLeft.STL";
+    lres_file = lres_path_pre + "HandleLeft.STL";
+    g_puzzle3Meshes[1]->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+    g_bulletWorld->addChild(g_puzzle3Meshes[1]);
+    g_puzzle3Meshes[1]->buildContactTriangles(0.001, &lowResColMesh);
+    g_puzzle3Meshes[1]->setMass(0.3);
+    g_puzzle3Meshes[1]->estimateInertia();
+    g_puzzle3Meshes[1]->buildDynamicModel();
+    meshMat.setOrange();
+    g_puzzle3Meshes[1]->setMaterial(meshMat);
+    g_puzzle3Meshes[1]->m_bulletRigidBody->setFriction(0.5);
+    g_puzzle3Meshes[1]->setLocalPos(0.0, -0.85, -0.5);
+
+    g_puzzle3Meshes[2] = new cBulletMultiMesh(g_bulletWorld, "HandleRight");
+    hres_file = hres_path_pre + "HandleRight.STL";
+    lres_file = lres_path_pre + "HandleRight.STL";
+    g_puzzle3Meshes[2]->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+    g_bulletWorld->addChild(g_puzzle3Meshes[2]);
+    g_puzzle3Meshes[2]->buildContactTriangles(0.001, &lowResColMesh);
+    g_puzzle3Meshes[2]->setMass(0.3);
+    g_puzzle3Meshes[2]->estimateInertia();
+    g_puzzle3Meshes[2]->buildDynamicModel();
+    meshMat.setOrangeCoral();
+    g_puzzle3Meshes[2]->setMaterial(meshMat);
+    g_puzzle3Meshes[2]->m_bulletRigidBody->setFriction(0.5);
+    g_puzzle3Meshes[2]->setLocalPos(0.0, 0.85, -0.5);
+
+    btHingeConstraint* hingeCR, *hingeCL;
+    btVector3 axisR, axisCR, axisL, axisCL;
+    btVector3 pvtR, pvtCR, pvtL, pvtCL;
+
+    pvtR.setValue(0, 0, 0);
+    pvtL.setValue(0, 0, 0);
+    pvtCL.setValue(0, -0.85, 0);
+    pvtCR.setValue(0,  0.85, 0);
+
+    axisR.setValue(1, 0, 0);
+    axisL.setValue(1, 0, 0);
+    axisCR.setValue(1, 0, 0);
+    axisCL.setValue(1, 0, 0);
+
+    hingeCL = new btHingeConstraint(*g_puzzle3Meshes[0]->m_bulletRigidBody,
+                                    *g_puzzle3Meshes[1]->m_bulletRigidBody,
+                                    pvtCL, pvtL, axisCL, axisL, true);
+    hingeCL->setLimit(-1.2, 1.2);
+    g_bulletWorld->m_bulletWorld->addConstraint(hingeCL, true);
+
+    hingeCR = new btHingeConstraint(*g_puzzle3Meshes[0]->m_bulletRigidBody,
+                                    *g_puzzle3Meshes[2]->m_bulletRigidBody,
+                                    pvtCR, pvtR, axisCR, axisR, true);
+    hingeCR->setLimit(-1.2, 1.2);
+    g_bulletWorld->m_bulletWorld->addConstraint(hingeCR, true);
 
     // end puzzle meshes
     g_coordApp = std::make_shared<Coordination>(g_bulletWorld, num_devices_to_load);
@@ -1155,9 +1245,9 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double box_l, box_w, box_h;
-    box_l = 3.0;
+    box_l = 4.0;
     box_w = 4.0;
-    box_h = 2.0;
+    box_h = 3.0;
     g_bulletBoxWallZ[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -0.5 * box_h);
     g_bulletBoxWallY[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -0.5 * box_w);
     g_bulletBoxWallY[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -0.5 * box_w);
