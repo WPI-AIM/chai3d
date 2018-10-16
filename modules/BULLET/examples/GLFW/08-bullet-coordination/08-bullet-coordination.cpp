@@ -491,7 +491,7 @@ public:
     bool is_wrench_set();
     void clear_wrench();
     void offset_gripper_angle(double offset);
-    void set_gripper_angle(double angle);
+    void set_gripper_angle(double angle, double dt=0.001);
     cBulletGripper* gripper;
     cVector3d m_posGripper;
     cMatrix3d m_rotGripper;
@@ -516,15 +516,14 @@ void ToolGripper::update_measured_pose(){
     m_rotGripper = gripper->getLocalRot();
 }
 
-void ToolGripper::set_gripper_angle(double angle){
-    if(!gripper->m_af_pos_ctrl_active) gripper->set_gripper_angle(angle);
+void ToolGripper::set_gripper_angle(double angle, double dt){
+    if(!gripper->m_af_pos_ctrl_active) gripper->set_gripper_angle(angle, dt);
 }
 
 void ToolGripper::offset_gripper_angle(double offset){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     m_gripper_angle += offset;
     m_gripper_angle = cClamp(m_gripper_angle, 0.0, 1.0);
-    gripper->set_gripper_angle(m_gripper_angle);
 }
 
 bool ToolGripper::is_wrench_set(){
@@ -1130,7 +1129,7 @@ int main(int argc, char* argv[])
     lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     g_bulletWorld->addChild(g_meshCirclePuzzle);
     g_meshCirclePuzzle->buildContactTriangles(0.001, &lowResColMesh);
-    g_meshCirclePuzzle->setMass(0.1);
+    g_meshCirclePuzzle->setMass(0.8);
     g_meshCirclePuzzle->estimateInertia();
     g_meshCirclePuzzle->buildDynamicModel();
     meshMat.setPinkPaleVioletRed();
@@ -1145,7 +1144,7 @@ int main(int argc, char* argv[])
     lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     g_bulletWorld->addChild(g_meshSquarePuzzle);
     g_meshSquarePuzzle->buildContactTriangles(0.001, &lowResColMesh);
-    g_meshSquarePuzzle->setMass(0.1);
+    g_meshSquarePuzzle->setMass(0.8);
     g_meshSquarePuzzle->estimateInertia();
     g_meshSquarePuzzle->buildDynamicModel();
     meshMat.setBlueCornflower();
@@ -1160,7 +1159,7 @@ int main(int argc, char* argv[])
     lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     g_bulletWorld->addChild(g_meshTrianglePuzzle);
     g_meshTrianglePuzzle->buildContactTriangles(0.001, &lowResColMesh);
-    g_meshTrianglePuzzle->setMass(0.1);
+    g_meshTrianglePuzzle->setMass(0.8);
     g_meshTrianglePuzzle->estimateInertia();
     g_meshTrianglePuzzle->buildDynamicModel();
     meshMat.setGreenMediumSpring();
@@ -1690,6 +1689,7 @@ void updateBulletSim(){
 
             bGripper->apply_force(force);
             bGripper->apply_torque(torque);
+            bGripper->set_gripper_angle(bGripper->m_gripper_angle, dt);
         }
         g_bulletWorld->updateDynamics(dt, g_clockWorld.getCurrentTimeSeconds(), g_freqCounterHaptics.getFrequency(), g_coordApp->m_num_devices);
         g_coordApp->clear_all_haptics_loop_exec_flags();
@@ -1743,10 +1743,10 @@ void updateHaptics(void* a_arg){
             }
         }
         if (hDev->m_hInfo.m_sensedGripper){
-            bGripper->set_gripper_angle(hDev->measured_gripper_angle());
+            bGripper->m_gripper_angle = hDev->measured_gripper_angle();
         }
         else{
-            bGripper->set_gripper_angle(0.5);
+            bGripper->m_gripper_angle = 0.5;
         }
 
         if(hDev->is_button_press_rising_edge(bGripper->mode_next_btn)) g_coordApp->next_mode();
