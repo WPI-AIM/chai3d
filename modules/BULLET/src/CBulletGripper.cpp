@@ -237,19 +237,19 @@ void cBulletGripper::build(){
     set_surface_props(props);
 }
 
-void cBulletGripper::set_gripper_angle(const double &angle){
+void cBulletGripper::set_gripper_angle(const double &angle, double dt){
     double clipped_angle = cClamp(angle, 0.0, 1.0);
     if (g_2){
         double j1_angle = j1_low_lim + clipped_angle * (j1_high_lim - j1_low_lim);
-        hinge1->setMotorTarget(j1_angle, 0.001);
+        hinge1->setMotorTarget(j1_angle, dt);
     }
     if (g_1a){
         double j1a_angle = j1a_low_lim + clipped_angle * (j1a_high_lim - j1a_low_lim);
-        hinge1a->setMotorTarget(j1a_angle, 0.001);
+        hinge1a->setMotorTarget(j1a_angle, dt);
     }
     if (g_2a){
         double j2a_angle = j2a_low_lim + clipped_angle * (j2a_high_lim - j2a_low_lim);
-        hinge2a->setMotorTarget(j2a_angle, 0.001);
+        hinge2a->setMotorTarget(j2a_angle, dt);
     }
 }
 

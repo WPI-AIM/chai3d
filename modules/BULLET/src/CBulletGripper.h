@@ -86,7 +86,7 @@ public:
     ~cBulletGripper(){}
 
 public:
-    void set_gripper_angle(const double &angle);
+    void set_gripper_angle(const double &angle,double dt=0.001);
     void set_surface_props(GripperSurfaceProperties &props);
     void set_scale(double scale);
     void build();
