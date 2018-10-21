@@ -99,7 +99,16 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
         rot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
         setLocalRot(rot);
     }
-    if(fileNode["color"].IsDefined()){
+    if(fileNode["friction"].IsDefined())
+        m_bulletRigidBody->setFriction(fileNode["friction"].as<double>());
+
+    if(fileNode["color_raw"].IsDefined()){
+            m_mat.setColorf(fileNode["color_raw"]["r"].as<float>(),
+                            fileNode["color_raw"]["g"].as<float>(),
+                            fileNode["color_raw"]["b"].as<float>(),
+                            fileNode["color_raw"]["a"].as<float>());
+        }
+    else if(fileNode["color"].IsDefined()){
         std::string color = fileNode["color"].as<std::string>();
         if (strcmp(color.c_str(), "red") == 0)
             m_mat.setRed();
@@ -116,6 +125,7 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
         else
             printf("Color \"%s\" not defined, using default", color.c_str());
     }
+
     setMaterial(m_mat);
     multiBody->m_chaiWorld->addChild(this);
     return true;
@@ -229,6 +239,7 @@ bool cBulletMultiBody::load_yaml (std::string file) {
     size_t totalLinks = baseNode["links"].size();
     for (size_t i = 0; i < totalLinks; ++i) {
         tmpLink = new Link(m_chaiWorld);
+        printf("Link Name %s \n", baseNode["links"][i].as<std::string>().c_str());
         if (tmpLink->load(file, baseNode["links"][i].as<std::string>(), this))
             m_linkMap[baseNode["links"][i].as<std::string>()] = tmpLink;
     }
