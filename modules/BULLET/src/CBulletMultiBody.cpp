@@ -53,6 +53,55 @@ std::string resourceRootMB;
 namespace chai3d{
 
 ///
+/// \brief Link::Link
+/// \param a_world
+///
+Link::Link(cBulletWorld* a_world): cBulletMultiMesh(a_world){
+}
+
+///
+/// \brief Link::populate_parent_tree
+/// \param a_link
+///
+void Link::populate_parents_tree(Link* a_link){
+    m_childrenLinks.push_back(a_link);
+    m_childrenLinks.insert(m_childrenLinks.end(),
+                           a_link->m_childrenLinks.begin(),
+                           a_link->m_childrenLinks.end());
+    m_joints.insert(m_joints.end(),
+                           a_link->m_joints.begin(),
+                           a_link->m_joints.end());
+}
+
+///
+/// \brief Link::set_parent_link
+/// \param parentLink
+///
+void Link::add_parent_link(Link* a_parentLink){
+    m_parentLinks.push_back(a_parentLink);
+}
+
+///
+/// \brief Link::set_child_link
+/// \param childLink
+/// \param jnt
+///
+void Link::add_child_link(Link* a_childLink, Joint* a_jnt){
+    a_childLink->add_parent_link(this);
+    m_childrenLinks.push_back(a_childLink);
+    m_childrenLinks.insert(m_childrenLinks.end(),
+                           a_childLink->m_childrenLinks.begin(),
+                           a_childLink->m_childrenLinks.end());
+    m_joints.push_back(a_jnt);
+    m_joints.insert(m_joints.end(),
+                           a_childLink->m_joints.begin(),
+                           a_childLink->m_joints.end());
+    for (m_linkIt = m_parentLinks.begin() ; m_linkIt != m_parentLinks.end() ; ++m_linkIt){
+        (*m_linkIt)->populate_parents_tree(a_childLink);
+    }
+}
+
+///
 /// \brief Link::load
 /// \param file
 /// \param name
@@ -66,8 +115,10 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
     YAML::Node fileNode = baseNode[name];
     if (fileNode.IsNull()) return false;
 
-    if(fileNode["name"].IsDefined())
+    if(fileNode["name"].IsDefined()){
         m_name = fileNode["name"].as<std::string>();
+        m_rosObjPtr.reset(new chai_env::Object(m_name));
+    }
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
     if(fileNode["mass"].IsDefined())
@@ -108,27 +159,85 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
                             fileNode["color_raw"]["b"].as<float>(),
                             fileNode["color_raw"]["a"].as<float>());
         }
-    else if(fileNode["color"].IsDefined()){
-        std::string color = fileNode["color"].as<std::string>();
-        if (strcmp(color.c_str(), "red") == 0)
-            m_mat.setRed();
-        else if (strcmp(color.c_str(), "green") == 0)
-            m_mat.setGreen();
-        else if (strcmp(color.c_str(), "blue") == 0)
-            m_mat.setBlue();
-        else if (strcmp(color.c_str(), "black") == 0)
-            m_mat.setBlack();
-        else if (strcmp(color.c_str(), "white") == 0)
-            m_mat.setWhite();
-        else if (strcmp(color.c_str(), "yellow") == 0)
-            m_mat.setYellow();
-        else
-            printf("Color \"%s\" not defined, using default", color.c_str());
-    }
 
     setMaterial(m_mat);
     multiBody->m_chaiWorld->addChild(this);
     return true;
+}
+
+void Link::updateCmdFromROS(double dt){
+    if (m_rosObjPtr.get() != nullptr){
+        m_rosObjPtr->update_af_cmd();
+        cVector3d force, torque;
+        m_af_pos_ctrl_active = m_rosObjPtr->m_afCmd.pos_ctrl;
+        if (m_rosObjPtr->m_afCmd.pos_ctrl){
+            cVector3d cur_pos, cmd_pos, rot_axis;
+            cQuaternion cur_rot, cmd_rot;
+            cMatrix3d cur_rot_mat, cmd_rot_mat;
+            btTransform b_trans;
+            double rot_angle;
+            double K_lin = 10, B_lin = 1;
+            double K_ang = 5;
+            m_bulletRigidBody->getMotionState()->getWorldTransform(b_trans);
+            cur_pos.set(b_trans.getOrigin().getX(),
+                        b_trans.getOrigin().getY(),
+                        b_trans.getOrigin().getZ());
+
+            cur_rot.x = b_trans.getRotation().getX();
+            cur_rot.y = b_trans.getRotation().getY();
+            cur_rot.z = b_trans.getRotation().getZ();
+            cur_rot.w = b_trans.getRotation().getW();
+            cur_rot.toRotMat(cur_rot_mat);
+
+            cmd_pos.set(m_rosObjPtr->m_afCmd.px,
+                        m_rosObjPtr->m_afCmd.py,
+                        m_rosObjPtr->m_afCmd.pz);
+
+            cmd_rot.x = m_rosObjPtr->m_afCmd.qx;
+            cmd_rot.y = m_rosObjPtr->m_afCmd.qy;
+            cmd_rot.z = m_rosObjPtr->m_afCmd.qz;
+            cmd_rot.w = m_rosObjPtr->m_afCmd.qw;
+            cmd_rot.toRotMat(cmd_rot_mat);
+
+            m_dpos_prev = m_dpos;
+            m_dpos = cmd_pos - cur_pos;
+            m_ddpos = (m_dpos - m_dpos_prev)/dt;
+            m_drot = cMul(cTranspose(cur_rot_mat), cmd_rot_mat);
+            m_drot.toAxisAngle(rot_axis, rot_angle);
+
+            force = K_lin * m_dpos + B_lin * m_ddpos;
+            torque = cMul(K_ang * rot_angle, rot_axis);
+            cur_rot_mat.mul(torque);
+        }
+        else{
+            force.set(m_rosObjPtr->m_afCmd.Fx,
+                      m_rosObjPtr->m_afCmd.Fy,
+                      m_rosObjPtr->m_afCmd.Fz);
+            torque.set(m_rosObjPtr->m_afCmd.Nx,
+                       m_rosObjPtr->m_afCmd.Ny,
+                       m_rosObjPtr->m_afCmd.Nz);
+        }
+        addExternalForce(force);
+        addExternalTorque(torque);
+        size_t jntCmdSize = m_rosObjPtr->m_afCmd.size_J_cmd;
+        if (jntCmdSize > 0 && m_parentLinks.size() == 0){
+            size_t jntCnt = m_joints.size() < jntCmdSize ? m_joints.size() : jntCmdSize;
+            for (size_t jnt = 0 ; jnt < jntCnt ; jnt++){
+                if (m_rosObjPtr->m_afCmd.pos_ctrl)
+                    m_joints[jnt]->command_position(m_rosObjPtr->m_afCmd.J_cmd[jnt]);
+                else
+                    m_joints[jnt]->command_torque(m_rosObjPtr->m_afCmd.J_cmd[jnt]);
+            }
+
+        }
+    }
+}
+
+///
+/// \brief Joint::Joint
+///
+Joint::Joint(){
+
 }
 
 ///
@@ -141,7 +250,7 @@ void Joint::assign_vec(std::string name, btVector3* v, YAML::Node* node){
     v->setX((*node)[name.c_str()]["x"].as<double>());
     v->setY((*node)[name.c_str()]["y"].as<double>());
     v->setZ((*node)[name.c_str()]["z"].as<double>());
-    print_vec(name, v);
+//    print_vec(name, v);
 }
 
 void Joint::print_vec(std::string name, btVector3* v){
@@ -158,7 +267,7 @@ void Joint::print_vec(std::string name, btVector3* v){
 /// \param name
 /// \return
 ///
-bool Joint::load(std::string file, std::string name, cBulletMultiBody* multiBody){
+bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB){
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
@@ -167,20 +276,21 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* multiBody
 
     m_name = fileNode["name"].as<std::string>();
     m_parent_name = fileNode["parent"].as<std::string>();
-    printf("\t -Name of Parent Link = %s \n", m_parent_name.c_str());
     m_child_name = fileNode["child"].as<std::string>();
-    printf("\t -Name of Child Link = %s \n", m_child_name.c_str());
 
     assign_vec("parent_pivot", &m_pvtA,  &fileNode);
     assign_vec("parent_axis", &m_axisA, &fileNode);
     assign_vec("child_pivot", &m_pvtB,  &fileNode);
     assign_vec("child_axis", &m_axisB,  &fileNode);
 
-    btRigidBody* bodyA, * bodyB;
-    if (multiBody->m_linkMap.find(m_parent_name.c_str()) != multiBody->m_linkMap.end()
-            || multiBody->m_linkMap.find(m_child_name.c_str()) != multiBody->m_linkMap.end()){
-        bodyA = multiBody->m_linkMap[m_parent_name.c_str()]->m_bulletRigidBody;
-        bodyB = multiBody->m_linkMap[m_child_name.c_str()]->m_bulletRigidBody;
+    Link * linkA, * linkB;
+    if (mB->m_linkMap.find(m_parent_name.c_str()) != mB->m_linkMap.end()
+            || mB->m_linkMap.find(m_child_name.c_str()) != mB->m_linkMap.end()){
+        linkA =  mB->m_linkMap[m_parent_name.c_str()];
+        linkB = mB->m_linkMap[m_child_name.c_str()];
+        bodyA = linkA->m_bulletRigidBody;
+        bodyB = linkB->m_bulletRigidBody;
+        linkA->add_child_link(linkB, this);
     }
     else{
         std::cerr <<" Couldn't find rigid bodies for joint: " << m_name << std::endl;
@@ -204,8 +314,27 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* multiBody
         jnt_lim_high = fileNode["joint_limits"]["high"].as<double>();
         m_hinge->setLimit(jnt_lim_low, jnt_lim_high);
     }
-    multiBody->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge);
+    mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge);
     return true;
+}
+
+///
+/// \brief Joint::command_position
+/// \param cmd
+///
+void Joint::command_position(double &cmd){
+   m_hinge->setMotorTarget(cmd, 0.001);
+}
+
+///
+/// \brief Joint::command_torque
+/// \param cmd
+///
+void Joint::command_torque(double &cmd){
+    btTransform trA = bodyA->getWorldTransform();
+    btVector3 hingeAxisInWorld = trA.getBasis()*m_axisA;
+    bodyA->applyTorque(-hingeAxisInWorld * cmd);
+    bodyB->applyTorque(hingeAxisInWorld * cmd);
 }
 
 ///
@@ -239,7 +368,7 @@ bool cBulletMultiBody::load_yaml (std::string file) {
     size_t totalLinks = baseNode["links"].size();
     for (size_t i = 0; i < totalLinks; ++i) {
         tmpLink = new Link(m_chaiWorld);
-        printf("Link Name %s \n", baseNode["links"][i].as<std::string>().c_str());
+//        printf("Link Name %s \n", baseNode["links"][i].as<std::string>().c_str());
         if (tmpLink->load(file, baseNode["links"][i].as<std::string>(), this))
             m_linkMap[baseNode["links"][i].as<std::string>()] = tmpLink;
     }

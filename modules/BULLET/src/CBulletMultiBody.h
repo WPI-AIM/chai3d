@@ -60,20 +60,37 @@ typedef std::map<std::string, Link*> cLinkMap;
 typedef std::map<std::string, Joint*> cJointMap;
 
 class Link : public cBulletMultiMesh{
+
 private:
+
     double m_scale;
     std::string m_mesh_name;
     cMultiMesh m_lowResMesh;
     cVector3d pos;
     cMatrix3d rot;
     cMaterial m_mat;
+    std::vector<Link*>::const_iterator m_linkIt;
+protected:
+
+    std::vector<Joint*> m_joints;
+    std::vector<Link*> m_childrenLinks;
+    std::vector<Link*> m_parentLinks;
+
+    void add_parent_link(Link* a_link);
+    void populate_parents_tree(Link* a_link);
+
 public:
-    Link(cBulletWorld* a_world):cBulletMultiMesh(a_world){}
+
+    virtual void updateCmdFromROS(double dt);
+    Link(cBulletWorld* a_world);
     bool load (std::string file, std::string name, cBulletMultiBody* multiBody);
+    void add_child_link(Link* childLink, Joint* jnt);
 };
 
 class Joint{
+
 private:
+
     std::string m_name;
     std::string m_parent_name, m_child_name;
     std::string m_joint_name;
@@ -82,10 +99,16 @@ private:
     bool enable_motor;
     double jnt_lim_low, jnt_lim_high, max_motor_impluse;
     btHingeConstraint* m_hinge;
+    btRigidBody *bodyA, *bodyB;
     void assign_vec(std::string name, btVector3* v, YAML::Node* node);
     void print_vec(std::string name, btVector3* v);
+
 public:
+
+    Joint();
     bool load (std::string file, std::string name, cBulletMultiBody* multiBody);
+    void command_torque(double &cmd);
+    void command_position(double &cmd);
 };
 
 class cBulletMultiBody{
