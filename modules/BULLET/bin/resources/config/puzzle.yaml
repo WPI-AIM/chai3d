@@ -20,17 +20,17 @@ link1:
  mass: 0.8
  mesh: Torus.STL
  scale: 1.0
- position: {x: -0.3, y: 0.0, z: -0.5}
+ position: {x: -1.5, y: -1.5, z: -0.5}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: tomato_red
  color_raw: *orange_tomato
 
 link2:
- name: RoundBase
+ name: PegBase
  mass: 10.0
  mesh: PegBase.STL
  scale: 1.0
- position: {x: -0.3, y: 0.5, z: -0.5}
+ position: {x: -1.5, y: -1.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: blue_navy
  color_raw: *blue_navy
@@ -41,7 +41,7 @@ link3:
  mass: 8.0
  mesh: PuzzleBase.STL
  scale: 1.0
- position: {x: 0.4, y: 0.0, z: -1.0}
+ position: {x: -1.0, y: 0.0, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: yellow
  color_raw: *pink_deep
@@ -52,7 +52,7 @@ link4:
  mass: 0.8
  mesh: CirclePuzzle.STL
  scale: 1.0
- position: {x: 0.0, y: 0.0, z: -0.5}
+ position: {x: 0.0, y: -0.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: yellow
  color_raw: *yellow
@@ -63,7 +63,7 @@ link5:
  mass: 0.8
  mesh: TrianglePuzzle.STL
  scale: 1.0
- position: {x: 0.5, y: 0.8, z: -0.5}
+ position: {x: 0.0, y: 0.0, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: green
  color_raw: *pink_pale_voilet_red
@@ -74,7 +74,7 @@ link6:
  mass: 0.8
  mesh: SquarePuzzle.STL
  scale: 1.0
- position: {x: 0.5, y: 0.0, z: -0.5}
+ position: {x: 0.0, y: 0.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: blue
  color_raw: *blue_corn_flower
@@ -85,7 +85,7 @@ link7:
  mass: 0.3
  mesh: HandleLeft.STL
  scale: 1.0
- position: {x: 0.0, y: -0.85, z: -0.5}
+ position: {x: 1.0, y: -0.85, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: white
  color_raw: *orange
@@ -96,7 +96,7 @@ link8:
  mass: 0.3
  mesh: HandleRight.STL
  scale: 1.0
- position: {x: 0.0, y: 0.85, z: -0.5}
+ position: {x: 1.0, y: 0.85, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: white
  color_raw: *orange_coral
@@ -107,11 +107,11 @@ link9:
  mass: 1.0
  mesh: Center.STL
  scale: 1.0
- position: {x: 0.0, y: 0.0, z: -0.5}
+ position: {x: 1.0, y: 0.0, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: black
  color_raw: *green_medium_spring
- friction: 0.8
+ friction: 0.5
 
 joint1:
  name: PuzzleLeftJoint
