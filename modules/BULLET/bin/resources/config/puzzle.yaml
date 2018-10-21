@@ -1,0 +1,140 @@
+links: [link1, link2, link3, link4, link5, link6, link7, link8, link9]
+joints: [joint1, joint2]
+high_res_path: ../resources/models/puzzle/high_res/
+low_res_path: ../resources/models/puzzle/low_res/
+
+# Define Colors
+orange_tomato: &orange_tomato {r: 1.0, g: 0.38, b: 0.27, a: 1.0}
+blue_blue: &blue_navy {r: 0.0, g: 0.0, b: 0.5, a: 1.0}
+pink_deep: &pink_deep {r: 1.0, g: 0.07, b: 0.57, a: 1.0}
+yellow: &yellow {r: 1.0, g: 1.0, b: 0.0, a: 1.0}
+pink_pale_voilet_red: &pink_pale_voilet_red {r: 0.85, g: 0.44, b: 0.57, a: 1.0}
+blue_corn_flow: &blue_corn_flower {r: 0.4, g: 0.58, b: 0.93, a: 1.0}
+green_medium_spring: &green_medium_spring {r: 0.0, g: 0.92, b: 0.60, a: 1.0}
+orange: &orange {r: 1.0, g: 0.64, b: 0.0, a: 1.0}
+orange_coral: &orange_coral {r: 1.0, g: 0.49, b: 0.31, a: 1.0}
+
+
+link1:
+ name: Torus
+ mass: 0.8
+ mesh: Torus.STL
+ scale: 1.0
+ position: {x: -0.3, y: 0.0, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: tomato_red
+ color_raw: *orange_tomato
+
+link2:
+ name: RoundBase
+ mass: 10.0
+ mesh: PegBase.STL
+ scale: 1.0
+ position: {x: -0.3, y: 0.5, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: blue_navy
+ color_raw: *blue_navy
+ friction: 1
+
+link3:
+ name: PuzzleBase
+ mass: 8.0
+ mesh: PuzzleBase.STL
+ scale: 1.0
+ position: {x: 0.4, y: 0.0, z: -1.0}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: yellow
+ color_raw: *pink_deep
+ friction: 0.9
+
+link4:
+ name: CirclePuzzle
+ mass: 0.8
+ mesh: CirclePuzzle.STL
+ scale: 1.0
+ position: {x: 0.0, y: 0.0, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: yellow
+ color_raw: *yellow
+ friction: 0.8
+
+link5:
+ name: TrianglePuzzle
+ mass: 0.8
+ mesh: TrianglePuzzle.STL
+ scale: 1.0
+ position: {x: 0.5, y: 0.8, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: green
+ color_raw: *pink_pale_voilet_red
+ friction: 0.8
+
+link6:
+ name: SquarePuzzle
+ mass: 0.8
+ mesh: SquarePuzzle.STL
+ scale: 1.0
+ position: {x: 0.5, y: 0.0, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: blue
+ color_raw: *blue_corn_flower
+ friction: 0.8
+
+link7:
+ name: HandleLeft
+ mass: 0.3
+ mesh: HandleLeft.STL
+ scale: 1.0
+ position: {x: 0.0, y: -0.85, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: white
+ color_raw: *orange
+ friction: 0.5
+
+link8:
+ name: HandleRight
+ mass: 0.3
+ mesh: HandleRight.STL
+ scale: 1.0
+ position: {x: 0.0, y: 0.85, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: white
+ color_raw: *orange_coral
+ friction: 0.5
+
+link9:
+ name: CenterPuzzle
+ mass: 1.0
+ mesh: Center.STL
+ scale: 1.0
+ position: {x: 0.0, y: 0.0, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: black
+ color_raw: *green_medium_spring
+ friction: 0.8
+
+joint1:
+ name: PuzzleLeftJoint
+ parent: link9
+ child: link7
+ parent_axis: {x: 1.0, y: 0, z: 0.0}
+ parent_pivot: {x: 0, y: -0.85, z: 0.0}
+ child_axis: {x: 1.0, y: 0, z: 0.0}
+ child_pivot: {x: 0, y: 0, z: 0}
+ joint_limits: {low: -1.2, high: 1.2}
+ #enable_motor: 1
+ #max_motor_impulse: 0.05
+
+joint2:
+ name: PuzzleRightJoint
+ parent: link9
+ child: link8
+ parent_axis: {x: 1.0, y: 0, z: 0}
+ parent_pivot: {x: 0, y: 0.85, z: 0.0}
+ child_axis: {x: 1.0, y: 0, z: 0}
+ child_pivot: {x: 0, y: 0, z: 0}
+ joint_limits: {low: -1.2, high: 1.2}
+ #enable_motor: 1
+ #max_motor_impulse: 0.05
+ 
+
