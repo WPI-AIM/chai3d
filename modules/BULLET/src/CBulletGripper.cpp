@@ -45,191 +45,213 @@
 
 #define PI 3.14159
 
-bool g_2 =  true;
-bool g_1a = false;
-bool g_2a = false;
-
 // root resource path
 std::string resourceRootGripper;
 // convert to resource path
 #define RESOURCE_PATH(p)    (char*)((resourceRootGripper+std::string(p)).c_str())
-
 namespace chai3d {
 
 cBulletGripper::cBulletGripper(cBulletWorld *bulletWorld, std::string a_gripperName, GripperType a_type):cBulletMultiMesh(bulletWorld, a_gripperName){
 
     std::string hres_path_pre = "../resources/models/gripper/high_res/";
     std::string lres_path_pre = "../resources/models/gripper/low_res/";
-    std::string _link_1_str = "";
-    std::string _link_2_str = "";
+    std::string _base_link_str = "";
+    std::string _link_R1_str = "";
+    std::string _link_L1_str = "";
+    std::string _link_R2_str = "";
+    std::string _link_L2_str = "";
     std::string hres_file, lres_file;
     cMultiMesh lowResColMesh;
+    m_gripperType = a_type;
+//    m_gripperType = GripperType::SINGLE_JOINT;
+    _base_link_str = "BaseLink.STL";
+    lBase_len = 0.18;
 
-    if (a_type == GripperType::SINGLE_JOINT){
-        g_2 =  true;
-        g_1a = false;
-        g_2a = false;
-        _link_1_str = "SingleLinkL1.STL";
+    if (m_gripperType == GripperType::SINGLE_JOINT){
+        _link_R1_str = "SingleLinkR1.STL";
+        _link_L1_str = "SingleLinkL1.STL";
         gScale = 1.0;
 
-        j1_low_lim = 178.0 * (PI / 180.0);
-        j1_high_lim = 120.0 * (PI / 180.0);
+        jR1_low_lim =  15 * (PI / 180.0);
+        jR1_high_lim = -30.0 * (PI / 180.0);
+        jL1_low_lim = -jR1_low_lim;
+        jL1_high_lim = -jR1_high_lim;
     }
 
-    if (a_type == GripperType::MULTI_JOINT){
-        g_2 =  true;
-        g_1a = true;
-        g_2a = true;
-        _link_1_str = "MultiLinkL1.STL";
-        _link_2_str = "MultiLinkL2.STL";
+    if (m_gripperType == GripperType::MULTI_JOINT){
+        _link_R1_str = "MultiLinkR1.STL";
+        _link_L1_str = "MultiLinkL1.STL";
+        _link_R2_str = "MultiLinkR2.STL";
+        _link_L2_str = "MultiLinkL2.STL";
 
         gScale = 1.0;
         gA = 15 * (PI / 180);
 
-        j1_low_lim = 150.0 * (PI / 180.0);
-        j1_high_lim = 90.0 * (PI / 180.0);
+        jR1_low_lim =  0.0 * (PI / 180.0);
+        jR1_high_lim =-40.0 * (PI / 180.0);
+        jL1_low_lim = -jR1_low_lim;
+        jL1_high_lim = -jR1_high_lim;
 
-        l1_len = 0.27;
+        jR2_low_lim = 5.0 * (PI / 180.0);
+        jR2_high_lim = -30.0 * (PI / 180.0);
+        jL2_low_lim = -jR2_low_lim;
+        jL2_high_lim = -jR2_high_lim;
+
+        lR1_len = 0.27;
+        lL1_len = 0.27;
 
     }
-    hres_file = hres_path_pre + _link_1_str;
-    lres_file = lres_path_pre + _link_1_str;
+    hres_file = hres_path_pre + _base_link_str;
+    lres_file = lres_path_pre + _base_link_str;
     loadFromFile(RESOURCE_PATH(hres_file.c_str()));
     lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
     scale(gScale);
     lowResColMesh.scale(gScale);
     buildContactTriangles(0.001, &lowResColMesh);
     setLocalPos(0.0,0.0,0.0);
-    cMatrix3d rotMat;
 
-    if(g_2){
-    link2 = new cBulletMultiMesh(bulletWorld);
-    hres_file = hres_path_pre + _link_1_str;
-    lres_file = lres_path_pre + _link_1_str;
-    link2->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    linkR1 = new cBulletMultiMesh(bulletWorld);
+    hres_file = hres_path_pre + _link_R1_str;
+    lres_file = lres_path_pre + _link_R1_str;
+    linkR1->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
     lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
-    link2->scale(gScale);
+    linkR1->scale(gScale);
     lowResColMesh.scale(gScale);
-    link2->buildContactTriangles(0.001, &lowResColMesh);
-    link2->setLocalPos(0.0,0.0,0.0);
-    rotMat.setAxisAngleRotationDeg(1,0,0,180);
-    link2->setLocalRot(rotMat);
+    linkR1->buildContactTriangles(0.001, &lowResColMesh);
+
+    linkL1 = new cBulletMultiMesh(bulletWorld);
+    hres_file = hres_path_pre + _link_L1_str;
+    lres_file = lres_path_pre + _link_L1_str;
+    linkL1->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+    linkL1->scale(gScale);
+    lowResColMesh.scale(gScale);
+    linkL1->buildContactTriangles(0.001, &lowResColMesh);
+
+    if (m_gripperType == GripperType::MULTI_JOINT){
+        linkR2 = new cBulletMultiMesh(bulletWorld);
+        hres_file = hres_path_pre + _link_R2_str;
+        lres_file = lres_path_pre + _link_R2_str;
+        linkR2->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+        lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+        linkR2->scale(gScale);
+        lowResColMesh.scale(gScale);
+        linkR2->buildContactTriangles(0.001, &lowResColMesh);
+
+        linkL2 = new cBulletMultiMesh(bulletWorld);
+        hres_file = hres_path_pre + _link_L2_str;
+        lres_file = lres_path_pre + _link_L2_str;
+        linkL2->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
+        lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
+        linkL2->scale(gScale);
+        lowResColMesh.scale(gScale);
+        linkL2->buildContactTriangles(0.001, &lowResColMesh);
     }
 
-    if (g_1a){
-    link1a = new cBulletMultiMesh(bulletWorld);
-    hres_file = hres_path_pre + _link_2_str;
-    lres_file = lres_path_pre + _link_2_str;
-    link1a->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
-    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
-    link1a->scale(gScale);
-    lowResColMesh.scale(gScale);
-    link1a->buildContactTriangles(0.001, &lowResColMesh);
-    link1a->setLocalPos(-gScale * l1_len * cos(gA), -gScale * l1_len * sin(gA), 0.0);
-    rotMat.setAxisAngleRotationDeg(1,0,0,0);
-    link1a->setLocalRot(rotMat);
-    j1a_low_lim = -15.0 * (PI / 180.0);
-    j1a_high_lim = 30.0 * (PI / 180.0);
-    }
-
-    if (g_2a){
-    link2a = new cBulletMultiMesh(bulletWorld);
-    hres_file = hres_path_pre + _link_2_str;
-    lres_file = lres_path_pre + _link_2_str;
-    link2a->loadFromFile(RESOURCE_PATH(hres_file.c_str()));
-    lowResColMesh.loadFromFile(RESOURCE_PATH(lres_file.c_str()));
-    link2a->scale(gScale);
-    lowResColMesh.scale(gScale);
-    link2a->buildContactTriangles(0.001, &lowResColMesh);
-    link2a->setLocalPos(gScale * l1_len * cos(gA), gScale * l1_len * sin(gA), 0.0);
-    rotMat.setAxisAngleRotationDeg(1,0,0,180);
-    link2a->setLocalRot(rotMat);
-    j2a_low_lim = -15.0 * (PI / 180.0);
-    j2a_high_lim = 30.0 * (PI / 180.0);
-    }
 }
 
 void cBulletGripper::build(){
 
     double a_mass = 0.05;
-    setMass(a_mass);
+    setMass(0.02);
 //    setShowFrame(true);
     estimateInertia();
     buildDynamicModel();
     m_dynamicWorld->addChild(this);
-    mat.setBlack();
+    mat.setPinkHot();
     setMaterial(mat);
 
-    if (g_2){
-    link2->setMass(a_mass);
-//    link2->setShowFrame(true);
-    link2->estimateInertia();
-    link2->buildDynamicModel();
-    m_dynamicWorld->addChild(link2);
+    //////////////////////////////////////////////////////////
+    linkR1->setMass(a_mass);
+    linkR1->estimateInertia();
+    linkR1->buildDynamicModel();
+    m_dynamicWorld->addChild(linkR1);
     mat.setBlueMediumSlate();
-    link2->setMaterial(mat);
+    linkR1->setMaterial(mat);
 
+    axisB_R1.setValue(0.0,0.0,1.0);
+    axisR1_B = axisB_R1;
+    pvtB_R1.setValue(0.0, lBase_len / 2.0, 0.0);
+    pvtR1_B.setValue(0.0,0.0,0.0);
+    hingeB_R1 = new btHingeConstraint(*this->m_bulletRigidBody,
+                                    *linkR1->m_bulletRigidBody,
+                                    pvtB_R1, pvtR1_B, axisB_R1, axisR1_B, true);
 
-    axis1.setValue(0.0,0.0,1.0);
-    axis2 = -axis1;
-    pvt1.setValue(0.0,0.0,0.0);
-    pvt2.setValue(0.0,0.0,0.0);
-    hinge1 = new btHingeConstraint(*this->m_bulletRigidBody,
-                                        *link2->m_bulletRigidBody,
-                                        pvt1, pvt2, axis1, axis2, true);
+    m_dynamicWorld->m_bulletWorld->addConstraint(hingeB_R1, true);
+    hingeB_R1->enableMotor(true);
+    hingeB_R1->setMaxMotorImpulse(0.05);
+    hingeB_R1->setLimit(jR1_low_lim, jR1_high_lim);
 
-    m_dynamicWorld->m_bulletWorld->addConstraint(hinge1, true);
-    hinge1->enableMotor(true);
-    hinge1->setMaxMotorImpulse(0.05);
-    hinge1->setLimit(j1_low_lim, j1_high_lim);
-    }
+    //////////////////////////////////////////////////////////
 
-    if (g_1a){
-    link1a->setMass(a_mass);
-//    link1a->setShowFrame(true);
-    link1a->estimateInertia();
-    link1a->buildDynamicModel();
-    m_dynamicWorld->addChild(link1a);
+    linkL1->setMass(a_mass);
+    linkL1->estimateInertia();
+    linkL1->buildDynamicModel();
+    m_dynamicWorld->addChild(linkL1);
     mat.setPurpleBlueViolet();
-    link1a->setMaterial(mat);
+    linkL1->setMaterial(mat);
 
-    axis1a.setValue(0.0,0.0,1.0);
-    axis1aa = axis1a;
-    pvt1a.setValue(-gScale * l1_len * cos(gA), -gScale * l1_len * sin(gA), 0.0);
-    pvt1aa.setValue(0.0,0.0,0.0);
-    hinge1a = new btHingeConstraint(*this->m_bulletRigidBody,
-                                        *link1a->m_bulletRigidBody,
-                                        pvt1a, pvt1aa, axis1a, axis1aa, true);
+    axisB_L1.setValue(0.0,0.0,1.0);
+    axisL1_B = axisB_L1;
+    pvtB_L1.setValue(0.0, -lBase_len / 2.0, 0.0);
+    pvtL1_B.setValue(0.0,0.0,0.0);
+    hingeB_L1 = new btHingeConstraint(*this->m_bulletRigidBody,
+                                    *linkL1->m_bulletRigidBody,
+                                    pvtB_L1, pvtL1_B, axisB_L1, axisL1_B, true);
 
-    m_dynamicWorld->m_bulletWorld->addConstraint(hinge1a, true);
-    hinge1a->enableMotor(true);
-    hinge1a->setMaxMotorImpulse(0.05);
-    hinge1a->setLimit(j1a_low_lim, j1a_high_lim);
+    m_dynamicWorld->m_bulletWorld->addConstraint(hingeB_L1, true);
+    hingeB_L1->enableMotor(true);
+    hingeB_L1->setMaxMotorImpulse(0.05);
+    hingeB_L1->setLimit(jL1_low_lim, jL1_high_lim);
+
+    //////////////////////////////////////////////////////////
+    if (m_gripperType == GripperType::MULTI_JOINT){
+        linkR2->setMass(a_mass);
+        linkR2->estimateInertia();
+        linkR2->buildDynamicModel();
+        m_dynamicWorld->addChild(linkR2);
+        mat.setOrangeCoral();
+        linkR2->setMaterial(mat);
+
+        axisR1_R2.setValue(0.0,0.0,1.0);
+        axisR2_R1 = axisR1_R2;
+        pvtR1_R2.setValue(-gScale * lR1_len * cos(gA), gScale * lR1_len * sin(gA), 0.0);
+        pvtR2_R1.setValue(0.0,0.0,0.0);
+        hingeR1_R2 = new btHingeConstraint(*linkR1->m_bulletRigidBody,
+                                           *linkR2->m_bulletRigidBody,
+                                           pvtR1_R2, pvtR2_R1, axisR1_R2, axisR2_R1, true);
+
+
+        m_dynamicWorld->m_bulletWorld->addConstraint(hingeR1_R2, true);
+        hingeR1_R2->enableMotor(true);
+        hingeR1_R2->setMaxMotorImpulse(0.05);
+        hingeR1_R2->setLimit(jR2_low_lim, jR2_high_lim);
+
+        //////////////////////////////////////////////////////////
+
+        linkL2->setMass(a_mass);
+        linkL2->estimateInertia();
+        linkL2->buildDynamicModel();
+        m_dynamicWorld->addChild(linkL2);
+        mat.setOrangeCoral();
+        linkL2->setMaterial(mat);
+
+        axisL1_L2.setValue(0.0,0.0,1.0);
+        axisL2_L1 = axisL1_L2;
+        pvtL1_L2.setValue(-gScale * lL1_len * cos(gA), -gScale * lL1_len * sin(gA), 0.0);
+        pvtL2_L1.setValue(0.0,0.0,0.0);
+        hingeL1_L2 = new btHingeConstraint(*linkL1->m_bulletRigidBody,
+                                           *linkL2->m_bulletRigidBody,
+                                           pvtL1_L2, pvtL2_L1, axisL1_L2, axisL2_L1, true);
+
+
+        m_dynamicWorld->m_bulletWorld->addConstraint(hingeL1_L2, true);
+        hingeL1_L2->enableMotor(true);
+        hingeL1_L2->setMaxMotorImpulse(0.05);
+        hingeL1_L2->setLimit(jL2_low_lim, jL2_high_lim);
     }
 
-    if (g_2a){
-    link2a->setMass(a_mass);
-//    link2a->setShowFrame(true);
-    link2a->estimateInertia();
-    link2a->buildDynamicModel();
-    m_dynamicWorld->addChild(link2a);
-    mat.setOrangeCoral();
-    link2a->setMaterial(mat);
-
-    axis2a.setValue(0.0,0.0,1.0);
-    axis2aa = axis2a;
-    pvt2a.setValue(-gScale * l1_len * cos(gA), -gScale * l1_len * sin(gA), 0.0);
-    pvt2aa.setValue(0.0,0.0,0.0);
-    hinge2a = new btHingeConstraint(*link2->m_bulletRigidBody,
-                                        *link2a->m_bulletRigidBody,
-                                        pvt2a, pvt2aa, axis2a, axis2aa, true);
-
-
-    m_dynamicWorld->m_bulletWorld->addConstraint(hinge2a, true);
-    hinge2a->enableMotor(true);
-    hinge2a->setMaxMotorImpulse(0.05);
-    hinge2a->setLimit(j2a_low_lim, j2a_high_lim);
-    }
+    //////////////////////////////////////////////////////////
 
     GripperSurfaceProperties props;
     props.set_default();
@@ -239,17 +261,16 @@ void cBulletGripper::build(){
 
 void cBulletGripper::set_gripper_angle(const double &angle, double dt){
     double clipped_angle = cClamp(angle, 0.0, 1.0);
-    if (g_2){
-        double j1_angle = j1_low_lim + clipped_angle * (j1_high_lim - j1_low_lim);
-        hinge1->setMotorTarget(j1_angle, dt);
-    }
-    if (g_1a){
-        double j1a_angle = j1a_low_lim + clipped_angle * (j1a_high_lim - j1a_low_lim);
-        hinge1a->setMotorTarget(j1a_angle, dt);
-    }
-    if (g_2a){
-        double j2a_angle = j2a_low_lim + clipped_angle * (j2a_high_lim - j2a_low_lim);
-        hinge2a->setMotorTarget(j2a_angle, dt);
+    double j1_angle;
+    j1_angle = jR1_low_lim + clipped_angle * (jR1_high_lim - jR1_low_lim);
+    hingeB_R1->setMotorTarget(j1_angle, dt);
+    j1_angle = jL1_low_lim + clipped_angle * (jL1_high_lim - jL1_low_lim);
+    hingeB_L1->setMotorTarget(j1_angle, dt);
+    if (m_gripperType == GripperType::MULTI_JOINT){
+        j1_angle = jR2_low_lim + clipped_angle * (jR2_high_lim - jR2_low_lim);
+        hingeR1_R2->setMotorTarget(j1_angle, dt);
+        j1_angle = jL2_low_lim + clipped_angle * (jL2_high_lim - jL2_low_lim);
+        hingeL1_L2->setMotorTarget(j1_angle, dt);
     }
 }
 
@@ -263,24 +284,23 @@ void cBulletGripper::set_surface_props(GripperSurfaceProperties &props){
     this->m_bulletRigidBody->setFriction(props.friction);
     this->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
 
-    if (g_2){
-    link2->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
-    link2->m_bulletRigidBody->setFriction(props.friction);
-    link2->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
-    }
+    linkR1->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
+    linkR1->m_bulletRigidBody->setFriction(props.friction);
+    linkR1->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
 
-    if (g_1a){
-    link1a->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
-    link1a->m_bulletRigidBody->setFriction(props.friction);
-    link1a->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
-    }
+    linkL1->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
+    linkL1->m_bulletRigidBody->setFriction(props.friction);
+    linkL1->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
 
-    if (g_2a){
-    link2a->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
-    link2a->m_bulletRigidBody->setFriction(props.friction);
-    link2a->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
-    }
+    if (m_gripperType == GripperType::MULTI_JOINT){
+        linkR2->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
+        linkR2->m_bulletRigidBody->setFriction(props.friction);
+        linkR2->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
 
+        linkL2->m_bulletRigidBody->setDamping(props.lin_damping, props.ang_damping);
+        linkL2->m_bulletRigidBody->setFriction(props.friction);
+        linkL2->m_bulletRigidBody->setRollingFriction(props.rolling_friction);
+    }
 }
 
 void cBulletGripper::updateCmdFromROS(double dt){

@@ -80,6 +80,15 @@ enum GripperType{
 };
 
 class cBulletWorld;
+
+struct cMultiBodyLink{
+    btVector3* parentAxis, * childAxes;
+    btVector3* parentPvt, * childPvt;
+    double *jnt_lim_low, *jnt_lim_high;
+    cBulletMultiMesh* link;
+    btHinge2Constraint* hinge;
+};
+
 class cBulletGripper:public cBulletMultiMesh{
 public:
     cBulletGripper(cBulletWorld *bulletWorld, std::string gripper_name = "Gripper", GripperType a_type = GripperType::MULTI_JOINT);
@@ -92,21 +101,24 @@ public:
     void build();
     virtual void updateCmdFromROS(double dt=0.001);
 public:
-    cBulletMultiMesh* link2, *link1a, *link2a;
-    btHingeConstraint* hinge1, *hinge1a, *hinge2a;
+    cBulletMultiMesh* linkR1, *linkL1, *linkR2, *linkL2;
+    btHingeConstraint* hingeB_R1, *hingeB_L1, *hingeR1_R2, *hingeL1_L2;
 
 private:
-    btVector3 axis1, axis2, pvt1, pvt2;
-    btVector3 axis1a, axis2a, pvt1a, pvt2a;
-    btVector3 axis1aa, axis2aa, pvt1aa, pvt2aa;
+    btVector3 axisB_R1, axisB_L1, axisR1_R2, axisL1_L2;
+    btVector3 axisR1_B, axisL1_B, axisR2_R1, axisL2_L1;
+    btVector3 pvtB_R1, pvtB_L1, pvtR1_R2, pvtL1_L2;
+    btVector3 pvtR1_B, pvtL1_B, pvtR2_R1, pvtL2_L1;
     cMaterial mat;
-    double j1_low_lim, j1_high_lim;
-    double j1a_low_lim, j1a_high_lim;
-    double j2a_low_lim, j2a_high_lim;
-    double l1_len, l2_len;
+    double jR1_low_lim, jR1_high_lim;
+    double jL1_low_lim, jL1_high_lim;
+    double jR2_low_lim, jR2_high_lim;
+    double jL2_low_lim, jL2_high_lim;
+    double lBase_len, lR1_len, lL1_len;
 
     double gScale;
     double gA;
+    GripperType m_gripperType;
 };
 
 }
