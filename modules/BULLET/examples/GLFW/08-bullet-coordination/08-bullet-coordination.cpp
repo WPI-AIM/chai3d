@@ -1042,13 +1042,15 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // 3 BULLET BLOCKS
     //////////////////////////////////////////////////////////////////////////
-    double size = 0.40;
     cMaterial meshMat;
     cMultiMesh lowResColMesh;
 
     std::string hres_path_pre = "../resources/models/puzzle/high_res/";
     std::string lres_path_pre = "../resources/models/puzzle/low_res/";
     std::string hres_file, lres_file;
+
+    cBulletMultiBody mbodyObj(g_bulletWorld);
+    mbodyObj.load_yaml("../resources/config/gripper.yaml");
 
 //    g_bulletGear = new cBulletMultiMesh(g_bulletWorld, "Gear");
 //    g_bulletGear->loadFromFile(RESOURCE_PATH("../resources/models/gear/gear.3ds"));

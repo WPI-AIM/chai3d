@@ -83,6 +83,7 @@
 #include "CBulletStaticPlane.h"
 #include "CBulletVehicle.h"
 #include "CBulletGripper.h"
+#include "CBulletMultiBody.h"
 
 //---------------------------------------------------------------------------
 #endif

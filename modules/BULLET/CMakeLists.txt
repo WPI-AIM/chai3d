@@ -86,9 +86,12 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO ${PROJECT_SOURCE_DIR}/bin/${O
 
 # find dependencies
 find_package (CHAI3D 3.2 REQUIRED)
+find_package(yaml-cpp REQUIRED)
 include_directories (${CHAI3D_INCLUDE_DIRS})
 link_directories (${CHAI3D_LIBRARY_DIRS})
 add_definitions (${CHAI3D_DEFINITIONS})
+include_directories(${YAML_CPP_INCLUDE_DIR})
+set( CHAI3D_LIBRARIES ${CHAI3D_LIBRARIES} ${YAML_CPP_LIBRARIES})
 
 # optional settings
 include (${PROJECT_SOURCE_DIR}/CMakeOptions.txt OPTIONAL)

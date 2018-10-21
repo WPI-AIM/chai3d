@@ -1,0 +1,33 @@
+links: [link1, link2]
+joints: [joint1]
+high_res_path: ../resources/models/gripper/high_res/
+low_res_path: ../resources/models/gripper/low_res/
+link1:
+ name: GripperRightLink
+ mass: 0.4
+ mesh: SingleLinkR1.STL
+ scale: 1.0
+ position: {x: 0.0, y: 0.0, z: 0.0}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: red
+link2:
+ name: Link2
+ mass: 0.4
+ mesh: SingleLinkL1.STL
+ scale: 1.0
+ position: {x: 0.0, y: 0.0, z: 0.0}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: white
+joint1:
+ name: GripperLeftLink
+ parent: link1
+ child: link2
+ parent_axis: {x: 0, y: 0, z: 1.0}
+ parent_pivot: {x: 0, y: 0, z: 0.5}
+ child_axis: {x: 0, y: 0, z: 1.0}
+ child_pivot: {x: 0, y: 0, z: 0.5}
+ joint_limits: {low: 0.5, high: 1.0}
+ enable_motor: 1
+ max_motor_impulse: 0.05
+ 
+
