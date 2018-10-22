@@ -258,7 +258,7 @@ protected:
 
     //! Command Position from Asynchronous Framework
     cVector3d m_dpos, m_dpos_prev, m_ddpos;
-    cMatrix3d m_drot;
+    cMatrix3d m_drot, m_drot_prev;
 };
 
 //------------------------------------------------------------------------------

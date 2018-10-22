@@ -121,8 +121,19 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
     }
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
-    if(fileNode["mass"].IsDefined())
+    if(fileNode["mass"].IsDefined()){
         m_mass = fileNode["mass"].as<double>();
+        if(fileNode["linear_gain"].IsDefined()){
+            K_lin = fileNode["linear_gain"]["P"].as<double>();
+            D_lin = fileNode["linear_gain"]["D"].as<double>();
+            _lin_gains_computed = true;
+        }
+        if(fileNode["angular_gain"].IsDefined()){
+            K_ang = fileNode["angular_gain"]["P"].as<double>();
+            D_ang = fileNode["angular_gain"]["D"].as<double>();
+            _ang_gains_computed = true;
+        }
+    }
     if(fileNode["scale"].IsDefined())
         m_scale = fileNode["scale"].as<double>();
 
@@ -159,25 +170,68 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
                             fileNode["color_raw"]["b"].as<float>(),
                             fileNode["color_raw"]["a"].as<float>());
         }
+    else if(fileNode["color"].IsDefined()){
+        std::string color_str = fileNode["color"].as<std::string>();
+        if (multiBody->m_colorsNode[color_str.c_str()].IsDefined()){
+            m_mat.setColorf(multiBody->m_colorsNode[color_str.c_str()]["r"].as<int>() / 255.0,
+                            multiBody->m_colorsNode[color_str.c_str()]["g"].as<int>() / 255.0,
+                            multiBody->m_colorsNode[color_str.c_str()]["b"].as<int>() / 255.0,
+                            multiBody->m_colorsNode[color_str.c_str()]["a"].as<int>() / 255.0);
+        }
 
+    }
+
+    if(fileNode["damping"].IsDefined()){
+        setDamping(fileNode["damping"]["linear"].as<double>(), fileNode["damping"]["angular"].as<double>());
+    }
     setMaterial(m_mat);
+    m_mat.setRed();
     multiBody->m_chaiWorld->addChild(this);
     return true;
 }
 
+///
+/// \brief Link::compute_gains
+///
+void Link::compute_gains(){
+    if (_lin_gains_computed && _ang_gains_computed){
+        return;
+    }
+
+    double lumped_mass = m_mass;
+    cVector3d lumped_intertia = m_inertia;
+    for(m_linkIt = m_childrenLinks.begin() ; m_linkIt != m_childrenLinks.end() ; ++m_linkIt){
+        lumped_mass += (*m_linkIt)->getMass();
+        lumped_intertia += (*m_linkIt)->getInertia();
+    }
+    if (!_lin_gains_computed){
+        K_lin = lumped_mass * 20;
+        D_lin = K_lin / 10;
+        _lin_gains_computed = true;
+    }
+    if (!_ang_gains_computed){
+        K_ang = lumped_mass * 10;
+        D_ang = K_ang / 2;
+        _ang_gains_computed = true;
+    }
+}
+
+///
+/// \brief Link::updateCmdFromROS
+/// \param dt
+///
 void Link::updateCmdFromROS(double dt){
     if (m_rosObjPtr.get() != nullptr){
         m_rosObjPtr->update_af_cmd();
         cVector3d force, torque;
         m_af_pos_ctrl_active = m_rosObjPtr->m_afCmd.pos_ctrl;
         if (m_rosObjPtr->m_afCmd.pos_ctrl){
-            cVector3d cur_pos, cmd_pos, rot_axis;
+            compute_gains();
+            cVector3d cur_pos, cmd_pos, rot_axis, rot_axix_w_gain;
             cQuaternion cur_rot, cmd_rot;
             cMatrix3d cur_rot_mat, cmd_rot_mat;
             btTransform b_trans;
             double rot_angle;
-            double K_lin = 10, B_lin = 1;
-            double K_ang = 5;
             m_bulletRigidBody->getMotionState()->getWorldTransform(b_trans);
             cur_pos.set(b_trans.getOrigin().getX(),
                         b_trans.getOrigin().getY(),
@@ -202,10 +256,11 @@ void Link::updateCmdFromROS(double dt){
             m_dpos_prev = m_dpos;
             m_dpos = cmd_pos - cur_pos;
             m_ddpos = (m_dpos - m_dpos_prev)/dt;
+            m_drot_prev = m_drot;
             m_drot = cMul(cTranspose(cur_rot_mat), cmd_rot_mat);
             m_drot.toAxisAngle(rot_axis, rot_angle);
 
-            force = K_lin * m_dpos + B_lin * m_ddpos;
+            force = K_lin * m_dpos + D_lin * m_ddpos;
             torque = cMul(K_ang * rot_angle, rot_axis);
             cur_rot_mat.mul(torque);
         }
@@ -355,6 +410,10 @@ bool cBulletMultiBody::load_yaml (std::string file) {
 
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false; //File Not Found?
+
+    m_colorsNode = YAML::LoadFile("../resources/config/colors.yaml");
+    if(m_colorsNode.IsNull())
+        std::cerr << "WARNING, COLORS FILE NOT FOUND \n";
 
     Link *tmpLink;
     if (baseNode["high_res_path"].IsDefined() && baseNode["low_res_path"].IsDefined()){

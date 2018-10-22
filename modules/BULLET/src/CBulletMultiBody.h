@@ -64,12 +64,18 @@ class Link : public cBulletMultiMesh{
 private:
 
     double m_scale;
+    double m_total_mass;
     std::string m_mesh_name;
     cMultiMesh m_lowResMesh;
     cVector3d pos;
     cMatrix3d rot;
     cMaterial m_mat;
     std::vector<Link*>::const_iterator m_linkIt;
+    double K_lin, D_lin;
+    double K_ang, D_ang;
+    bool _lin_gains_computed = false;
+    bool _ang_gains_computed = false;
+    void compute_gains();
 protected:
 
     std::vector<Joint*> m_joints;
@@ -126,6 +132,7 @@ protected:
     std::string high_res_path, low_res_path;
 private:
     cMaterial mat;
+    YAML::Node m_colorsNode;
 };
 
 }
