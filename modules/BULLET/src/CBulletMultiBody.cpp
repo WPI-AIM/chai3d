@@ -107,8 +107,7 @@ void Link::add_child_link(Link* a_childLink, Joint* a_jnt){
 /// \param name
 /// \return
 ///
-bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody) {
-
+bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping) {
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
@@ -117,7 +116,7 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
 
     if(fileNode["name"].IsDefined()){
         m_name = fileNode["name"].as<std::string>();
-        m_rosObjPtr.reset(new chai_env::Object(m_name));
+        m_rosObjPtr.reset(new chai_env::Object(m_name + name_remapping));
     }
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
@@ -137,8 +136,8 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
     if(fileNode["scale"].IsDefined())
         m_scale = fileNode["scale"].as<double>();
 
-    std::string rel_path_high_res = multiBody->high_res_path + m_mesh_name;
-    std::string rel_path_low_res = multiBody->low_res_path + m_mesh_name;
+    std::string rel_path_high_res = mB->high_res_path + m_mesh_name;
+    std::string rel_path_low_res = mB->low_res_path + m_mesh_name;
     loadFromFile(RESOURCE_PATH(rel_path_high_res));
     m_lowResMesh.loadFromFile(RESOURCE_PATH(rel_path_low_res));
     scale(m_scale);
@@ -172,11 +171,11 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
         }
     else if(fileNode["color"].IsDefined()){
         std::string color_str = fileNode["color"].as<std::string>();
-        if (multiBody->m_colorsNode[color_str.c_str()].IsDefined()){
-            m_mat.setColorf(multiBody->m_colorsNode[color_str.c_str()]["r"].as<int>() / 255.0,
-                            multiBody->m_colorsNode[color_str.c_str()]["g"].as<int>() / 255.0,
-                            multiBody->m_colorsNode[color_str.c_str()]["b"].as<int>() / 255.0,
-                            multiBody->m_colorsNode[color_str.c_str()]["a"].as<int>() / 255.0);
+        if (mB->m_colorsNode[color_str.c_str()].IsDefined()){
+            m_mat.setColorf(mB->m_colorsNode[color_str.c_str()]["r"].as<int>() / 255.0,
+                            mB->m_colorsNode[color_str.c_str()]["g"].as<int>() / 255.0,
+                            mB->m_colorsNode[color_str.c_str()]["b"].as<int>() / 255.0,
+                            mB->m_colorsNode[color_str.c_str()]["a"].as<int>() / 255.0);
         }
 
     }
@@ -186,7 +185,7 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* multiBody
     }
     setMaterial(m_mat);
     m_mat.setRed();
-    multiBody->m_chaiWorld->addChild(this);
+    mB->m_chaiWorld->addChild(this);
     return true;
 }
 
@@ -289,6 +288,38 @@ void Link::updateCmdFromROS(double dt){
 }
 
 ///
+/// \brief Link::set_angle
+/// \param angle
+/// \param dt
+///
+void Link::set_angle(double &angle, double dt){
+    if (m_parentLinks.size() == 0){
+        double clipped_angle = cClamp(angle, 0.0, 1.0);
+        for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
+            m_joints[jnt]->m_hinge->setMotorTarget(clipped_angle, dt);
+        }
+
+    }
+}
+
+///
+/// \brief Link::set_angle
+/// \param angle
+/// \param dt
+///
+void Link::set_angle(std::vector<double> &angles, double dt){
+    if (m_parentLinks.size() == 0){
+        double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
+
+        for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
+            double clipped_angle = cClamp(angles[jnt], 0.0, 1.0);
+            m_joints[jnt]->m_hinge->setMotorTarget(clipped_angle, dt);
+        }
+
+    }
+}
+
+///
 /// \brief Joint::Joint
 ///
 Joint::Joint(){
@@ -322,16 +353,28 @@ void Joint::print_vec(std::string name, btVector3* v){
 /// \param name
 /// \return
 ///
-bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB){
+bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping){
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
     YAML::Node fileNode = baseNode[name];
     if (fileNode.IsNull()) return false;
 
+    if (!fileNode["parent"].IsDefined() || !fileNode["child"].IsDefined()){
+        std::cerr << "Error: Parent and/or Child for: " << name << " not defined \n";
+        return false;
+    }
     m_name = fileNode["name"].as<std::string>();
     m_parent_name = fileNode["parent"].as<std::string>();
     m_child_name = fileNode["child"].as<std::string>();
+
+    if (!fileNode["parent_pivot"].IsDefined() ||
+            !fileNode["parent_axis"].IsDefined() ||
+            !fileNode["child_pivot"].IsDefined() ||
+            !fileNode["child_axis"].IsDefined()){
+        std::cerr << "Error: Joint configuration for: " << name << " not defined \n";
+        return false;
+    }
 
     assign_vec("parent_pivot", &m_pvtA,  &fileNode);
     assign_vec("parent_axis", &m_axisA, &fileNode);
@@ -339,16 +382,16 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB){
     assign_vec("child_axis", &m_axisB,  &fileNode);
 
     Link * linkA, * linkB;
-    if (mB->m_linkMap.find(m_parent_name.c_str()) != mB->m_linkMap.end()
-            || mB->m_linkMap.find(m_child_name.c_str()) != mB->m_linkMap.end()){
-        linkA =  mB->m_linkMap[m_parent_name.c_str()];
-        linkB = mB->m_linkMap[m_child_name.c_str()];
+    if (mB->m_linkMap.find((m_parent_name + name_remapping).c_str()) != mB->m_linkMap.end()
+            || mB->m_linkMap.find((m_child_name + name_remapping).c_str()) != mB->m_linkMap.end()){
+        linkA =  mB->m_linkMap[(m_parent_name + name_remapping).c_str()];
+        linkB = mB->m_linkMap[(m_child_name + name_remapping).c_str()];
         bodyA = linkA->m_bulletRigidBody;
         bodyB = linkB->m_bulletRigidBody;
         linkA->add_child_link(linkB, this);
     }
     else{
-        std::cerr <<" Couldn't find rigid bodies for joint: " << m_name << std::endl;
+        std::cerr <<" Couldn't find rigid bodies for joint: " << m_name+name_remapping << std::endl;
         return -1;
     }
     m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
@@ -396,8 +439,8 @@ void Joint::command_torque(double &cmd){
 /// \brief cBulletMultiBody::cBulletMultiBody
 /// \param bulletWorld
 ///
-cBulletMultiBody::cBulletMultiBody(cBulletWorld *bulletWorld){
-    m_chaiWorld = bulletWorld;
+cBulletMultiBody::cBulletMultiBody(cBulletWorld *a_chaiWorld){
+    m_chaiWorld = a_chaiWorld;
 }
 
 ///
@@ -406,42 +449,170 @@ cBulletMultiBody::cBulletMultiBody(cBulletWorld *bulletWorld){
 /// \return
 ///
 
-bool cBulletMultiBody::load_yaml (std::string file) {
+bool cBulletMultiBody::load_yaml(std::string file) {
 
-    YAML::Node baseNode = YAML::LoadFile(file);
-    if (baseNode.IsNull()) return false; //File Not Found?
-
-    m_colorsNode = YAML::LoadFile("../resources/config/colors.yaml");
-    if(m_colorsNode.IsNull())
-        std::cerr << "WARNING, COLORS FILE NOT FOUND \n";
-
-    Link *tmpLink;
-    if (baseNode["high_res_path"].IsDefined() && baseNode["low_res_path"].IsDefined()){
-        high_res_path = baseNode["high_res_path"].as<std::string>();
-        low_res_path = baseNode["low_res_path"].as<std::string>();
+    YAML::Node configNode = YAML::LoadFile(file);
+    if (!configNode){
+        std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
+        return false;
+    }
+    std::string path;
+    std::string multi_body_config;
+    std::string color_config;
+    // Check if a world config file or a plain multibody config file
+    if (configNode["path"].IsDefined() && configNode["multi_body_config"]){
+        path = configNode["path"].as<std::string>();
+        multi_body_config = path + configNode["multi_body_config"].as<std::string>();
+        color_config = path + configNode["color_config"].as<std::string>();
     }
     else{
-        high_res_path = "../resources/models/gripper/high_res/";
-        low_res_path = "../resources/models/gripper/low_res/";
+        multi_body_config = file;
+        color_config = configNode["color_config"].as<std::string>();
     }
-    size_t totalLinks = baseNode["links"].size();
-    for (size_t i = 0; i < totalLinks; ++i) {
-        tmpLink = new Link(m_chaiWorld);
-//        printf("Link Name %s \n", baseNode["links"][i].as<std::string>().c_str());
-        if (tmpLink->load(file, baseNode["links"][i].as<std::string>(), this))
-            m_linkMap[baseNode["links"][i].as<std::string>()] = tmpLink;
-    }
-    Joint *tmpJoint;
-    size_t totalJoints = baseNode["joints"].size();
-    for (size_t i = 0; i < totalJoints; ++i) {
-        tmpJoint = new Joint();
-        std::cout << "Joint name: " << baseNode["joints"][i] << std::endl;
-        if (tmpJoint->load(file, baseNode["joints"][i].as<std::string>(), this))
-                m_jointMap[baseNode["joints"][i].as<std::string>()] = tmpJoint;
-    }
+    m_colorsNode = YAML::LoadFile(color_config.c_str());
+
+    load_multibody(multi_body_config);
 
     return true;
 }
 
+///
+/// \brief cBulletMultiBody::compute_n_digits
+/// \param n
+///
+/// Help from: https://stackoverflow.com/questions/1489830/efficient-way-to-determine-number-of-digits-in-an-integer
+/// and https://stackoverflow.com/questions/11151548/get-the-number-of-digits-in-an-int/11151594
+void cBulletMultiBody::remap_name(std::string &name, std::string remap_idx_str){
+    if (remap_idx_str.length() == 0){
+        return;
+    }
+    int cur_idx = std::stoi(remap_idx_str);
+    if (cur_idx == 1){
+        name += remap_idx_str;
+        return;
+    }
+    else{
+        int n_digits = 1;
+        while(cur_idx/=10){
+            n_digits++;
+        }
+        name.erase(name.end() - n_digits, name.end());
+        name += remap_idx_str;
+    }
+}
+
+///
+/// \brief cBulletMultiBody::get_link_name_remapping
+/// \param a_link_name
+/// \return
+///
+std::string cBulletMultiBody::get_link_name_remapping(std::string a_link_name){
+    int occurances = 0;
+    std::string remap_string = "" ;
+    std::stringstream ss;
+    if (m_linkMap.find(a_link_name) == m_linkMap.end()){
+        return remap_string;
+    }
+    do{
+        ss.str(std::string());
+        occurances++;
+        ss << occurances;
+        remap_string = ss.str();
+    }
+    while(m_linkMap.find(a_link_name + remap_string) != m_linkMap.end() && occurances < 100);
+    return remap_string;
+}
+
+///
+/// \brief cBulletMultiBody::get_link_name_remapping
+/// \param a_link_name
+/// \return
+///
+std::string cBulletMultiBody::get_joint_name_remapping(std::string a_joint_name){
+    int occurances = 0;
+    std::string remap_string = "" ;
+    std::stringstream ss;
+    if (m_jointMap.find(a_joint_name) == m_jointMap.end()){
+        return remap_string;
+    }
+
+    do{
+        ss.str(std::string());
+        occurances++;
+        ss << occurances;
+        remap_string = ss.str();
+    }
+    while(m_jointMap.find(a_joint_name + remap_string) != m_jointMap.end() && occurances < 100);
+    return remap_string;
+}
+
+///
+/// \brief cBulletMultiBody::load_multibody
+/// \param file
+/// \return
+///
+Link* cBulletMultiBody::load_multibody(std::string file){
+    YAML::Node multiBodyNode = YAML::LoadFile(file);
+    if (!multiBodyNode){
+        std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
+        return NULL;
+    }
+    std::string color_config;
+    if (multiBodyNode["color_confg"].IsDefined())
+        m_colorsNode = YAML::LoadFile(multiBodyNode["color_confg"].as<std::string>().c_str());
+
+    Link *tmpLink;
+    if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
+        high_res_path = multiBodyNode["high_res_path"].as<std::string>();
+        low_res_path = multiBodyNode["low_res_path"].as<std::string>();
+    }
+    else{
+        high_res_path = "../resources/models/puzzle/high_res/";
+        low_res_path = "../resources/models/puzzle/low_res/";
+    }
+    size_t totalLinks = multiBodyNode["links"].size();
+    std::vector<std::string> temp_link_names;
+    for (size_t i = 0; i < totalLinks; ++i) {
+        tmpLink = new Link(m_chaiWorld);
+        std::string link_name = multiBodyNode["links"][i].as<std::string>();
+        std::string remap_str = get_link_name_remapping(link_name);
+        printf("Loading link: %s \n", (link_name + remap_str).c_str());
+        if (tmpLink->load(file.c_str(), link_name, this, remap_str)){
+            m_linkMap[(link_name + remap_str).c_str()] = tmpLink;
+            temp_link_names.push_back((link_name + remap_str).c_str());
+        }
+    }
+    Joint *tmpJoint;
+    size_t totalJoints = multiBodyNode["joints"].size();
+    for (size_t i = 0; i < totalJoints; ++i) {
+        tmpJoint = new Joint();
+        std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
+        std::string remap_str = get_joint_name_remapping(jnt_name);
+        printf("Loading link: %s \n", (jnt_name + remap_str).c_str());
+        if (tmpJoint->load(file.c_str(), jnt_name, this, remap_str)){
+            m_jointMap[jnt_name+remap_str] = tmpJoint;
+        }
+    }
+    Link* rootParentLink = NULL;
+    size_t rootParents = 0;
+    std::vector<std::string>::const_iterator nIt;
+    cLinkMap::const_iterator mIt;
+    for(nIt = temp_link_names.begin() ; nIt != temp_link_names.end() ; ++nIt){
+        mIt = m_linkMap.find(*nIt);
+        if((*mIt).second->m_parentLinks.size() == 0){
+            std::cerr << "ROOT PARENT FOUND \n";
+            rootParentLink = (*mIt).second;
+            rootParents++;
+        }
+    }
+    std::cerr << "SIZE OF LINK MAP " << m_linkMap.size() << std::endl;
+    if (rootParents > 1)
+        std::cerr << "WARNING! " << rootParents << " ROOT PARENTS FOUND, RETURNING LAST ONE\n";
+    else if (rootParents == 0)
+        std::cerr << "WARNING! " << rootParents << " ROOT PARENTS FOUND, RETURNING NULL\n";
+
+
+    return rootParentLink;
+}
 }
 

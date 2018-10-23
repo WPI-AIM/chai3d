@@ -56,11 +56,13 @@ class Link;
 class Joint;
 
 typedef std::shared_ptr<cBulletMultiBody> cBulletMultiBodyPtr;
+typedef std::shared_ptr<Link> cMultiBodyLinkPtr;
+typedef std::shared_ptr<Joint> cMultiBodyJointPtr;
 typedef std::map<std::string, Link*> cLinkMap;
 typedef std::map<std::string, Joint*> cJointMap;
 
 class Link : public cBulletMultiMesh{
-
+    friend cBulletMultiBody;
 private:
 
     double m_scale;
@@ -84,17 +86,19 @@ protected:
 
     void add_parent_link(Link* a_link);
     void populate_parents_tree(Link* a_link);
+    void set_angle(double &angle, double dt);
+    void set_angle(std::vector<double> &angle, double dt);
 
 public:
 
-    virtual void updateCmdFromROS(double dt);
     Link(cBulletWorld* a_world);
-    bool load (std::string file, std::string name, cBulletMultiBody* multiBody);
-    void add_child_link(Link* childLink, Joint* jnt);
+    virtual void updateCmdFromROS(double dt);
+    virtual bool load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping_idx= "");
+    virtual void add_child_link(Link* childLink, Joint* jnt);
 };
 
 class Joint{
-
+    friend Link;
 private:
 
     std::string m_name;
@@ -104,26 +108,30 @@ private:
     btVector3 m_pvtA, m_pvtB;
     bool enable_motor;
     double jnt_lim_low, jnt_lim_high, max_motor_impluse;
-    btHingeConstraint* m_hinge;
     btRigidBody *bodyA, *bodyB;
     void assign_vec(std::string name, btVector3* v, YAML::Node* node);
     void print_vec(std::string name, btVector3* v);
 
+protected:
+
+    btHingeConstraint* m_hinge;
+
 public:
 
     Joint();
-    bool load (std::string file, std::string name, cBulletMultiBody* multiBody);
+    bool load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping_idx = "");
     void command_torque(double &cmd);
     void command_position(double &cmd);
 };
 
 class cBulletMultiBody{
+public:
     friend Link;
     friend Joint;
-public:
     cBulletMultiBody(cBulletWorld *bulletWorld);
     ~cBulletMultiBody(){}
     bool load_yaml(std::string file);
+    Link* load_multibody(std::string);
 
 protected:
     cBulletWorld *m_chaiWorld;
@@ -133,6 +141,9 @@ protected:
 private:
     cMaterial mat;
     YAML::Node m_colorsNode;
+    std::string get_link_name_remapping(std::string a_link_name);
+    std::string get_joint_name_remapping(std::string a_joint_name);
+    void remap_name(std::string &name, std::string remap_idx_str);
 };
 
 }
