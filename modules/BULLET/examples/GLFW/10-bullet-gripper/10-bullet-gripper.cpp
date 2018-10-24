@@ -82,7 +82,7 @@ cBulletWorld* g_bulletWorld;
 // bullet objects
 cBulletBox* bulletBox1;
 cBulletBox* bulletBox2;
-cBulletGripper *bulletTool;
+cBulletGripperLink* bulletTool;
 
 // bullet static walls and ground
 cBulletStaticPlane* bulletInvisibleWall1;
@@ -462,8 +462,9 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // TOOL
     //////////////////////////////////////////////////////////////////////////
-    bulletTool = new cBulletGripper(g_bulletWorld);
-    bulletTool->build();
+    std::string config = "../resources/config/gripper_type1.yaml";
+    cBulletGripper gripperObj(g_bulletWorld);
+    bulletTool = gripperObj.load_multibody(config, "Gripper", "Demo");
     cMatrix3d rotMat;
     rotMat.setAxisAngleRotationDeg(0.0,0.0,1.0,180);
     //bulletTool->setLocalRot(rotMat);
@@ -810,7 +811,7 @@ void updateHaptics(void)
         hapticDevice->getPosition(posDevice);
         hapticDevice->getRotation(rotDevice);
 
-        bulletTool->set_gripper_angle(grip_angle);
+        bulletTool->set_angle(grip_angle, 0.001);
 
         // send forces to device
         bool _cam_clutch_pressed;

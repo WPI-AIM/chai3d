@@ -45,7 +45,9 @@
 #ifndef CBulletMultiBody_H
 #define CBulletMultiBody_H
 
-#include "CBullet.h"
+#include "CBulletMultiMesh.h"
+#include "CBulletWorld.h"
+#include "chai3d.h"
 #include <yaml-cpp/yaml.h>
 
 namespace chai3d {
@@ -63,7 +65,22 @@ typedef std::map<std::string, Joint*> cJointMap;
 
 class Link : public cBulletMultiMesh{
     friend cBulletMultiBody;
-private:
+
+public:
+
+    Link(cBulletWorld* a_chaiWorld);
+    virtual void updateCmdFromROS(double dt);
+    virtual bool load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping_idx= "");
+    virtual void add_child_link(Link* childLink, Joint* jnt);
+
+    std::vector<Joint*> m_joints;
+    std::vector<Link*> m_childrenLinks;
+    std::vector<Link*> m_parentLinks;
+
+    void set_angle(double &angle, double dt);
+    void set_angle(std::vector<double> &angle, double dt);
+
+protected:
 
     double m_scale;
     double m_total_mass;
@@ -78,27 +95,25 @@ private:
     bool _lin_gains_computed = false;
     bool _ang_gains_computed = false;
     void compute_gains();
+    void create_af_object(std::string a_object_name);
+
 protected:
 
-    std::vector<Joint*> m_joints;
-    std::vector<Link*> m_childrenLinks;
-    std::vector<Link*> m_parentLinks;
-
     void add_parent_link(Link* a_link);
-    void populate_parents_tree(Link* a_link);
-    void set_angle(double &angle, double dt);
-    void set_angle(std::vector<double> &angle, double dt);
+    void populate_parents_tree(Link* a_link, Joint* a_jnt);
 
-public:
-
-    Link(cBulletWorld* a_world);
-    virtual void updateCmdFromROS(double dt);
-    virtual bool load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping_idx= "");
-    virtual void add_child_link(Link* childLink, Joint* jnt);
 };
 
 class Joint{
     friend Link;
+
+public:
+
+    Joint();
+    virtual bool load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping_idx = "");
+    void command_torque(double &cmd);
+    void command_position(double &cmd);
+
 private:
 
     std::string m_name;
@@ -116,12 +131,6 @@ protected:
 
     btHingeConstraint* m_hinge;
 
-public:
-
-    Joint();
-    bool load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping_idx = "");
-    void command_torque(double &cmd);
-    void command_position(double &cmd);
 };
 
 class cBulletMultiBody{
@@ -131,14 +140,17 @@ public:
     cBulletMultiBody(cBulletWorld *bulletWorld);
     ~cBulletMultiBody(){}
     bool load_yaml(std::string file);
-    Link* load_multibody(std::string);
+    virtual Link* load_multibody(std::string);
 
 protected:
+
     cBulletWorld *m_chaiWorld;
     cLinkMap m_linkMap;
     cJointMap m_jointMap;
     std::string high_res_path, low_res_path;
-private:
+
+protected:
+
     cMaterial mat;
     YAML::Node m_colorsNode;
     std::string get_link_name_remapping(std::string a_link_name);

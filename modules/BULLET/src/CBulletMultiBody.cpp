@@ -43,6 +43,8 @@
 */
 //==============================================================================
 #include "CBulletMultiBody.h"
+//==============================================================================
+#include "chai3d.h"
 
 #define PI 3.14159
 // root resource path
@@ -63,11 +65,12 @@ Link::Link(cBulletWorld* a_world): cBulletMultiMesh(a_world){
 /// \brief Link::populate_parent_tree
 /// \param a_link
 ///
-void Link::populate_parents_tree(Link* a_link){
+void Link::populate_parents_tree(Link* a_link, Joint* a_jnt){
     m_childrenLinks.push_back(a_link);
     m_childrenLinks.insert(m_childrenLinks.end(),
                            a_link->m_childrenLinks.begin(),
                            a_link->m_childrenLinks.end());
+    m_joints.push_back(a_jnt);
     m_joints.insert(m_joints.end(),
                            a_link->m_joints.begin(),
                            a_link->m_joints.end());
@@ -97,7 +100,7 @@ void Link::add_child_link(Link* a_childLink, Joint* a_jnt){
                            a_childLink->m_joints.begin(),
                            a_childLink->m_joints.end());
     for (m_linkIt = m_parentLinks.begin() ; m_linkIt != m_parentLinks.end() ; ++m_linkIt){
-        (*m_linkIt)->populate_parents_tree(a_childLink);
+        (*m_linkIt)->populate_parents_tree(a_childLink, a_jnt);
     }
 }
 
@@ -116,7 +119,7 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
 
     if(fileNode["name"].IsDefined()){
         m_name = fileNode["name"].as<std::string>();
-        m_rosObjPtr.reset(new chai_env::Object(m_name + name_remapping));
+        create_af_object(m_name);
     }
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
@@ -187,6 +190,14 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
     m_mat.setRed();
     mB->m_chaiWorld->addChild(this);
     return true;
+}
+
+///
+/// \brief Link::create_af_object
+/// \param a_obj_name
+///
+void Link::create_af_object(std::string a_obj_name){
+    m_rosObjPtr.reset(new chai_env::Object(a_obj_name));
 }
 
 ///
@@ -296,7 +307,9 @@ void Link::set_angle(double &angle, double dt){
     if (m_parentLinks.size() == 0){
         double clipped_angle = cClamp(angle, 0.0, 1.0);
         for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
-            m_joints[jnt]->m_hinge->setMotorTarget(clipped_angle, dt);
+            double ang;
+            ang = m_joints[jnt]->jnt_lim_low + clipped_angle * (m_joints[jnt]->jnt_lim_high - m_joints[jnt]->jnt_lim_low);
+            m_joints[jnt]->m_hinge->setMotorTarget(ang, dt);
         }
 
     }
@@ -310,7 +323,6 @@ void Link::set_angle(double &angle, double dt){
 void Link::set_angle(std::vector<double> &angles, double dt){
     if (m_parentLinks.size() == 0){
         double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
-
         for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
             double clipped_angle = cClamp(angles[jnt], 0.0, 1.0);
             m_joints[jnt]->m_hinge->setMotorTarget(clipped_angle, dt);
@@ -361,7 +373,7 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::
     if (fileNode.IsNull()) return false;
 
     if (!fileNode["parent"].IsDefined() || !fileNode["child"].IsDefined()){
-        std::cerr << "Error: Parent and/or Child for: " << name << " not defined \n";
+        std::cerr << "ERROR: PARENT/CHILD FOR: " << name << " NOT DEFINED \n";
         return false;
     }
     m_name = fileNode["name"].as<std::string>();
@@ -372,7 +384,7 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::
             !fileNode["parent_axis"].IsDefined() ||
             !fileNode["child_pivot"].IsDefined() ||
             !fileNode["child_axis"].IsDefined()){
-        std::cerr << "Error: Joint configuration for: " << name << " not defined \n";
+        std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << name << " NOT DEFINED \n";
         return false;
     }
 
@@ -391,7 +403,7 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::
         linkA->add_child_link(linkB, this);
     }
     else{
-        std::cerr <<" Couldn't find rigid bodies for joint: " << m_name+name_remapping << std::endl;
+        std::cerr <<"ERROR:COULDN'T FIND RIGID BODIES FOR: " << m_name+name_remapping << std::endl;
         return -1;
     }
     m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
@@ -412,7 +424,7 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::
         jnt_lim_high = fileNode["joint_limits"]["high"].as<double>();
         m_hinge->setLimit(jnt_lim_low, jnt_lim_high);
     }
-    mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge);
+    mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
     return true;
 }
 
@@ -558,8 +570,8 @@ Link* cBulletMultiBody::load_multibody(std::string file){
         return NULL;
     }
     std::string color_config;
-    if (multiBodyNode["color_confg"].IsDefined())
-        m_colorsNode = YAML::LoadFile(multiBodyNode["color_confg"].as<std::string>().c_str());
+    if (multiBodyNode["color_config"].IsDefined())
+        m_colorsNode = YAML::LoadFile(multiBodyNode["color_config"].as<std::string>().c_str());
 
     Link *tmpLink;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
@@ -576,7 +588,7 @@ Link* cBulletMultiBody::load_multibody(std::string file){
         tmpLink = new Link(m_chaiWorld);
         std::string link_name = multiBodyNode["links"][i].as<std::string>();
         std::string remap_str = get_link_name_remapping(link_name);
-        printf("Loading link: %s \n", (link_name + remap_str).c_str());
+//        printf("Loading link: %s \n", (link_name + remap_str).c_str());
         if (tmpLink->load(file.c_str(), link_name, this, remap_str)){
             m_linkMap[(link_name + remap_str).c_str()] = tmpLink;
             temp_link_names.push_back((link_name + remap_str).c_str());
@@ -588,7 +600,7 @@ Link* cBulletMultiBody::load_multibody(std::string file){
         tmpJoint = new Joint();
         std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
         std::string remap_str = get_joint_name_remapping(jnt_name);
-        printf("Loading link: %s \n", (jnt_name + remap_str).c_str());
+//        printf("Loading link: %s \n", (jnt_name + remap_str).c_str());
         if (tmpJoint->load(file.c_str(), jnt_name, this, remap_str)){
             m_jointMap[jnt_name+remap_str] = tmpJoint;
         }
@@ -600,12 +612,11 @@ Link* cBulletMultiBody::load_multibody(std::string file){
     for(nIt = temp_link_names.begin() ; nIt != temp_link_names.end() ; ++nIt){
         mIt = m_linkMap.find(*nIt);
         if((*mIt).second->m_parentLinks.size() == 0){
-            std::cerr << "ROOT PARENT FOUND \n";
             rootParentLink = (*mIt).second;
             rootParents++;
         }
     }
-    std::cerr << "SIZE OF LINK MAP " << m_linkMap.size() << std::endl;
+
     if (rootParents > 1)
         std::cerr << "WARNING! " << rootParents << " ROOT PARENTS FOUND, RETURNING LAST ONE\n";
     else if (rootParents == 0)

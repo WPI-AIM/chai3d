@@ -1,0 +1,5 @@
+# This is the base file for Coordination Application
+path: ../resources/config/
+multi_body_config: puzzle.yaml
+gripper: gripper.yaml
+color_config: colors.yaml
