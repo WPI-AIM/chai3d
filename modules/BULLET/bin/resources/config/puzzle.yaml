@@ -22,7 +22,7 @@ link2:
  position: {x: -1.5, y: -1.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: blue_navy
- friction: 1
+ friction: {static: 0.9, rolling: 0.1}
 
 link3:
  name: PuzzleBase
@@ -32,7 +32,7 @@ link3:
  position: {x: -1.0, y: 0.0, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: purple_dark_magenta
- friction: 0.9
+ friction: {static: 0.9, rolling: 0.1}
 
 link4:
  name: CirclePuzzle
@@ -42,7 +42,7 @@ link4:
  position: {x: 0.0, y: -0.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: yellow
- friction: 0.8
+ friction: {linear: 0.8}
 
 link5:
  name: TrianglePuzzle
@@ -52,7 +52,7 @@ link5:
  position: {x: 0.0, y: 0.0, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: pink_pale_violet_red
- friction: 0.8
+ friction: {linear: 0.8}
 
 link6:
  name: SquarePuzzle
@@ -62,7 +62,7 @@ link6:
  position: {x: 0.0, y: 0.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: blue_corn_flower
- friction: 0.8
+ friction: {linear: 0.8}
 
 link7:
  name: HandleLeft
@@ -72,7 +72,7 @@ link7:
  position: {x: 1.0, y: -0.85, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: orange
- friction: 0.5
+ friction: {linear: 0.5}
 
 link8:
  name: HandleRight
@@ -82,7 +82,7 @@ link8:
  position: {x: 1.0, y: 0.85, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: orange_coral
- friction: 0.5
+ friction: {linear: 0.5}
 
 link9:
  name: CenterPuzzle
@@ -94,7 +94,7 @@ link9:
  position: {x: 1.0, y: 0.0, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: green_medium_spring
- friction: 0.5
+ friction: {linear: 0.5}
 
 joint1:
  name: PuzzleLeftJoint

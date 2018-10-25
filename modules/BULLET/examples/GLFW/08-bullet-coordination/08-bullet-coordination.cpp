@@ -191,8 +191,9 @@ void close(void);
 
 const int MAX_DEVICES = 10;
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// \brief The DataExchange class
+///
 class DataExchange{
 public:
     virtual cVector3d measured_pos(){}
@@ -206,13 +207,15 @@ public:
     virtual void apply_torque(cVector3d torque){}
 };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* This class encapsulates each haptic device in isolation and provides methods to get/set device
- * state/commands, button's state and grippers state if present */
+
+///
+/// \brief This class encapsulates each haptic device in isolation and provides methods to get/set device
+/// state/commands, button's state and grippers state if present
+///
 class Device: public DataExchange{
 public:
     Device(){}
-    ~Device(){}
+    virtual ~Device();
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual void update_measured_pose();
@@ -243,6 +246,11 @@ private:
     bool m_dev_force_enabled = true;
 };
 
+///
+/// \brief Device::create_cursor
+/// \param a_world
+/// \return
+///
 cShapeSphere* Device::create_cursor(cBulletWorld* a_world){
     m_cursor = new cShapeSphere(0.05);
     m_cursor->setShowEnabled(true);
@@ -255,6 +263,19 @@ cShapeSphere* Device::create_cursor(cBulletWorld* a_world){
     return m_cursor;
 }
 
+Device::~Device(){
+    if (m_cursor);
+//        delete m_cursor;
+    if (m_af_cursor);
+//        delete m_af_cursor;
+}
+
+///
+/// \brief Device::create_af_cursor
+/// \param a_world
+/// \param a_name
+/// \return
+///
 cBulletSphere* Device::create_af_cursor(cBulletWorld *a_world, string a_name){
     m_af_cursor = new cBulletSphere(a_world, 0.05, a_name);
     m_af_cursor->setShowEnabled(true);
@@ -263,11 +284,14 @@ cBulletSphere* Device::create_af_cursor(cBulletWorld *a_world, string a_name){
     cMaterial mat;
     mat.setGreenLightSea();
     m_af_cursor->setMaterial(mat);
-//    m_af_cursor->buildDynamicModel();
     a_world->addChild(m_af_cursor);
     return m_af_cursor;
 }
 
+///
+/// \brief Device::measured_pos
+/// \return
+///
 cVector3d Device::measured_pos(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     m_hDevice->getPosition(m_posDevice);
@@ -281,10 +305,16 @@ cMatrix3d Device::measured_rot(){
     return m_rotDevice;
 }
 
+///
+/// \brief Device::update_measured_pose
+///
 void Device::update_measured_pose(){
     update_cursor_pose();
 }
 
+///
+/// \brief Device::update_cursor_pose
+///
 void Device::update_cursor_pose(){
     if(m_cursor){
         m_cursor->setLocalPos(m_posDevice * m_workspace_scale_factor);
@@ -298,18 +328,30 @@ void Device::update_cursor_pose(){
     }
 }
 
+///
+/// \brief Device::measured_lin_vel
+/// \return
+///
 cVector3d Device::measured_lin_vel(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     m_hDevice->getLinearVelocity(m_velDevice);
     return m_velDevice;
 }
 
+///
+/// \brief Device::mearured_ang_vel
+/// \return
+///
 cVector3d Device::mearured_ang_vel(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     m_hDevice->getAngularVelocity(m_avelDevice);
     return m_avelDevice;
 }
 
+///
+/// \brief Device::measured_gripper_angle
+/// \return
+///
 double Device::measured_gripper_angle(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     double angle;
@@ -317,6 +359,11 @@ double Device::measured_gripper_angle(){
     return angle;
 }
 
+///
+/// \brief Device::is_button_pressed
+/// \param button_index
+/// \return
+///
 bool Device::is_button_pressed(int button_index){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     bool status;
@@ -324,6 +371,11 @@ bool Device::is_button_pressed(int button_index){
     return status;
 }
 
+///
+/// \brief Device::is_button_press_rising_edge
+/// \param button_index
+/// \return
+///
 bool Device::is_button_press_rising_edge(int button_index){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     bool status;
@@ -340,6 +392,11 @@ bool Device::is_button_press_rising_edge(int button_index){
     return false;
 }
 
+///
+/// \brief Device::is_button_press_falling_edge
+/// \param button_index
+/// \return
+///
 bool Device::is_button_press_falling_edge(int button_index){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     bool status;
@@ -356,6 +413,11 @@ bool Device::is_button_press_falling_edge(int button_index){
     return false;
 }
 
+///
+/// \brief Device::apply_wrench
+/// \param force
+/// \param torque
+///
 void Device::apply_wrench(cVector3d force, cVector3d torque){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     force = force * m_dev_force_enabled;
@@ -363,11 +425,12 @@ void Device::apply_wrench(cVector3d force, cVector3d torque){
     m_hDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* This class encapsulates Simulation Parameters that deal with the interaction between a single haptic device
- *  and the related Gripper simulated in Bullet. These Parameters include mapping the device buttons to
- * action/mode buttons, capturing button triggers in addition to presses, mapping the workspace scale factors
- * for a device and so on. */
+///
+/// \brief This class encapsulates Simulation Parameters that deal with the interaction between a single haptic device
+/// and the related Gripper simulated in Bullet. These Parameters include mapping the device buttons to
+/// action/mode buttons, capturing button triggers in addition to presses, mapping the workspace scale factors
+/// for a device and so on.
+///
 class Sim{
 public:
     Sim(){
@@ -416,6 +479,11 @@ public:
     bool m_loop_exec_flag;
 };
 
+///
+/// \brief Sim::set_sim_params
+/// \param a_hInfo
+/// \param a_dev
+///
 void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
     double maxStiffness	= a_hInfo.m_maxLinearStiffness / m_workspaceScaleFactor;
 
@@ -462,8 +530,11 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
     }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
- * for interface with the haptics device*/
+
+///
+/// \brief This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
+///        for interface with the haptics device
+///
 class ToolGripper: public Sim, public DataExchange, public cBulletGripper{
 public:
     ToolGripper(cBulletWorld *a_chaiWorld, std::string a_gripper_name, std::string a_device_name);
@@ -485,6 +556,12 @@ public:
     boost::mutex m_mutex;
 };
 
+///
+/// \brief ToolGripper::ToolGripper
+/// \param a_chaiWorld
+/// \param a_gripper_name
+/// \param a_device_name
+///
 ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
                          std::string a_gripper_name,
                          std::string a_device_name):cBulletGripper(a_chaiWorld){
@@ -493,32 +570,56 @@ ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
     m_gripperRoot = load_multibody(config, a_gripper_name, a_device_name);
 }
 
+///
+/// \brief ToolGripper::measured_pos
+/// \return
+///
 cVector3d ToolGripper::measured_pos(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     return m_gripperRoot->getLocalPos();
 }
 
+///
+/// \brief ToolGripper::measured_rot
+/// \return
+///
 cMatrix3d ToolGripper::measured_rot(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     return m_gripperRoot->getLocalRot();
 }
 
+///
+/// \brief ToolGripper::update_measured_pose
+///
 void ToolGripper::update_measured_pose(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     m_posGripper  = m_gripperRoot->getLocalPos();
     m_rotGripper = m_gripperRoot->getLocalRot();
 }
 
+///
+/// \brief ToolGripper::set_gripper_angle
+/// \param angle
+/// \param dt
+///
 void ToolGripper::set_gripper_angle(double angle, double dt){
     m_gripperRoot->set_angle(angle, dt);
 }
 
+///
+/// \brief ToolGripper::offset_gripper_angle
+/// \param offset
+///
 void ToolGripper::offset_gripper_angle(double offset){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     m_gripper_angle += offset;
     m_gripper_angle = cClamp(m_gripper_angle, 0.0, 1.0);
 }
 
+///
+/// \brief ToolGripper::is_wrench_set
+/// \return
+///
 bool ToolGripper::is_wrench_set(){
     btVector3 f = m_gripperRoot->m_bulletRigidBody->getTotalForce();
     btVector3 n = m_gripperRoot->m_bulletRigidBody->getTotalTorque();
@@ -526,13 +627,16 @@ bool ToolGripper::is_wrench_set(){
     else return true;
 }
 
+///
+/// \brief ToolGripper::clear_wrench
+///
 void ToolGripper::clear_wrench(){
     m_gripperRoot->m_bulletRigidBody->clearForces();
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* These are the currently availble modes for each device. */
-
+///
+/// \brief These are the currently availble modes for each device
+///
 enum MODES{ CAM_CLUTCH_CONTROL,
             GRIPPER_JAW_CONTROL,
             CHANGE_CONT_LIN_GAIN,
@@ -543,13 +647,17 @@ enum MODES{ CAM_CLUTCH_CONTROL,
             CHANGE_DEV_ANG_GAIN
 };
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* This is a higher level class that queries the number of haptics devices available on the sytem
- * and on the Network for dVRK devices and creates a single Bullet Gripper and a Device Handle for
-   each device. */
+
+
+///
+/// \brief This is a higher level class that queries the number of haptics devices available on the sytem
+/// and on the Network for dVRK devices and creates a single Bullet Gripper and a Device Handle for
+/// each device.
+///
 class Coordination{
     public:
     Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs = MAX_DEVICES);
+    ~Coordination();
     bool retrieve_device_handle(uint dev_num);
     void create_bullet_gripper(uint dev_num);
     void open_devices();
@@ -599,6 +707,11 @@ class Coordination{
     int m_mode_idx;
 };
 
+///
+/// \brief Coordination::Coordination
+/// \param a_bullet_world
+/// \param a_max_load_devs
+///
 Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
     m_bulletWorld = NULL;
     m_bulletWorld = a_bullet_world;
@@ -616,6 +729,12 @@ Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
     m_mode_idx = 0;
 }
 
+Coordination::~Coordination(){
+}
+
+///
+/// \brief Coordination::next_mode
+///
 void Coordination::next_mode(){
     m_mode_idx = (m_mode_idx + 1) % m_modes_enum_vec.size();
     m_simModes = m_modes_enum_vec[m_mode_idx];
@@ -626,7 +745,9 @@ void Coordination::next_mode(){
     std::cout << m_mode_str << std::endl;
 }
 
-
+///
+/// \brief Coordination::prev_mode
+///
 void Coordination::prev_mode(){
     m_mode_idx = (m_mode_idx - 1) % m_modes_enum_vec.size();
     m_simModes = m_modes_enum_vec[m_mode_idx];
@@ -637,11 +758,20 @@ void Coordination::prev_mode(){
     std::cout << m_mode_str << std::endl;
 }
 
+///
+/// \brief Coordination::retrieve_device_handle
+/// \param dev_num
+/// \return
+///
 bool Coordination::retrieve_device_handle(uint dev_num){
     m_deviceHandler->getDeviceSpecifications(m_hapticDevices[dev_num].m_hInfo, dev_num);
     return m_deviceHandler->getDevice(m_hapticDevices[dev_num].m_hDevice, dev_num);
 }
 
+///
+/// \brief Coordination::create_bullet_gripper
+/// \param dev_num
+///
 void Coordination::create_bullet_gripper(uint dev_num){
     std::ostringstream dev_str;
     dev_str << (dev_num + 1);
@@ -651,6 +781,9 @@ void Coordination::create_bullet_gripper(uint dev_num){
     m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
 }
 
+///
+/// \brief Coordination::open_devices
+///
 void Coordination::open_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         m_hapticDevices[i].m_hDevice->open();
@@ -660,12 +793,19 @@ void Coordination::open_devices(){
     }
 }
 
+///
+/// \brief Coordination::close_devices
+///
 void Coordination::close_devices(){
     for (int i = 0 ; i < m_num_devices ; i++){
         m_hapticDevices[i].m_hDevice->close();
     }
 }
 
+///
+/// \brief Coordination::num_of_haptics_loop_execd
+/// \return
+///
 int Coordination::num_of_haptics_loop_execd(){
     int num_devs_loop_execd = 0;
     for (int i = 0 ; i < m_num_devices ; i++){
@@ -674,6 +814,10 @@ int Coordination::num_of_haptics_loop_execd(){
     return num_devs_loop_execd;
 }
 
+///
+/// \brief Coordination::are_all_haptics_loop_exec
+/// \return
+///
 bool Coordination::are_all_haptics_loop_exec(){
     bool flag = true;
     for (int i = 0 ; i < m_num_devices ; i++){
@@ -682,12 +826,20 @@ bool Coordination::are_all_haptics_loop_exec(){
     return flag;
 }
 
+///
+/// \brief Coordination::clear_all_haptics_loop_exec_flags
+///
 void Coordination::clear_all_haptics_loop_exec_flags(){
     for (int i = 0 ; i < m_num_devices ; i++){
         m_bulletGrippers[i]->clear_loop_exec_flag();
     }
 }
 
+///
+/// \brief Coordination::increment_K_lh
+/// \param a_offset
+/// \return
+///
 double Coordination::increment_K_lh(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (m_bulletGrippers[i]->K_lh + a_offset <= 0)
@@ -706,6 +858,11 @@ double Coordination::increment_K_lh(double a_offset){
     return a_offset;
 }
 
+///
+/// \brief Coordination::increment_K_ah
+/// \param a_offset
+/// \return
+///
 double Coordination::increment_K_ah(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (m_bulletGrippers[i]->K_ah + a_offset <=0){
@@ -723,6 +880,11 @@ double Coordination::increment_K_ah(double a_offset){
     return a_offset;
 }
 
+///
+/// \brief Coordination::increment_K_lc
+/// \param a_offset
+/// \return
+///
 double Coordination::increment_K_lc(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (m_bulletGrippers[i]->K_lc + a_offset <=0){
@@ -740,6 +902,11 @@ double Coordination::increment_K_lc(double a_offset){
     return a_offset;
 }
 
+///
+/// \brief Coordination::increment_K_ac
+/// \param a_offset
+/// \return
+///
 double Coordination::increment_K_ac(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (m_bulletGrippers[i]->K_ac + a_offset <=0){
@@ -757,6 +924,11 @@ double Coordination::increment_K_ac(double a_offset){
     return a_offset;
 }
 
+///
+/// \brief Coordination::increment_B_lc
+/// \param a_offset
+/// \return
+///
 double Coordination::increment_B_lc(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (m_bulletGrippers[i]->B_lc + a_offset <=0){
@@ -774,6 +946,11 @@ double Coordination::increment_B_lc(double a_offset){
     return a_offset;
 }
 
+///
+/// \brief Coordination::increment_B_ac
+/// \param a_offset
+/// \return
+///
 double Coordination::increment_B_ac(double a_offset){
     for (int i = 0 ; i < m_num_devices ; i++){
         if (m_bulletGrippers[i]->B_ac + a_offset <=0){
@@ -791,10 +968,10 @@ double Coordination::increment_B_ac(double a_offset){
     return a_offset;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* This is an implementation of Sleep function that tries to adjust sleep between each cycle to maintain
- * the desired loop frequency. This class has been inspired from ROS Rate Sleep written by Eitan Marder-Eppstein */
+///
+/// \brief This is an implementation of Sleep function that tries to adjust sleep between each cycle to maintain
+/// the desired loop frequency. This class has been inspired from ROS Rate Sleep written by Eitan Marder-Eppstein
+///
 class RateSleep{
 public:
     RateSleep(int a_freq){
@@ -1349,10 +1526,16 @@ void close(void)
 
     // wait for graphics and haptics loops to terminate
     while (!g_simulationFinished) { cSleepMs(100); }
+    g_bulletSimThread->stop();
+    for(int i = 0 ; i < g_coordApp->m_num_devices ; i ++){
+        g_hapticsThreads[i]->stop();
+    }
 
     // delete resources
     g_coordApp->close_devices();
-    for(int i = 0 ; i < g_coordApp->m_num_devices ; i ++){delete g_hapticsThreads[i];}
+    for(int i = 0 ; i < g_coordApp->m_num_devices ; i ++){
+        delete g_hapticsThreads[i];
+    }
     delete g_bulletWorld;
     delete g_coordApp->m_deviceHandler;
 }
@@ -1416,8 +1599,11 @@ void updateGraphics(void)
     if (err != GL_NO_ERROR) printf("Error:  %s\n", gluErrorString(err));
 }
 
-// Function to fix time dilation
-
+///
+/// \brief Function to fix time dilation
+/// \param adjust_int_steps
+/// \return
+///
 double compute_dt(bool adjust_int_steps = false){
     double dt = g_clockWorld.getCurrentTimeSeconds() - g_bulletWorld->getSimulationTime();
     int min_steps = 2;
@@ -1434,7 +1620,6 @@ double compute_dt(bool adjust_int_steps = false){
 }
 
 //---------------------------------------------------------------------------
-
 void updateBulletSim(){
     g_simulationRunning = true;
     g_simulationFinished = false;

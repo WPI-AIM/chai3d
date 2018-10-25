@@ -51,7 +51,6 @@ std::string resourceRootGripper;
 #define RESOURCE_PATH(p)    (char*)((resourceRootGripper+std::string(p)).c_str())
 namespace chai3d {
 
-
 ///
 /// \brief cBulletGripperLink::load
 /// \param file
@@ -69,8 +68,10 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
     if(fileNode["name"].IsDefined()){
         m_name = fileNode["name"].as<std::string>();
     }
+
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
+
     if(fileNode["mass"].IsDefined()){
         m_mass = fileNode["mass"].as<double>();
         if(fileNode["linear_gain"].IsDefined()){
@@ -84,6 +85,7 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
             _ang_gains_computed = true;
         }
     }
+
     if(fileNode["scale"].IsDefined())
         m_scale = fileNode["scale"].as<double>();
 
@@ -97,6 +99,7 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
     setMass(m_mass);
     estimateInertia();
     buildDynamicModel();
+
     if(fileNode["position"].IsDefined()){
         double x = fileNode["position"]["x"].as<double>();
         double y = fileNode["position"]["y"].as<double>();
@@ -104,6 +107,7 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
         pos.set(x,y,z);
         setLocalPos(pos);
     }
+
     if(fileNode["rotation"].IsDefined()){
         double r = fileNode["rotation"]["r"].as<double>();
         double p = fileNode["rotation"]["p"].as<double>();
@@ -123,28 +127,22 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
         m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
     }
 
-    if(fileNode["damping"].IsDefined()){
-        m_bulletRigidBody->setDamping(fileNode["damping"]["linear"].as<double>(), fileNode["damping"]["angular"].as<double>());
-    }
-    else{
-        m_bulletRigidBody->setDamping(m_surfaceProps.linear_damping, m_surfaceProps.angular_damping);
-    }
+    m_surfaceProps.m_linear_damping = 0.5;
+    m_surfaceProps.m_angular_damping = 1.0;
+    m_surfaceProps.m_static_friction = 0.5;
+    m_surfaceProps.m_rolling_friction = 0.5;
 
-    if(fileNode["friction"].IsDefined()){
-        if (fileNode["friction"]["static"].IsDefined()){
-            if (fileNode["friction"]["rolling"].IsDefined()){
-                m_bulletRigidBody->setRollingFriction(fileNode["friction"]["rolling"].as<double>());
-            }
-            m_bulletRigidBody->setFriction(fileNode["friction"]["static"].as<double>());
-        }
-    }
-    else{
-        m_bulletRigidBody->setFriction(m_surfaceProps.static_friction);
-        m_bulletRigidBody->setRollingFriction(m_surfaceProps.rolling_friction);
-    }
+    if (fileNode["damping"]["linear"].IsDefined())
+        m_surfaceProps.m_linear_damping = fileNode["damping"]["linear"].as<double>();
+    if (fileNode["damping"]["angular"].IsDefined())
+        m_surfaceProps.m_angular_damping = fileNode["damping"]["angular"].as<double>();
+    if (fileNode["friction"]["static"].IsDefined())
+        m_surfaceProps.m_static_friction = fileNode["friction"]["static"].as<double>();
+    if (fileNode["friction"]["rolling"].IsDefined())
+        m_surfaceProps.m_rolling_friction = fileNode["friction"]["rolling"].as<double>();
 
     setMaterial(m_mat);
-    m_mat.setRed();
+    set_surface_properties(this, &m_surfaceProps);
     mB->m_chaiWorld->addChild(this);
     return true;
 }
@@ -155,14 +153,6 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
 /// \param dt
 ///
 void cBulletGripper::set_gripper_angle(const double &angle, double dt){
-}
-
-///
-/// \brief cBulletGripper::set_surface_props
-/// \param props
-///
-void cBulletGripper::set_surface_props(GripperSurfaceProperties &props){
-
 }
 
 ///
@@ -236,4 +226,15 @@ cBulletGripperLink* cBulletGripper::load_multibody(std::string a_file,
 
     return rootParentLink;
 }
+
+cBulletGripper::~cBulletGripper(){
+    cLinkMap::const_iterator lIt = m_linkMap.begin();
+    for ( ; lIt != m_linkMap.end() ; ++lIt){
+        delete lIt->second;
+    }
+    cJointMap::const_iterator jIt = m_jointMap.begin();
+    for (; jIt != m_jointMap.end() ; ++jIt){
+        delete jIt->second;
+    }
+    }
 }

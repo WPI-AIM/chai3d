@@ -91,6 +91,25 @@ protected:
 };
 
 ///
+/// \brief The LinkSurfaceProperties struct
+///
+struct LinkSurfaceProperties{
+public:
+    LinkSurfaceProperties(){
+        m_linear_damping = 0.1;
+        m_angular_damping = 0.01;
+        m_static_friction = 0.5;
+        m_dynamic_friction = 0.5;
+        m_rolling_friction = 0.5;
+    }
+    double m_linear_damping;
+    double m_angular_damping;
+    double m_static_friction;
+    double m_dynamic_friction;
+    double m_rolling_friction;
+};
+
+///
 /// \brief The Link class
 ///
 class Link : public cBulletMultiMesh{
@@ -110,6 +129,7 @@ public:
 
     void set_angle(double &angle, double dt);
     void set_angle(std::vector<double> &angle, double dt);
+    static void set_surface_properties(const Link* a_link, const LinkSurfaceProperties *a_surfaceProps);
 
 protected:
 
@@ -119,7 +139,6 @@ protected:
     cMultiMesh m_lowResMesh;
     cVector3d pos;
     cMatrix3d rot;
-    cMaterial m_mat;
     std::vector<Link*>::const_iterator m_linkIt;
     double K_lin, D_lin;
     double K_ang, D_ang;
@@ -132,6 +151,8 @@ protected:
 
     void add_parent_link(Link* a_link);
     void populate_parents_tree(Link* a_link, Joint* a_jnt);
+    static LinkSurfaceProperties m_surfaceProps;
+    static cMaterial m_mat;
 
 };
 
@@ -144,6 +165,7 @@ class Joint{
 public:
 
     Joint();
+    virtual ~Joint();
     virtual bool load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping_idx = "");
     void command_torque(double &cmd);
     void command_position(double &cmd);
@@ -175,7 +197,7 @@ public:
     friend Link;
     friend Joint;
     cBulletMultiBody(cBulletWorld *bulletWorld);
-    ~cBulletMultiBody(){}
+    virtual ~cBulletMultiBody();
     virtual Link* load_multibody(std::string a_multibody_config = "");
 
 protected:

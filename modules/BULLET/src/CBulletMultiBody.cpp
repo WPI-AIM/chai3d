@@ -56,7 +56,8 @@ namespace chai3d{
 
 std::map<std::string, std::string> ConfigHandler::m_gripperConfigFiles;
 YAML::Node ConfigHandler::m_colorsNode;
-
+cMaterial Link::m_mat;
+LinkSurfaceProperties Link::m_surfaceProps;
 
 ///
 /// \brief ConfigHandler::ConfigHandler
@@ -237,8 +238,10 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
         m_name = fileNode["name"].as<std::string>();
         create_af_object(m_name);
     }
+
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
+
     if(fileNode["mass"].IsDefined()){
         m_mass = fileNode["mass"].as<double>();
         if(fileNode["linear_gain"].IsDefined()){
@@ -252,6 +255,7 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
             _ang_gains_computed = true;
         }
     }
+
     if(fileNode["scale"].IsDefined())
         m_scale = fileNode["scale"].as<double>();
 
@@ -265,6 +269,7 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
     setMass(m_mass);
     estimateInertia();
     buildDynamicModel();
+
     if(fileNode["position"].IsDefined()){
         double x = fileNode["position"]["x"].as<double>();
         double y = fileNode["position"]["y"].as<double>();
@@ -272,6 +277,7 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
         pos.set(x,y,z);
         setLocalPos(pos);
     }
+
     if(fileNode["rotation"].IsDefined()){
         double r = fileNode["rotation"]["r"].as<double>();
         double p = fileNode["rotation"]["p"].as<double>();
@@ -279,8 +285,6 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
         rot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
         setLocalRot(rot);
     }
-    if(fileNode["friction"].IsDefined())
-        m_bulletRigidBody->setFriction(fileNode["friction"].as<double>());
 
     if(fileNode["color_raw"].IsDefined()){
             m_mat.setColorf(fileNode["color_raw"]["r"].as<float>(),
@@ -294,11 +298,18 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
 
     }
 
-    if(fileNode["damping"].IsDefined()){
-        setDamping(fileNode["damping"]["linear"].as<double>(), fileNode["damping"]["angular"].as<double>());
-    }
+    if (fileNode["damping"]["linear"].IsDefined())
+        m_surfaceProps.m_linear_damping = fileNode["damping"]["linear"].as<double>();
+    if (fileNode["damping"]["angular"].IsDefined())
+        m_surfaceProps.m_angular_damping = fileNode["damping"]["angular"].as<double>();
+    if (fileNode["friction"]["static"].IsDefined())
+        m_surfaceProps.m_static_friction = fileNode["friction"]["static"].as<double>();
+    if (fileNode["friction"]["rolling"].IsDefined())
+        m_surfaceProps.m_rolling_friction = fileNode["friction"]["rolling"].as<double>();
+
+
     setMaterial(m_mat);
-    m_mat.setRed();
+    set_surface_properties(this, &m_surfaceProps);
     mB->m_chaiWorld->addChild(this);
     return true;
 }
@@ -335,6 +346,12 @@ void Link::compute_gains(){
         D_ang = K_ang / 2;
         _ang_gains_computed = true;
     }
+}
+
+void Link::set_surface_properties(const Link* a_link, const LinkSurfaceProperties *a_props){
+    a_link->m_bulletRigidBody->setFriction(a_props->m_static_friction);
+    a_link->m_bulletRigidBody->setDamping(a_props->m_linear_damping, a_props->m_angular_damping);
+    a_link->m_bulletRigidBody->setRollingFriction(a_props->m_rolling_friction);
 }
 
 ///
@@ -521,15 +538,16 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::
     if (fileNode["enable_motor"].IsDefined()){
         enable_motor = fileNode["enable_motor"].as<int>();
         m_hinge->enableMotor(enable_motor);
+        if(fileNode["max_motor_impluse"].IsDefined()){
+            max_motor_impluse = fileNode["max_motor_impluse"].as<double>();
+            m_hinge->setMaxMotorImpulse(max_motor_impluse);
+        }
+        else{
+            max_motor_impluse = 0.05;
+            m_hinge->setMaxMotorImpulse(max_motor_impluse);
+        }
     }
-    if(fileNode["max_motor_impluse"].IsDefined()){
-        max_motor_impluse = fileNode["max_motor_impluse"].as<double>();
-        m_hinge->setMaxMotorImpulse(max_motor_impluse);
-    }
-    else{
-        max_motor_impluse = 0.05;
-        m_hinge->setMaxMotorImpulse(max_motor_impluse);
-    }
+
     if(fileNode["joint_limits"].IsDefined()){
         jnt_lim_low = fileNode["joint_limits"]["low"].as<double>();
         jnt_lim_high = fileNode["joint_limits"]["high"].as<double>();
@@ -556,6 +574,10 @@ void Joint::command_torque(double &cmd){
     btVector3 hingeAxisInWorld = trA.getBasis()*m_axisA;
     bodyA->applyTorque(-hingeAxisInWorld * cmd);
     bodyB->applyTorque(hingeAxisInWorld * cmd);
+}
+
+Joint::~Joint(){
+    delete m_hinge;
 }
 
 ///
@@ -703,5 +725,20 @@ Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
 
     return rootParentLink;
 }
+
+///
+/// \brief cBulletGripper::~cBulletGripper
+///
+cBulletMultiBody::~cBulletMultiBody(){
+    cLinkMap::const_iterator lIt = m_linkMap.begin();
+    for ( ; lIt != m_linkMap.end() ; ++lIt){
+        delete lIt->second;
+    }
+    cJointMap::const_iterator jIt = m_jointMap.begin();
+    for (; jIt != m_jointMap.end() ; ++jIt){
+        delete jIt->second;
+    }
+}
+
 }
 

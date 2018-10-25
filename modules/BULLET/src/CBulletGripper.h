@@ -57,22 +57,6 @@ class cBulletGripperLink;
 typedef std::shared_ptr<cBulletGripper> cBulletGripperPtr;
 typedef std::map<std::string, cBulletGripperLink*> cGripperLinkMap;
 
-struct GripperSurfaceProperties{
-public:
-    GripperSurfaceProperties(){
-        linear_damping = 0.5;
-        angular_damping = 1.0;
-        static_friction = 0.5;
-        dynamic_friction = 0.5;
-        rolling_friction = 0.5;
-    }
-    double linear_damping;
-    double angular_damping;
-    double static_friction;
-    double dynamic_friction;
-    double rolling_friction;
-};
-
 ///
 /// \brief The cBulletGripperLink class
 ///
@@ -84,9 +68,6 @@ public:
     ~cBulletGripperLink(){}
     virtual bool load(std::string file, std::string name, cBulletGripper* mB);
 
-private:
-
-    GripperSurfaceProperties m_surfaceProps;
 };
 
 ///
@@ -98,10 +79,8 @@ class cBulletGripper: public cBulletMultiBody
 public:
 
     cBulletGripper(cBulletWorld *a_chaiWorld):cBulletMultiBody(a_chaiWorld){}
-    ~cBulletGripper(){}
-
+    ~cBulletGripper();
     void set_gripper_angle(const double &angle,double dt=0.001);
-    void set_surface_props(GripperSurfaceProperties &props);
     virtual cBulletGripperLink* load_multibody(std::string a_file,
                                                std::string a_gripper_name,
                                                std::string a_suffix_name);
