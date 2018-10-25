@@ -54,6 +54,122 @@ std::string resourceRootMB;
 
 namespace chai3d{
 
+std::map<std::string, std::string> ConfigHandler::m_gripperConfigFiles;
+YAML::Node ConfigHandler::m_colorsNode;
+
+
+///
+/// \brief ConfigHandler::ConfigHandler
+/// \param a_config_file
+///
+ConfigHandler::ConfigHandler(){
+
+}
+
+///
+/// \brief ConfigHandler::load_yaml
+/// \param a_config_file
+/// \return
+///
+bool ConfigHandler::load_yaml(std::string a_config_file){
+    YAML::Node configNode = YAML::LoadFile(a_config_file);
+    if(!configNode){
+        std::cerr << "ERROR! FAILED TO LOAD CONFIG FILE \n";
+    }
+    // Check if a world config file or a plain multibody config file
+    if (configNode["path"].IsDefined() && configNode["multibody_config"].IsDefined()){
+        m_path = configNode["path"].as<std::string>();
+        m_puzzle_config = m_path + configNode["multibody_config"].as<std::string>();
+
+    }
+    else{
+        std::cerr << "PATH AND MULTIBODY CONFIG NOT DEFINED \n";
+        return 0;
+    }
+    if(configNode["color_config"].IsDefined()){
+        m_color_config = m_path + configNode["color_config"].as<std::string>();
+        m_colorsNode = YAML::LoadFile(m_color_config.c_str());
+        if (!m_colorsNode){
+            std::cerr << "ERROR! COLOR CONFIG NOT FOUND \n";
+        }
+    }
+    else{
+        return 0;
+    }
+
+    if(configNode["gripper_configs"].IsDefined()){
+        for(size_t i=0 ; i < configNode["gripper_configs"].size(); ++i){
+            std::string gconf = configNode["gripper_configs"][i].as<std::string>();
+            m_gripperConfigFiles[gconf] = m_path + configNode[gconf].as<std::string>();
+        }
+    }
+    else{
+        std::cerr << "ERROR! GRIPPER CONFIGS NOT DEFINED \n";
+        return 0;
+    }
+    return 1;
+}
+
+///
+/// \brief ConfigHandler::get_puzzle_config
+/// \return
+///
+std::string ConfigHandler::get_puzzle_config(){
+    return m_puzzle_config;
+}
+
+///
+/// \brief ConfigHandler::get_color_config
+/// \return
+///
+std::string ConfigHandler::get_color_config(){
+    return m_color_config;
+}
+
+///
+/// \brief ConfigHandler::get_gripper_config
+/// \param a_gripper_name
+/// \return
+///
+std::string ConfigHandler::get_gripper_config(std::string a_gripper_name){
+    if(m_gripperConfigFiles.find(a_gripper_name) != m_gripperConfigFiles.end()){
+        return m_gripperConfigFiles[a_gripper_name];
+    }
+    else{
+        std::cerr << "WARNING! GRIPPER CONFIG FOR \"" << a_gripper_name
+                  << "\" NOT FOUND, RETURNING DEFAULT \n";
+        return m_gripperConfigFiles["Default"];
+    }
+}
+
+///
+/// \brief ConfigHandler::get_color_rgba
+/// \param a_color_name
+/// \return
+///
+std::vector<double> ConfigHandler::get_color_rgba(std::string a_color_name){
+    std::vector<double> color_rgba = {0.5, 0.5, 0.5, 0.5};
+    // Help from https://stackoverflow.com/questions/15425442/retrieve-random-key-element-for-stdmap-in-c
+    if(strcmp(a_color_name.c_str(), "random") == 0 || strcmp(a_color_name.c_str(), "RANDOM") == 0){
+        YAML::const_iterator it = m_colorsNode.begin();
+        std::advance(it, rand() % m_colorsNode.size());
+        color_rgba[0] = it->second["r"].as<int>() / 255.0;
+        color_rgba[1] = it->second["g"].as<int>() / 255.0;
+        color_rgba[2] = it->second["b"].as<int>() / 255.0;
+        color_rgba[3] = it->second["a"].as<int>() / 255.0;
+    }
+    else if(m_colorsNode[a_color_name].IsDefined()){
+        color_rgba[0] = m_colorsNode[a_color_name]["r"].as<int>() / 255.0;
+        color_rgba[1] = m_colorsNode[a_color_name]["g"].as<int>() / 255.0;
+        color_rgba[2] = m_colorsNode[a_color_name]["b"].as<int>() / 255.0;
+        color_rgba[3] = m_colorsNode[a_color_name]["a"].as<int>() / 255.0;
+    }
+    else{
+        std::cerr << "WARNING! COLOR NOT FOUND, RETURNING BALANCED COLOR\n";
+    }
+    return color_rgba;
+}
+
 ///
 /// \brief Link::Link
 /// \param a_world
@@ -173,13 +289,8 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
                             fileNode["color_raw"]["a"].as<float>());
         }
     else if(fileNode["color"].IsDefined()){
-        std::string color_str = fileNode["color"].as<std::string>();
-        if (mB->m_colorsNode[color_str.c_str()].IsDefined()){
-            m_mat.setColorf(mB->m_colorsNode[color_str.c_str()]["r"].as<int>() / 255.0,
-                            mB->m_colorsNode[color_str.c_str()]["g"].as<int>() / 255.0,
-                            mB->m_colorsNode[color_str.c_str()]["b"].as<int>() / 255.0,
-                            mB->m_colorsNode[color_str.c_str()]["a"].as<int>() / 255.0);
-        }
+        std::vector<double> rgba = mB->get_color_rgba(fileNode["color"].as<std::string>());
+        m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
 
     }
 
@@ -456,39 +567,6 @@ cBulletMultiBody::cBulletMultiBody(cBulletWorld *a_chaiWorld){
 }
 
 ///
-/// \brief cBulletMultiBody::load_yaml
-/// \param file
-/// \return
-///
-
-bool cBulletMultiBody::load_yaml(std::string file) {
-
-    YAML::Node configNode = YAML::LoadFile(file);
-    if (!configNode){
-        std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
-        return false;
-    }
-    std::string path;
-    std::string multi_body_config;
-    std::string color_config;
-    // Check if a world config file or a plain multibody config file
-    if (configNode["path"].IsDefined() && configNode["multi_body_config"]){
-        path = configNode["path"].as<std::string>();
-        multi_body_config = path + configNode["multi_body_config"].as<std::string>();
-        color_config = path + configNode["color_config"].as<std::string>();
-    }
-    else{
-        multi_body_config = file;
-        color_config = configNode["color_config"].as<std::string>();
-    }
-    m_colorsNode = YAML::LoadFile(color_config.c_str());
-
-    load_multibody(multi_body_config);
-
-    return true;
-}
-
-///
 /// \brief cBulletMultiBody::compute_n_digits
 /// \param n
 ///
@@ -563,15 +641,15 @@ std::string cBulletMultiBody::get_joint_name_remapping(std::string a_joint_name)
 /// \param file
 /// \return
 ///
-Link* cBulletMultiBody::load_multibody(std::string file){
-    YAML::Node multiBodyNode = YAML::LoadFile(file);
+Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
+    if (a_multibody_config.empty()){
+        a_multibody_config = get_puzzle_config();
+    }
+    YAML::Node multiBodyNode = YAML::LoadFile(a_multibody_config);
     if (!multiBodyNode){
         std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
         return NULL;
     }
-    std::string color_config;
-    if (multiBodyNode["color_config"].IsDefined())
-        m_colorsNode = YAML::LoadFile(multiBodyNode["color_config"].as<std::string>().c_str());
 
     Link *tmpLink;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
@@ -589,7 +667,7 @@ Link* cBulletMultiBody::load_multibody(std::string file){
         std::string link_name = multiBodyNode["links"][i].as<std::string>();
         std::string remap_str = get_link_name_remapping(link_name);
 //        printf("Loading link: %s \n", (link_name + remap_str).c_str());
-        if (tmpLink->load(file.c_str(), link_name, this, remap_str)){
+        if (tmpLink->load(a_multibody_config.c_str(), link_name, this, remap_str)){
             m_linkMap[(link_name + remap_str).c_str()] = tmpLink;
             temp_link_names.push_back((link_name + remap_str).c_str());
         }
@@ -601,7 +679,7 @@ Link* cBulletMultiBody::load_multibody(std::string file){
         std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
         std::string remap_str = get_joint_name_remapping(jnt_name);
 //        printf("Loading link: %s \n", (jnt_name + remap_str).c_str());
-        if (tmpJoint->load(file.c_str(), jnt_name, this, remap_str)){
+        if (tmpJoint->load(a_multibody_config.c_str(), jnt_name, this, remap_str)){
             m_jointMap[jnt_name+remap_str] = tmpJoint;
         }
     }

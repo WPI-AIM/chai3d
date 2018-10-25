@@ -191,7 +191,6 @@ void close(void);
 
 const int MAX_DEVICES = 10;
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class DataExchange{
@@ -467,7 +466,7 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
  * for interface with the haptics device*/
 class ToolGripper: public Sim, public DataExchange, public cBulletGripper{
 public:
-    ToolGripper(cBulletWorld *a_chaiWorld, std::string a_file, std::string a_gripper_name, std::string a_suffix_name = "");
+    ToolGripper(cBulletWorld *a_chaiWorld, std::string a_gripper_name, std::string a_device_name);
     ~ToolGripper(){}
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
@@ -487,11 +486,11 @@ public:
 };
 
 ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
-                         std::string a_file,
                          std::string a_gripper_name,
-                         std::string a_suffix_name):cBulletGripper(a_chaiWorld){
+                         std::string a_device_name):cBulletGripper(a_chaiWorld){
     m_gripper_angle = 3.0;
-    m_gripperRoot = load_multibody(a_file, a_gripper_name, a_suffix_name);
+    std::string config = get_gripper_config(a_device_name);
+    m_gripperRoot = load_multibody(config, a_gripper_name, a_device_name);
 }
 
 cVector3d ToolGripper::measured_pos(){
@@ -646,9 +645,8 @@ bool Coordination::retrieve_device_handle(uint dev_num){
 void Coordination::create_bullet_gripper(uint dev_num){
     std::ostringstream dev_str;
     dev_str << (dev_num + 1);
-    std::string cpath = "../resources/config/gripper_type1.yaml";
     std::string gripper_name = "Gripper" + dev_str.str();
-    m_bulletGrippers[dev_num] = new ToolGripper(m_bulletWorld, cpath, gripper_name, m_hapticDevices[dev_num].m_hInfo.m_modelName);
+    m_bulletGrippers[dev_num] = new ToolGripper(m_bulletWorld, gripper_name, m_hapticDevices[dev_num].m_hInfo.m_modelName);
     m_bulletGrippers[dev_num]->set_sim_params(m_hapticDevices[dev_num].m_hInfo, & m_hapticDevices[dev_num]);
     m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
 }
@@ -1037,10 +1035,9 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     g_bodyObj = new cBulletMultiBody(g_bulletWorld);
     g_bodyObj->load_yaml("../resources/config/coordination.yaml");
+    g_bodyObj->load_multibody(g_bodyObj->get_puzzle_config());
 
     // end puzzle meshes
-    g_coordApp = std::make_shared<Coordination>(g_bulletWorld, num_devices_to_load);
-
     //////////////////////////////////////////////////////////////////////////
     // INVISIBLE WALLS
     //////////////////////////////////////////////////////////////////////////
@@ -1109,6 +1106,7 @@ int main(int argc, char* argv[])
     //-----------------------------------------------------------------------
     // START SIMULATION
     //-----------------------------------------------------------------------
+    g_coordApp = std::make_shared<Coordination>(g_bulletWorld, num_devices_to_load);
     g_coordApp->open_devices();
 
     // create a thread which starts the main haptics rendering loop
@@ -1116,17 +1114,15 @@ int main(int argc, char* argv[])
     for (int i = 0 ; i < g_coordApp->m_num_devices ; i++){
         g_hapticsThreads[i] = new cThread();
         g_hapticsThreads[i]->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS, &dev_num[i]);
-    }
-    //create a thread which starts the Bullet Simulation loop
-    g_bulletSimThread = new cThread();
-    g_bulletSimThread->start(updateBulletSim, CTHREAD_PRIORITY_HAPTICS);
-
-    for (int i = 0 ; i < g_coordApp->m_num_devices ; i++){
         g_labelDevRates[i] = new cLabel(font);
         g_labelDevRates[i]->m_fontColor.setBlack();
         g_labelDevRates[i]->setFontScale(0.8);
         g_camera->m_frontLayer->addChild(g_labelDevRates[i]);
     }
+
+    //create a thread which starts the Bullet Simulation loop
+    g_bulletSimThread = new cThread();
+    g_bulletSimThread->start(updateBulletSim, CTHREAD_PRIORITY_HAPTICS);
 
     // setup callback when application exits
     atexit(close);

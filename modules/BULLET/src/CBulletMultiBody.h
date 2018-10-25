@@ -63,8 +63,39 @@ typedef std::shared_ptr<Joint> cMultiBodyJointPtr;
 typedef std::map<std::string, Link*> cLinkMap;
 typedef std::map<std::string, Joint*> cJointMap;
 
+///
+/// \brief The ConfigHandler class
+///
+class ConfigHandler{
+
+public:
+
+    ConfigHandler();
+    std::string get_config_file(std::string a_config_name);
+    std::string get_puzzle_config();
+    std::string get_color_config();
+    std::vector<double> get_color_rgba(std::string a_color_name);
+    std::string get_gripper_config(std::string a_gripper_name);
+    bool load_yaml(std::string file);
+
+private:
+    std::string m_path;
+    std::string m_color_config;
+    std::string m_puzzle_config;
+    static std::map<std::string, std::string> m_gripperConfigFiles;
+
+protected:
+
+    static YAML::Node m_colorsNode;
+
+};
+
+///
+/// \brief The Link class
+///
 class Link : public cBulletMultiMesh{
     friend cBulletMultiBody;
+
 
 public:
 
@@ -104,6 +135,9 @@ protected:
 
 };
 
+///
+/// \brief The Joint class
+///
 class Joint{
     friend Link;
 
@@ -133,14 +167,16 @@ protected:
 
 };
 
-class cBulletMultiBody{
+///
+/// \brief The cBulletMultiBody class
+///
+class cBulletMultiBody: public ConfigHandler{
 public:
     friend Link;
     friend Joint;
     cBulletMultiBody(cBulletWorld *bulletWorld);
     ~cBulletMultiBody(){}
-    bool load_yaml(std::string file);
-    virtual Link* load_multibody(std::string);
+    virtual Link* load_multibody(std::string a_multibody_config = "");
 
 protected:
 
@@ -152,7 +188,6 @@ protected:
 protected:
 
     cMaterial mat;
-    YAML::Node m_colorsNode;
     std::string get_link_name_remapping(std::string a_link_name);
     std::string get_joint_name_remapping(std::string a_joint_name);
     void remap_name(std::string &name, std::string remap_idx_str);

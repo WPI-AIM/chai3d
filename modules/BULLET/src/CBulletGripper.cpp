@@ -119,14 +119,8 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
                 fileNode["color_raw"]["a"].as<float>());
     }
     else if(fileNode["color"].IsDefined()){
-        std::string color_str = fileNode["color"].as<std::string>();
-        if (mB->m_colorsNode[color_str.c_str()].IsDefined()){
-            m_mat.setColorf(mB->m_colorsNode[color_str.c_str()]["r"].as<int>() / 255.0,
-                    mB->m_colorsNode[color_str.c_str()]["g"].as<int>() / 255.0,
-                    mB->m_colorsNode[color_str.c_str()]["b"].as<int>() / 255.0,
-                    mB->m_colorsNode[color_str.c_str()]["a"].as<int>() / 255.0);
-        }
-
+        std::vector<double> rgba = mB->get_color_rgba(fileNode["color"].as<std::string>());
+        m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
     }
 
     if(fileNode["damping"].IsDefined()){
