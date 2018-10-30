@@ -92,7 +92,8 @@ afWorld *g_afWorld;
 
 cVector3d g_camPos(0,0,0);
 cVector3d g_dev_vel;
-cMatrix3d g_cam_rot_last, g_dev_rot_last, g_dev_rot_cur;
+cMatrix3d g_cam_rot_last[10], g_dev_rot_last[10], g_dev_rot_cur[10];
+bool _cam_pressed[10];;
 double g_dt_fixed = 0;
 bool g_force_enable = true;
 // Default switch index for clutches
@@ -1587,19 +1588,19 @@ void updateGraphics(void)
     g_labelRates->setLocalPos((int)(0.5 * (g_width - g_labelRates->getWidth())), 10);
     g_labelModes->setLocalPos((int)(0.5 * (g_width - g_labelModes->getWidth())), 50);
     g_labelBtnAction->setLocalPos((int)(0.5 * (g_width - g_labelModes->getWidth()) + g_labelModes->getWidth()), 50);
-    bool _pressed;
-    if (g_coordApp->m_num_devices > 0){
-        g_coordApp->m_hapticDevices[0].m_hDevice->getUserSwitch(g_coordApp->m_bulletGrippers[0]->act_2_btn, _pressed);
-        if(_pressed && g_coordApp->m_simModes == MODES::CAM_CLUTCH_CONTROL){
+
+    for (size_t dev_num = 0; dev_num < g_coordApp->m_num_devices ; dev_num ++){
+        g_coordApp->m_hapticDevices[dev_num].m_hDevice->getUserSwitch(g_coordApp->m_bulletGrippers[dev_num]->act_2_btn, _cam_pressed[dev_num]);
+        if(_cam_pressed[dev_num] && g_coordApp->m_simModes == MODES::CAM_CLUTCH_CONTROL){
             double scale = 0.3;
-            g_dev_vel = g_coordApp->m_hapticDevices[0].measured_lin_vel();
-            g_coordApp->m_hapticDevices[0].m_hDevice->getRotation(g_dev_rot_cur);
-            g_camera->setLocalPos(g_camera->getLocalPos() + cMul(scale, cMul(g_camera->getGlobalRot(),g_dev_vel)));
-            g_camera->setLocalRot(cMul(g_cam_rot_last, cMul(cTranspose(g_dev_rot_last), g_dev_rot_cur)));
+            g_dev_vel = g_coordApp->m_hapticDevices[dev_num].measured_lin_vel();
+            g_coordApp->m_hapticDevices[dev_num].m_hDevice->getRotation(g_dev_rot_cur[dev_num]);
+            g_camera->setLocalPos(g_camera->getLocalPos() + cMul(scale, cMul(g_camera->getGlobalRot(), g_dev_vel)));
+            g_camera->setLocalRot(cMul(g_cam_rot_last[dev_num], cMul(cTranspose(g_dev_rot_last[dev_num]), g_dev_rot_cur[dev_num])));
         }
-        if(!_pressed){
-            g_cam_rot_last = g_camera->getGlobalRot();
-            g_coordApp->m_hapticDevices[0].m_hDevice->getRotation(g_dev_rot_last);
+        if(!_cam_pressed[dev_num]){
+            g_cam_rot_last[dev_num] = g_camera->getGlobalRot();
+            g_coordApp->m_hapticDevices[dev_num].m_hDevice->getRotation(g_dev_rot_last[dev_num]);
         }
     }
 
