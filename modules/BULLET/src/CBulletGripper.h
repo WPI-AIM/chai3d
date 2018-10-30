@@ -51,37 +51,39 @@
 
 namespace chai3d {
 
-class cBulletGripper;
-class cBulletGripperLink;
+class afBulletGripper;
+class afBulletGripperLink;
 
-typedef std::shared_ptr<cBulletGripper> cBulletGripperPtr;
-typedef std::map<std::string, cBulletGripperLink*> cGripperLinkMap;
+typedef std::shared_ptr<afBulletGripper> afBulletGripperPtr;
+typedef std::map<std::string, afBulletGripperLink*> afGripperLinkMap;
 
 ///
 /// \brief The cBulletGripperLink class
 ///
-class cBulletGripperLink : public Link{
-    friend cBulletGripper;
+class afBulletGripperLink : public afLink{
+    friend afBulletGripper;
 public:
 
-    cBulletGripperLink(cBulletWorld* a_chaiWorld): Link(a_chaiWorld){}
-    ~cBulletGripperLink(){}
-    virtual bool load(std::string file, std::string name, cBulletGripper* mB);
+    afBulletGripperLink(cBulletWorld* a_chaiWorld): afLink(a_chaiWorld){}
+    ~afBulletGripperLink(){}
+    virtual bool load(std::string file, std::string name, afBulletGripper* mB);
 
 };
 
 ///
 /// \brief The cBulletGripper class
 ///
-class cBulletGripper: public cBulletMultiBody
+class afBulletGripper: public afBulletMultiBody
 {
-    friend cBulletGripperLink;
+
+    friend afBulletGripperLink;
+
 public:
 
-    cBulletGripper(cBulletWorld *a_chaiWorld):cBulletMultiBody(a_chaiWorld){}
-    ~cBulletGripper();
+    afBulletGripper(cBulletWorld *a_chaiWorld) : afBulletMultiBody(a_chaiWorld){}
+    ~afBulletGripper();
     void set_gripper_angle(const double &angle,double dt=0.001);
-    virtual cBulletGripperLink* load_multibody(std::string a_file,
+    virtual afBulletGripperLink* load_multibody(std::string a_file,
                                                std::string a_gripper_name,
                                                std::string a_suffix_name);
 

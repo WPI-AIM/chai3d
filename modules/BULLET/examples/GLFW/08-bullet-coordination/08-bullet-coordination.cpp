@@ -87,7 +87,8 @@ cBulletStaticPlane* g_bulletBoxWallX[2];
 cBulletStaticPlane* g_bulletBoxWallY[2];
 cBulletStaticPlane* g_bulletBoxWallZ[1];
 
-cBulletMultiBody *g_bodyObj;
+afBulletMultiBody *g_afBody;
+afWorld *g_afWorld;
 
 cVector3d g_camPos(0,0,0);
 cVector3d g_dev_vel;
@@ -539,7 +540,7 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
 /// \brief This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
 ///        for interface with the haptics device
 ///
-class ToolGripper: public Sim, public DataExchange, public cBulletGripper{
+class ToolGripper: public Sim, public DataExchange, public afBulletGripper{
 public:
     ToolGripper(cBulletWorld *a_chaiWorld, std::string a_gripper_name, std::string a_device_name);
     ~ToolGripper(){}
@@ -552,7 +553,7 @@ public:
     void clear_wrench();
     void offset_gripper_angle(double offset);
     void set_gripper_angle(double angle, double dt=0.001);
-    cBulletGripperLink* m_gripperRoot;
+    afBulletGripperLink* m_gripperRoot;
     cVector3d m_posGripper;
     cMatrix3d m_rotGripper;
     double m_gripper_angle;
@@ -568,7 +569,7 @@ public:
 ///
 ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
                          std::string a_gripper_name,
-                         std::string a_device_name):cBulletGripper(a_chaiWorld){
+                         std::string a_device_name): afBulletGripper (a_chaiWorld){
     m_gripper_angle = 3.0;
     std::string config = get_gripper_config(a_device_name);
     m_gripperRoot = load_multibody(config, a_gripper_name, a_device_name);
@@ -785,11 +786,14 @@ void Coordination::create_bullet_gripper(uint dev_num){
     m_bulletGrippers[dev_num]->set_sim_params(m_hapticDevices[dev_num].m_hInfo, & m_hapticDevices[dev_num]);
     m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
     cVector3d localGripperPos = m_bulletGrippers[dev_num]->m_gripperRoot->getLocalPos();
+    double l,w,h;
+    m_bulletGrippers[dev_num]->get_enclosure_extents(l,w,h);
     if (localGripperPos.length() == 0.0){
-        double x = -0.1 + (int(dev_num / 2.0) * 0.1);
-        double y = (dev_num % 2) ? +0.10 : -0.10;
-        printf("Y = %f\n", y);
-        m_bulletGrippers[dev_num]->m_posRefLast.set(x,y,0);
+        double x = (int(dev_num / 2.0) * 0.8);
+        double y = (dev_num % 2) ? +0.4 : -0.4;
+        x /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
+        y /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
+        m_bulletGrippers[dev_num]->m_posRefLast.set(x, y, 0);
     }
 }
 
@@ -1220,11 +1224,15 @@ int main(int argc, char* argv[])
 
 
     //////////////////////////////////////////////////////////////////////////
-    // PUZZLE MESHES
+    // AF MULTIBODY HANDLER
     //////////////////////////////////////////////////////////////////////////
-    g_bodyObj = new cBulletMultiBody(g_bulletWorld);
-    g_bodyObj->load_yaml("../resources/config/coordination.yaml");
-    g_bodyObj->load_multibody(g_bodyObj->get_puzzle_config());
+    g_afWorld = new afWorld(g_bulletWorld);
+    g_afWorld->load_yaml("../resources/config/coordination.yaml");
+    g_afWorld->load_world();
+
+    g_afBody = new afBulletMultiBody(g_bulletWorld);
+    g_afBody->load_multibody();
+
 
     // end puzzle meshes
     //////////////////////////////////////////////////////////////////////////
@@ -1232,9 +1240,9 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double box_l, box_w, box_h;
-    box_l = 4.0;
-    box_w = 4.0;
-    box_h = 3.0;
+    box_l = g_afWorld->get_enclosure_length();
+    box_w = g_afWorld->get_enclosure_width();
+    box_h = g_afWorld->get_enclosure_height();
     g_bulletBoxWallZ[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -0.5 * box_h);
     g_bulletBoxWallY[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -0.5 * box_w);
     g_bulletBoxWallY[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -0.5 * box_w);
@@ -1270,6 +1278,8 @@ int main(int argc, char* argv[])
         g_bulletBoxWallY[i]->setMaterial(matPlane);
         g_bulletBoxWallY[i]->setTransparencyLevel(0.5, true, true);
     }
+
+    g_camera->setLocalPos(1.5 + box_l/2, 0, 0.2 + box_h/2);
 
 
     //////////////////////////////////////////////////////////////////////////
@@ -1694,22 +1704,22 @@ void updateBulletSim(){
             bGripper->apply_torque(torque);
             bGripper->set_gripper_angle(bGripper->m_gripper_angle, dt);
 
-            if (bGripper->K_lc_ramp < bGripper->K_lc)
+            if (bGripper->K_lc_ramp < 1.0)
             {
-                bGripper->K_lc_ramp = bGripper->K_lc_ramp + 0.001 * dt * bGripper->K_lc;
+                bGripper->K_lc_ramp = bGripper->K_lc_ramp + 0.5 * dt;
             }
             else
             {
-                bGripper->K_lc_ramp = bGripper->K_lc;
+                bGripper->K_lc_ramp = 1.0;
             }
 
-            if (bGripper->K_ac_ramp < bGripper->K_ac)
+            if (bGripper->K_ac_ramp < 1.0)
             {
-                bGripper->K_ac_ramp = bGripper->K_ac_ramp + 0.001 * dt * bGripper->K_ac;
+                bGripper->K_ac_ramp = bGripper->K_ac_ramp + 0.5 * dt;
             }
             else
             {
-                bGripper->K_ac_ramp = bGripper->K_ac;
+                bGripper->K_ac_ramp = 1.0;
             }
         }
         g_bulletWorld->updateDynamics(dt, g_clockWorld.getCurrentTimeSeconds(), g_freqCounterHaptics.getFrequency(), g_coordApp->m_num_devices);
@@ -1745,6 +1755,11 @@ void updateHaptics(void* a_arg){
     double B_ac_offset = 1;
     double K_lh_offset = 5;
     double K_ah_offset = 1;
+
+    double wait_time = 1.0;
+    if (std::strcmp(hDev->m_hInfo.m_modelName.c_str(), "Razer Hydra") == 0 ){
+        wait_time = 4.0;
+    }
 
     // main haptic simulation loop
     while(g_simulationRunning)
@@ -1819,7 +1834,7 @@ void updateHaptics(void* a_arg){
         }
 
 
-        if (g_clockWorld.getCurrentTimeSeconds() < 4.0){
+        if (g_clockWorld.getCurrentTimeSeconds() < wait_time){
             hDev->m_posDeviceClutched = hDev->m_posDevice;
         }
 

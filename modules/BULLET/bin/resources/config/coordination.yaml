@@ -1,5 +1,6 @@
 # This is the base file for Coordination Application
 path: ../resources/config/
+world_config: world_config.yaml
 multibody_config: puzzle.yaml
 color_config: colors.yaml
 gripper_configs: ["Default", "MTMR", "MTML", "Novint Falcon", "Geomagic Touch", "Phantom Omni", "Razer Hydra"]

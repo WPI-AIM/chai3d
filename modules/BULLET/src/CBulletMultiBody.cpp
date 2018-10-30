@@ -54,26 +54,39 @@ std::string resourceRootMB;
 
 namespace chai3d{
 
-std::map<std::string, std::string> ConfigHandler::m_gripperConfigFiles;
-YAML::Node ConfigHandler::m_colorsNode;
-cMaterial Link::m_mat;
-LinkSurfaceProperties Link::m_surfaceProps;
+/// Declare Static Variables
+cMaterial afLink::m_mat;
+afLinkSurfaceProperties afLink::m_surfaceProps;
+
+std::string afConfigHandler::m_path;
+std::string afConfigHandler::m_color_config;
+std::string afConfigHandler::m_puzzle_config;
+std::string afConfigHandler::m_world_config;
+YAML::Node afConfigHandler::m_colorsNode;
+std::map<std::string, std::string> afConfigHandler::m_gripperConfigFiles;
+
+cBulletWorld* afWorld::m_chaiWorld;
+double afWorld::m_encl_length;
+double afWorld::m_encl_width;
+double afWorld::m_encl_height;
+
+/// End declare static variables
+
 
 ///
-/// \brief ConfigHandler::ConfigHandler
-/// \param a_config_file
+/// \brief afConfigHandler::afConfigHandler
 ///
-ConfigHandler::ConfigHandler(){
+afConfigHandler::afConfigHandler(){
 
 }
 
 ///
-/// \brief ConfigHandler::load_yaml
+/// \brief afConfigHandler::load_yaml
 /// \param a_config_file
 /// \return
 ///
-bool ConfigHandler::load_yaml(std::string a_config_file){
-    YAML::Node configNode = YAML::LoadFile(a_config_file);
+bool afConfigHandler::load_yaml(std::string a_config_file){
+    configNode = YAML::LoadFile(a_config_file);
     if(!configNode){
         std::cerr << "ERROR! FAILED TO LOAD CONFIG FILE \n";
     }
@@ -108,31 +121,49 @@ bool ConfigHandler::load_yaml(std::string a_config_file){
         std::cerr << "ERROR! GRIPPER CONFIGS NOT DEFINED \n";
         return 0;
     }
+
+    if(configNode["world_config"].IsDefined()){
+        std::string gconf = configNode["world_config"].as<std::string>();
+        m_world_config = m_path + gconf;
+    }
+    else{
+        std::cerr << "ERROR! WORLD CONFIG NOT DEFINED \n";
+        return 0;
+    }
+
     return 1;
 }
 
 ///
-/// \brief ConfigHandler::get_puzzle_config
+/// \brief afConfigHandler::get_world_config
 /// \return
 ///
-std::string ConfigHandler::get_puzzle_config(){
+std::string afConfigHandler::get_world_config(){
+    return m_world_config;
+}
+
+///
+/// \brief afConfigHandler::get_puzzle_config
+/// \return
+///
+std::string afConfigHandler::get_puzzle_config(){
     return m_puzzle_config;
 }
 
 ///
-/// \brief ConfigHandler::get_color_config
+/// \brief afConfigHandler::get_color_config
 /// \return
 ///
-std::string ConfigHandler::get_color_config(){
+std::string afConfigHandler::get_color_config(){
     return m_color_config;
 }
 
 ///
-/// \brief ConfigHandler::get_gripper_config
+/// \brief afConfigHandler::get_gripper_config
 /// \param a_gripper_name
 /// \return
 ///
-std::string ConfigHandler::get_gripper_config(std::string a_gripper_name){
+std::string afConfigHandler::get_gripper_config(std::string a_gripper_name){
     if(m_gripperConfigFiles.find(a_gripper_name) != m_gripperConfigFiles.end()){
         return m_gripperConfigFiles[a_gripper_name];
     }
@@ -144,11 +175,11 @@ std::string ConfigHandler::get_gripper_config(std::string a_gripper_name){
 }
 
 ///
-/// \brief ConfigHandler::get_color_rgba
+/// \brief afConfigHandler::get_color_rgba
 /// \param a_color_name
 /// \return
 ///
-std::vector<double> ConfigHandler::get_color_rgba(std::string a_color_name){
+std::vector<double> afConfigHandler::get_color_rgba(std::string a_color_name){
     std::vector<double> color_rgba = {0.5, 0.5, 0.5, 0.5};
     // Help from https://stackoverflow.com/questions/15425442/retrieve-random-key-element-for-stdmap-in-c
     if(strcmp(a_color_name.c_str(), "random") == 0 || strcmp(a_color_name.c_str(), "RANDOM") == 0){
@@ -172,17 +203,18 @@ std::vector<double> ConfigHandler::get_color_rgba(std::string a_color_name){
 }
 
 ///
-/// \brief Link::Link
+/// \brief afLink::afLink
 /// \param a_world
 ///
-Link::Link(cBulletWorld* a_world): cBulletMultiMesh(a_world){
+afLink::afLink(cBulletWorld* a_world): cBulletMultiMesh(a_world){
 }
 
 ///
-/// \brief Link::populate_parent_tree
+/// \brief afLink::populate_parents_tree
 /// \param a_link
+/// \param a_jnt
 ///
-void Link::populate_parents_tree(Link* a_link, Joint* a_jnt){
+void afLink::populate_parents_tree(afLink* a_link, afJoint* a_jnt){
     m_childrenLinks.push_back(a_link);
     m_childrenLinks.insert(m_childrenLinks.end(),
                            a_link->m_childrenLinks.begin(),
@@ -194,19 +226,19 @@ void Link::populate_parents_tree(Link* a_link, Joint* a_jnt){
 }
 
 ///
-/// \brief Link::set_parent_link
-/// \param parentLink
+/// \brief afLink::add_parent_link
+/// \param a_parentLink
 ///
-void Link::add_parent_link(Link* a_parentLink){
+void afLink::add_parent_link(afLink* a_parentLink){
     m_parentLinks.push_back(a_parentLink);
 }
 
 ///
-/// \brief Link::set_child_link
-/// \param childLink
-/// \param jnt
+/// \brief afLink::add_child_link
+/// \param a_childLink
+/// \param a_jnt
 ///
-void Link::add_child_link(Link* a_childLink, Joint* a_jnt){
+void afLink::add_child_link(afLink* a_childLink, afJoint* a_jnt){
     a_childLink->add_parent_link(this);
     m_childrenLinks.push_back(a_childLink);
     m_childrenLinks.insert(m_childrenLinks.end(),
@@ -222,12 +254,14 @@ void Link::add_child_link(Link* a_childLink, Joint* a_jnt){
 }
 
 ///
-/// \brief Link::load
+/// \brief afLink::load
 /// \param file
 /// \param name
+/// \param mB
+/// \param name_remapping
 /// \return
 ///
-bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping) {
+bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB, std::string name_remapping) {
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
@@ -315,17 +349,17 @@ bool Link::load (std::string file, std::string name, cBulletMultiBody* mB, std::
 }
 
 ///
-/// \brief Link::create_af_object
+/// \brief afLink::create_af_object
 /// \param a_obj_name
 ///
-void Link::create_af_object(std::string a_obj_name){
+void afLink::create_af_object(std::string a_obj_name){
     m_rosObjPtr.reset(new chai_env::Object(a_obj_name));
 }
 
 ///
-/// \brief Link::compute_gains
+/// \brief afLink::compute_gains
 ///
-void Link::compute_gains(){
+void afLink::compute_gains(){
     if (_lin_gains_computed && _ang_gains_computed){
         return;
     }
@@ -348,17 +382,22 @@ void Link::compute_gains(){
     }
 }
 
-void Link::set_surface_properties(const Link* a_link, const LinkSurfaceProperties *a_props){
+///
+/// \brief afLink::set_surface_properties
+/// \param a_link
+/// \param a_props
+///
+void afLink::set_surface_properties(const afLink* a_link, const afLinkSurfaceProperties *a_props){
     a_link->m_bulletRigidBody->setFriction(a_props->m_static_friction);
     a_link->m_bulletRigidBody->setDamping(a_props->m_linear_damping, a_props->m_angular_damping);
     a_link->m_bulletRigidBody->setRollingFriction(a_props->m_rolling_friction);
 }
 
 ///
-/// \brief Link::updateCmdFromROS
+/// \brief afLink::updateCmdFromROS
 /// \param dt
 ///
-void Link::updateCmdFromROS(double dt){
+void afLink::updateCmdFromROS(double dt){
     if (m_rosObjPtr.get() != nullptr){
         m_rosObjPtr->update_af_cmd();
         cVector3d force, torque;
@@ -427,11 +466,11 @@ void Link::updateCmdFromROS(double dt){
 }
 
 ///
-/// \brief Link::set_angle
+/// \brief afLink::set_angle
 /// \param angle
 /// \param dt
 ///
-void Link::set_angle(double &angle, double dt){
+void afLink::set_angle(double &angle, double dt){
     if (m_parentLinks.size() == 0){
         double clipped_angle = cClamp(angle, 0.0, 1.0);
         for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
@@ -444,11 +483,11 @@ void Link::set_angle(double &angle, double dt){
 }
 
 ///
-/// \brief Link::set_angle
-/// \param angle
+/// \brief afLink::set_angle
+/// \param angles
 /// \param dt
 ///
-void Link::set_angle(std::vector<double> &angles, double dt){
+void afLink::set_angle(std::vector<double> &angles, double dt){
     if (m_parentLinks.size() == 0){
         double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
         for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
@@ -460,26 +499,31 @@ void Link::set_angle(std::vector<double> &angles, double dt){
 }
 
 ///
-/// \brief Joint::Joint
+/// \brief afJoint::afJoint
 ///
-Joint::Joint(){
+afJoint::afJoint(){
 
 }
 
 ///
-/// \brief Joint::assign_vec
+/// \brief afJoint::assign_vec
 /// \param name
 /// \param v
 /// \param node
 ///
-void Joint::assign_vec(std::string name, btVector3* v, YAML::Node* node){
+void afJoint::assign_vec(std::string name, btVector3* v, YAML::Node* node){
     v->setX((*node)[name.c_str()]["x"].as<double>());
     v->setY((*node)[name.c_str()]["y"].as<double>());
     v->setZ((*node)[name.c_str()]["z"].as<double>());
 //    print_vec(name, v);
 }
 
-void Joint::print_vec(std::string name, btVector3* v){
+///
+/// \brief afJoint::print_vec
+/// \param name
+/// \param v
+///
+void afJoint::print_vec(std::string name, btVector3* v){
     printf("\t -%s: \n "
            "\t\t px = %f \n "
            "\t\t py = %f \n "
@@ -488,12 +532,14 @@ void Joint::print_vec(std::string name, btVector3* v){
 }
 
 ///
-/// \brief Joint::load
-/// \param filem_name =
+/// \brief afJoint::load
+/// \param file
 /// \param name
+/// \param mB
+/// \param name_remapping
 /// \return
 ///
-bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::string name_remapping){
+bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, std::string name_remapping){
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
@@ -521,7 +567,7 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::
     assign_vec("child_pivot", &m_pvtB,  &fileNode);
     assign_vec("child_axis", &m_axisB,  &fileNode);
 
-    Link * linkA, * linkB;
+    afLink * linkA, * linkB;
     if (mB->m_linkMap.find((m_parent_name + name_remapping).c_str()) != mB->m_linkMap.end()
             || mB->m_linkMap.find((m_child_name + name_remapping).c_str()) != mB->m_linkMap.end()){
         linkA =  mB->m_linkMap[(m_parent_name + name_remapping).c_str()];
@@ -558,43 +604,119 @@ bool Joint::load(std::string file, std::string name, cBulletMultiBody* mB, std::
 }
 
 ///
-/// \brief Joint::command_position
+/// \brief afJoint::command_position
 /// \param cmd
 ///
-void Joint::command_position(double &cmd){
+void afJoint::command_position(double &cmd){
    m_hinge->setMotorTarget(cmd, 0.001);
 }
 
 ///
-/// \brief Joint::command_torque
+/// \brief afJoint::command_torque
 /// \param cmd
 ///
-void Joint::command_torque(double &cmd){
+void afJoint::command_torque(double &cmd){
     btTransform trA = bodyA->getWorldTransform();
     btVector3 hingeAxisInWorld = trA.getBasis()*m_axisA;
     bodyA->applyTorque(-hingeAxisInWorld * cmd);
     bodyB->applyTorque(hingeAxisInWorld * cmd);
 }
 
-Joint::~Joint(){
+///
+/// \brief afJoint::~afJoint
+///
+afJoint::~afJoint(){
     delete m_hinge;
 }
 
 ///
-/// \brief cBulletMultiBody::cBulletMultiBody
-/// \param bulletWorld
+/// \brief afWorld::afWorld
+/// \param a_chaiWorld
 ///
-cBulletMultiBody::cBulletMultiBody(cBulletWorld *a_chaiWorld){
+afWorld::afWorld(cBulletWorld* a_chaiWorld){
     m_chaiWorld = a_chaiWorld;
+    m_encl_length = 4.0;
+    m_encl_width = 4.0;
+    m_encl_height = 3.0;
 }
 
 ///
-/// \brief cBulletMultiBody::compute_n_digits
-/// \param n
+/// \brief afWorld::get_enclosure_length
+/// \return
 ///
+double afWorld::get_enclosure_length(){
+    return m_encl_length;
+}
+
+///
+/// \brief afWorld::get_enclosure_width
+/// \return
+///
+double afWorld::get_enclosure_width(){
+   return m_encl_width;
+}
+
+///
+/// \brief afWorld::get_enclosure_height
+/// \return
+///
+double afWorld::get_enclosure_height(){
+    return m_encl_height;
+}
+
+///
+/// \brief afWorld::get_enclosure_extents
+/// \param length
+/// \param width
+/// \param height
+///
+void afWorld::get_enclosure_extents(double &length, double &width, double &height){
+    length = m_encl_length;
+    width = m_encl_width;
+    height = m_encl_height;
+}
+
+
+///
+/// \brief afWorld::load_world
+/// \param a_world_config
+/// \return
+///
+bool afWorld::load_world(std::string a_world_config){
+    if (a_world_config.empty()){
+        a_world_config = get_world_config();
+    }
+    YAML::Node worldNode = YAML::LoadFile(a_world_config);
+    if (!worldNode){
+        std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
+        return -1;
+    }
+    else{
+        m_encl_length = worldNode["enclosure_size"]["length"].as<double>();
+        m_encl_width = worldNode["enclosure_size"]["width"].as<double>();
+        m_encl_height = worldNode["enclosure_size"]["height"].as<double>();
+    }
+
+    return true;
+
+}
+
+///
+/// \brief afBulletMultiBody::afBulletMultiBody
+///
+afBulletMultiBody::afBulletMultiBody(){
+
+}
+
+
 /// Help from: https://stackoverflow.com/questions/1489830/efficient-way-to-determine-number-of-digits-in-an-integer
 /// and https://stackoverflow.com/questions/11151548/get-the-number-of-digits-in-an-int/11151594
-void cBulletMultiBody::remap_name(std::string &name, std::string remap_idx_str){
+///
+/// \brief afBulletMultiBody::remap_name
+/// \param name
+/// \param remap_idx_str
+///
+void afBulletMultiBody::remap_name(std::string &name, std::string remap_idx_str){
     if (remap_idx_str.length() == 0){
         return;
     }
@@ -614,11 +736,11 @@ void cBulletMultiBody::remap_name(std::string &name, std::string remap_idx_str){
 }
 
 ///
-/// \brief cBulletMultiBody::get_link_name_remapping
+/// \brief afBulletMultiBody::get_link_name_remapping
 /// \param a_link_name
 /// \return
 ///
-std::string cBulletMultiBody::get_link_name_remapping(std::string a_link_name){
+std::string afBulletMultiBody::get_link_name_remapping(std::string a_link_name){
     int occurances = 0;
     std::string remap_string = "" ;
     std::stringstream ss;
@@ -636,11 +758,11 @@ std::string cBulletMultiBody::get_link_name_remapping(std::string a_link_name){
 }
 
 ///
-/// \brief cBulletMultiBody::get_link_name_remapping
-/// \param a_link_name
+/// \brief afBulletMultiBody::get_joint_name_remapping
+/// \param a_joint_name
 /// \return
 ///
-std::string cBulletMultiBody::get_joint_name_remapping(std::string a_joint_name){
+std::string afBulletMultiBody::get_joint_name_remapping(std::string a_joint_name){
     int occurances = 0;
     std::string remap_string = "" ;
     std::stringstream ss;
@@ -659,11 +781,11 @@ std::string cBulletMultiBody::get_joint_name_remapping(std::string a_joint_name)
 }
 
 ///
-/// \brief cBulletMultiBody::load_multibody
-/// \param file
+/// \brief afBulletMultiBody::load_multibody
+/// \param a_multibody_config
 /// \return
 ///
-Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
+afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
     if (a_multibody_config.empty()){
         a_multibody_config = get_puzzle_config();
     }
@@ -673,7 +795,7 @@ Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
         return NULL;
     }
 
-    Link *tmpLink;
+    afLink *tmpLink;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
         high_res_path = multiBodyNode["high_res_path"].as<std::string>();
         low_res_path = multiBodyNode["low_res_path"].as<std::string>();
@@ -685,7 +807,7 @@ Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
     size_t totalLinks = multiBodyNode["links"].size();
     std::vector<std::string> temp_link_names;
     for (size_t i = 0; i < totalLinks; ++i) {
-        tmpLink = new Link(m_chaiWorld);
+        tmpLink = new afLink(m_chaiWorld);
         std::string link_name = multiBodyNode["links"][i].as<std::string>();
         std::string remap_str = get_link_name_remapping(link_name);
 //        printf("Loading link: %s \n", (link_name + remap_str).c_str());
@@ -694,10 +816,10 @@ Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
             temp_link_names.push_back((link_name + remap_str).c_str());
         }
     }
-    Joint *tmpJoint;
+    afJoint *tmpJoint;
     size_t totalJoints = multiBodyNode["joints"].size();
     for (size_t i = 0; i < totalJoints; ++i) {
-        tmpJoint = new Joint();
+        tmpJoint = new afJoint();
         std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
         std::string remap_str = get_joint_name_remapping(jnt_name);
 //        printf("Loading link: %s \n", (jnt_name + remap_str).c_str());
@@ -705,7 +827,7 @@ Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
             m_jointMap[jnt_name+remap_str] = tmpJoint;
         }
     }
-    Link* rootParentLink = NULL;
+    afLink* rootParentLink = NULL;
     size_t rootParents = 0;
     std::vector<std::string>::const_iterator nIt;
     cLinkMap::const_iterator mIt;
@@ -727,9 +849,9 @@ Link* cBulletMultiBody::load_multibody(std::string a_multibody_config){
 }
 
 ///
-/// \brief cBulletGripper::~cBulletGripper
+/// \brief afBulletMultiBody::~afBulletMultiBody
 ///
-cBulletMultiBody::~cBulletMultiBody(){
+afBulletMultiBody::~afBulletMultiBody(){
     cLinkMap::const_iterator lIt = m_linkMap.begin();
     for ( ; lIt != m_linkMap.end() ; ++lIt){
         delete lIt->second;

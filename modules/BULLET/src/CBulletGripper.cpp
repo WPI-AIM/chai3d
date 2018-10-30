@@ -58,7 +58,7 @@ namespace chai3d {
 /// \param mB
 /// \return
 ///
-bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBulletGripper* mB){
+bool afBulletGripperLink::load(std::string file, std::string a_link_name, afBulletGripper* mB){
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
@@ -152,7 +152,7 @@ bool cBulletGripperLink::load(std::string file, std::string a_link_name, cBullet
 /// \param angle
 /// \param dt
 ///
-void cBulletGripper::set_gripper_angle(const double &angle, double dt){
+void afBulletGripper::set_gripper_angle(const double &angle, double dt){
 }
 
 ///
@@ -160,7 +160,7 @@ void cBulletGripper::set_gripper_angle(const double &angle, double dt){
 /// \param file
 /// \return
 ///
-cBulletGripperLink* cBulletGripper::load_multibody(std::string a_file,
+afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
                                                    std::string a_gripper_name,
                                                    std::string a_suffix_name){
     m_gripper_name = a_gripper_name;
@@ -175,7 +175,7 @@ cBulletGripperLink* cBulletGripper::load_multibody(std::string a_file,
     if (multiBodyNode["color_config"].IsDefined())
         m_colorsNode = YAML::LoadFile(multiBodyNode["color_config"].as<std::string>().c_str());
 
-    cBulletGripperLink *tmpLink;
+    afBulletGripperLink *tmpLink;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
         high_res_path = multiBodyNode["high_res_path"].as<std::string>();
         low_res_path = multiBodyNode["low_res_path"].as<std::string>();
@@ -187,7 +187,7 @@ cBulletGripperLink* cBulletGripper::load_multibody(std::string a_file,
     size_t totalLinks = multiBodyNode["links"].size();
     std::vector<std::string> temp_link_names;
     for (size_t i = 0; i < totalLinks; ++i) {
-        tmpLink = new cBulletGripperLink(m_chaiWorld);
+        tmpLink = new afBulletGripperLink(m_chaiWorld);
         std::string link_name = multiBodyNode["links"][i].as<std::string>();
 //        printf("Loading link: %s \n", link_name .c_str());
         if (tmpLink->load(a_file.c_str(), link_name, this)){
@@ -195,24 +195,24 @@ cBulletGripperLink* cBulletGripper::load_multibody(std::string a_file,
             temp_link_names.push_back(link_name.c_str());
         }
     }
-    Joint *tmpJoint;
+    afJoint *tmpJoint;
     size_t totalJoints = multiBodyNode["joints"].size();
     for (size_t i = 0; i < totalJoints; ++i) {
-        tmpJoint = new Joint();
+        tmpJoint = new afJoint();
         std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
 //        printf("Loading link: %s \n", jnt_name.c_str());
         if (tmpJoint->load(a_file.c_str(), jnt_name, this)){
             m_jointMap[jnt_name] = tmpJoint;
         }
     }
-    cBulletGripperLink* rootParentLink = NULL;
+    afBulletGripperLink* rootParentLink = NULL;
     size_t rootParents = 0;
     std::vector<std::string>::const_iterator nIt;
     cLinkMap::const_iterator mIt;
     for(nIt = temp_link_names.begin() ; nIt != temp_link_names.end() ; ++nIt){
         mIt = m_linkMap.find(*nIt);
         if((*mIt).second->m_parentLinks.size() == 0){
-            rootParentLink = static_cast<cBulletGripperLink*>((*mIt).second);
+            rootParentLink = static_cast<afBulletGripperLink*>((*mIt).second);
             rootParents++;
         }
     }
@@ -227,7 +227,7 @@ cBulletGripperLink* cBulletGripper::load_multibody(std::string a_file,
     return rootParentLink;
 }
 
-cBulletGripper::~cBulletGripper(){
+afBulletGripper::~afBulletGripper(){
     cLinkMap::const_iterator lIt = m_linkMap.begin();
     for ( ; lIt != m_linkMap.end() ; ++lIt){
         delete lIt->second;
