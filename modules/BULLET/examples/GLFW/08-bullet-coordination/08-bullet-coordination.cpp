@@ -233,8 +233,8 @@ public:
     cBulletSphere* create_af_cursor(cBulletWorld* a_world, std::string a_name);
     cGenericHapticDevicePtr m_hDevice;
     cHapticDeviceInfo m_hInfo;
-    cVector3d m_posDevice, m_posDeviceClutched, m_velDevice, m_avelDevice;
-    cMatrix3d m_rotDevice, m_rotDeviceClutched;
+    cVector3d m_pos, m_posClutched, m_vel, m_avel;
+    cMatrix3d m_rot, m_rotClutched;
     double m_workspace_scale_factor;
     cShapeSphere* m_cursor = NULL;
     cBulletSphere* m_af_cursor = NULL;
@@ -292,15 +292,15 @@ cBulletSphere* Device::create_af_cursor(cBulletWorld *a_world, string a_name){
 ///
 cVector3d Device::measured_pos(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    m_hDevice->getPosition(m_posDevice);
+    m_hDevice->getPosition(m_pos);
     update_cursor_pose();
-    return m_posDevice;
+    return m_pos;
 }
 
 cMatrix3d Device::measured_rot(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    m_hDevice->getRotation(m_rotDevice);
-    return m_rotDevice;
+    m_hDevice->getRotation(m_rot);
+    return m_rot;
 }
 
 ///
@@ -315,12 +315,12 @@ void Device::update_measured_pose(){
 ///
 void Device::update_cursor_pose(){
     if(m_cursor){
-        m_cursor->setLocalPos(m_posDevice * m_workspace_scale_factor);
-        m_cursor->setLocalRot(m_rotDevice);
+        m_cursor->setLocalPos(m_pos * m_workspace_scale_factor);
+        m_cursor->setLocalRot(m_rot);
     }
     if(m_af_cursor){
-        m_af_cursor->setLocalPos(m_posDevice * m_workspace_scale_factor);
-        m_af_cursor->setLocalRot(m_rotDevice);
+        m_af_cursor->setLocalPos(m_pos * m_workspace_scale_factor);
+        m_af_cursor->setLocalRot(m_rot);
         m_af_cursor->m_rosObjPtr->set_userdata_desc("haptics frequency");
         m_af_cursor->m_rosObjPtr->set_userdata(m_freq_ctr.getFrequency());
     }
@@ -332,8 +332,8 @@ void Device::update_cursor_pose(){
 ///
 cVector3d Device::measured_lin_vel(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    m_hDevice->getLinearVelocity(m_velDevice);
-    return m_velDevice;
+    m_hDevice->getLinearVelocity(m_vel);
+    return m_vel;
 }
 
 ///
@@ -342,8 +342,8 @@ cVector3d Device::measured_lin_vel(){
 ///
 cVector3d Device::mearured_ang_vel(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    m_hDevice->getAngularVelocity(m_avelDevice);
-    return m_avelDevice;
+    m_hDevice->getAngularVelocity(m_avel);
+    return m_avel;
 }
 
 ///
@@ -449,9 +449,9 @@ public:
         mode_prev_btn= 3;
 
         m_posRef.set(0,0,0);
-        m_posRefLast.set(0, 0, 0);
+        m_posRefOrigin.set(0, 0, 0);
         m_rotRef.identity();
-        m_rotRefLast.identity();
+        m_rotRefOrigin.identity();
 
         btn_cam_rising_edge = false;
         btn_clutch_rising_edge = false;
@@ -462,8 +462,8 @@ public:
     inline void clear_loop_exec_flag(){m_loop_exec_flag = false;}
     inline bool is_loop_exec(){return m_loop_exec_flag;}
     inline double get_workspace_scale_factor(){return m_workspaceScaleFactor;}
-    cVector3d m_posRef, m_posRefLast;
-    cMatrix3d m_rotRef, m_rotRefLast;
+    cVector3d m_posRef, m_posRefOrigin;
+    cMatrix3d m_rotRef, m_rotRefOrigin;
     double m_workspaceScaleFactor;
     double K_lh;                    //Linear Haptic Stiffness Gain
     double K_ah;                    //Angular Haptic Stiffness Gain
@@ -555,8 +555,8 @@ public:
     void offset_gripper_angle(double offset);
     void set_gripper_angle(double angle, double dt=0.001);
     afBulletGripperLink* m_gripperRoot;
-    cVector3d m_posGripper;
-    cMatrix3d m_rotGripper;
+    cVector3d m_pos;
+    cMatrix3d m_rot;
     double m_gripper_angle;
 
     boost::mutex m_mutex;
@@ -599,8 +599,8 @@ cMatrix3d ToolGripper::measured_rot(){
 ///
 void ToolGripper::update_measured_pose(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
-    m_posGripper  = m_gripperRoot->getLocalPos();
-    m_rotGripper = m_gripperRoot->getLocalRot();
+    m_pos  = m_gripperRoot->getLocalPos();
+    m_rot = m_gripperRoot->getLocalRot();
 }
 
 ///
@@ -794,7 +794,7 @@ void Coordination::create_bullet_gripper(uint dev_num){
         double y = (dev_num % 2) ? +0.4 : -0.4;
         x /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
         y /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
-        m_bulletGrippers[dev_num]->m_posRefLast.set(x, y, 0);
+        m_bulletGrippers[dev_num]->m_posRefOrigin.set(x, y, 0);
     }
 }
 
@@ -1651,28 +1651,17 @@ void updateBulletSim(){
     g_clockWorld.start(true);
     // main Bullet simulation loop
     int n = g_coordApp->m_num_devices;
-    cVector3d dpos[n], ddpos[n], dposLast[n];
-    cMatrix3d drot[n], ddrot[n], drotLast[n];
+    cVector3d dpos[n], ddpos[n], dposPre[n];
+    cMatrix3d drot[n], ddrot[n], drotPre[n];
 
     for(int i = 0 ; i < n; i ++){
-        dpos[i].set(0,0,0); ddpos[i].set(0,0,0); dposLast[i].set(0,0,0);
-        drot[i].identity(); ddrot[i].identity(); drotLast[i].identity();
+        dpos[i].set(0,0,0); ddpos[i].set(0,0,0); dposPre[i].set(0,0,0);
+        drot[i].identity(); ddrot[i].identity(); drotPre[i].identity();
     }
     RateSleep rateSleep(1000);
-    int loaded = 0;
-    double load_time = 2.0;
+
     while(g_simulationRunning)
     {
-        //        if(loaded <= 5){
-        //            if (g_clockWorld.getCurrentTimeSeconds() > load_time){
-        //                printf("Loading %d MULTIBODY OBJ\n", loaded+1);
-        //                Link* rootParentLink = g_bodyObj->load_multibody("../resources/config/gripper.yaml");
-        //                loaded++;
-        //                load_time ++;
-        //                load_time ++;
-        //            }
-        //        }
-        // signal frequency counter
         g_freqCounterHaptics.signal(1);
         double dt;
         if (g_dt_fixed > 0.0) dt = g_dt_fixed;
@@ -1682,13 +1671,13 @@ void updateBulletSim(){
             ToolGripper * bGripper = g_coordApp->m_bulletGrippers[i];
             bGripper->update_measured_pose();
 
-            dposLast[i] = dpos[i];
-            dpos[i] = bGripper->m_posRef - bGripper->m_posGripper;
-            ddpos[i] = (dpos[i] - dposLast[i]) / dt;
+            dposPre[i] = dpos[i];
+            dpos[i] = bGripper->m_posRef - bGripper->m_pos;
+            ddpos[i] = (dpos[i] - dposPre[i]) / dt;
 
-            drotLast[i] = drot[i];
-            drot[i] = cTranspose(bGripper->m_rotGripper) * bGripper->m_rotRef;
-            ddrot[i] = (cTranspose(drot[i]) * drotLast[i]);
+            drotPre[i] = drot[i];
+            drot[i] = cTranspose(bGripper->m_rot) * bGripper->m_rotRef;
+            ddrot[i] = (cTranspose(drot[i]) * drotPre[i]);
 
             double angle, dangle;
             cVector3d axis, daxis;
@@ -1699,7 +1688,7 @@ void updateBulletSim(){
 
             force = bGripper->K_lc_ramp * (bGripper->K_lc * dpos[i] + (bGripper->B_lc) * ddpos[i]);
             torque = bGripper->K_ac_ramp * ((bGripper->K_ac * angle) * axis);
-            bGripper->m_rotGripper.mul(torque);
+            bGripper->m_rot.mul(torque);
 
             bGripper->apply_force(force);
             bGripper->apply_torque(torque);
@@ -1740,10 +1729,10 @@ void updateHaptics(void* a_arg){
     // update position and orientation of tool
     Device *hDev = & g_coordApp->m_hapticDevices[i];
     ToolGripper* bGripper = g_coordApp->m_bulletGrippers[i];
-    hDev->m_posDeviceClutched.set(0.0,0.0,0.0);
+    hDev->m_posClutched.set(0.0,0.0,0.0);
     hDev->measured_rot();
-    hDev->m_rotDeviceClutched.identity();
-    bGripper->m_rotRefLast = hDev->m_rotDevice;
+    hDev->m_rotClutched.identity();
+    bGripper->m_rotRefOrigin = hDev->m_rot;
 
     cVector3d dpos, ddpos, dposLast;
     cMatrix3d drot, ddrot, drotLast;
@@ -1771,8 +1760,8 @@ void updateHaptics(void* a_arg){
         if (g_dt_fixed > 0.0) dt = g_dt_fixed;
         else dt = compute_dt();
 
-        hDev->m_posDevice = hDev->measured_pos();
-        hDev->m_rotDevice = hDev->measured_rot();
+        hDev->m_pos = hDev->measured_pos();
+        hDev->m_rot = hDev->measured_rot();
 
         if(bGripper->m_gripper_pinch_btn >= 0){
             if(hDev->is_button_pressed(bGripper->m_gripper_pinch_btn)){
@@ -1836,17 +1825,17 @@ void updateHaptics(void* a_arg){
 
 
         if (g_clockWorld.getCurrentTimeSeconds() < wait_time){
-            hDev->m_posDeviceClutched = hDev->m_posDevice;
+            hDev->m_posClutched = hDev->m_pos;
         }
 
         if(g_cam_btn_pressed){
             if(bGripper->btn_cam_rising_edge){
                 bGripper->btn_cam_rising_edge = false;
-                bGripper->m_posRefLast = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
-                bGripper->m_rotRefLast = bGripper->m_rotRef;
+                bGripper->m_posRefOrigin = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
+                bGripper->m_rotRefOrigin = bGripper->m_rotRef;
             }
-            hDev->m_posDeviceClutched = hDev->m_posDevice;
-            hDev->m_rotDeviceClutched = hDev->m_rotDevice;
+            hDev->m_posClutched = hDev->m_pos;
+            hDev->m_rotClutched = hDev->m_rot;
         }
         else{
             bGripper->btn_cam_rising_edge = true;
@@ -1854,25 +1843,25 @@ void updateHaptics(void* a_arg){
         if(g_clutch_btn_pressed){
             if(bGripper->btn_clutch_rising_edge){
                 bGripper->btn_clutch_rising_edge = false;
-                bGripper->m_posRefLast = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
-                bGripper->m_rotRefLast = bGripper->m_rotRef;
+                bGripper->m_posRefOrigin = bGripper->m_posRef / bGripper->m_workspaceScaleFactor;
+                bGripper->m_rotRefOrigin = bGripper->m_rotRef;
             }
-            hDev->m_posDeviceClutched = hDev->m_posDevice;
-            hDev->m_rotDeviceClutched = hDev->m_rotDevice;
+            hDev->m_posClutched = hDev->m_pos;
+            hDev->m_rotClutched = hDev->m_rot;
         }
         else{
             bGripper->btn_clutch_rising_edge = true;
         }
 
-        bGripper->m_posRef = bGripper->m_posRefLast +
-                (g_camera->getLocalRot() * (hDev->m_posDevice - hDev->m_posDeviceClutched));
+        bGripper->m_posRef = bGripper->m_posRefOrigin +
+                (g_camera->getLocalRot() * (hDev->m_pos - hDev->m_posClutched));
         if (!g_coordApp->m_use_cam_frame_rot){
-            bGripper->m_rotRef = bGripper->m_rotRefLast * g_camera->getLocalRot() *
-                    cTranspose(hDev->m_rotDeviceClutched) * hDev->m_rotDevice *
+            bGripper->m_rotRef = bGripper->m_rotRefOrigin * g_camera->getLocalRot() *
+                    cTranspose(hDev->m_rotClutched) * hDev->m_rot *
                     cTranspose(g_camera->getLocalRot());
         }
         else{
-            bGripper->m_rotRef = hDev->m_rotDevice;
+            bGripper->m_rotRef = hDev->m_rot;
         }
         bGripper->m_posRef.mul(bGripper->m_workspaceScaleFactor);
 
@@ -1880,11 +1869,11 @@ void updateHaptics(void* a_arg){
         bGripper->update_measured_pose();
 
         dposLast = dpos;
-        dpos = bGripper->m_posRef - bGripper->m_posGripper;
+        dpos = bGripper->m_posRef - bGripper->m_pos;
         ddpos = (dpos - dposLast) / dt;
 
         drotLast = drot;
-        drot = cTranspose(bGripper->m_rotGripper) * bGripper->m_rotRef;
+        drot = cTranspose(bGripper->m_rot) * bGripper->m_rotRef;
         ddrot = (cTranspose(drot) * drotLast);
 
         double angle, dangle;
