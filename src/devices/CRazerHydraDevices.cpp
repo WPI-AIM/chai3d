@@ -407,6 +407,9 @@ bool cRazerHydraDevice::getPosition(cVector3d& a_position)
     double z =   pos.getZ();
     a_position.set(x, y, z);
 
+    // estimate angular velocity
+    estimateLinearVelocity(a_position);
+
     // return success
     return (C_SUCCESS);
 }
