@@ -49,6 +49,7 @@
 //------------------------------------------------------------------------------
 #include "devices/CGenericHapticDevice.h"
 #include "razer_hydra/hydra.h"
+#include <mutex>
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
@@ -209,7 +210,7 @@ protected:
     bool updateData();
 private:
     static std::shared_ptr<razer_hydra::RazerHydra> s_hydra_dev;
-    std::shared_ptr<razer_hydra::RazerHydra> m_hydra_dev;
+    static std::mutex m_mutex;
 };
 
 //------------------------------------------------------------------------------

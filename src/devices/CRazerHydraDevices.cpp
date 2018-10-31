@@ -55,6 +55,7 @@ namespace chai3d {
 // Number of instances for this class of devices currently using the libraries.
 unsigned int cRazerHydraDevice::s_libraryCounter = 0;
 std::shared_ptr<razer_hydra::RazerHydra> cRazerHydraDevice::s_hydra_dev;
+std::mutex cRazerHydraDevice::m_mutex;
 
 // Allocation table for devices of this class.
 bool cRazerHydraDevice::s_allocationTable[C_MAX_DEVICES] = {false, false, false, false,
@@ -217,7 +218,7 @@ unsigned int cRazerHydraDevice::getNumDevices()
 cRazerHydraDevice::cRazerHydraDevice(unsigned int a_deviceNumber)
 {
     // initialize time guard for data acquisition
-    m_timeguard.setTimeoutPeriodSeconds(0.001);
+    m_timeguard.setTimeoutPeriodSeconds(0.003);
     m_timeguard.start(true);
 
     // initialize specifications
@@ -319,11 +320,11 @@ bool cRazerHydraDevice::open()
         return (C_ERROR);
     }
 
-    m_hydra_dev.reset(new razer_hydra::RazerHydra());
+    s_hydra_dev.reset(new razer_hydra::RazerHydra());
     std::string dev_name = "/dev/hydra";
 
     // flag the device as ready for use
-    m_deviceReady = m_hydra_dev->init(dev_name.c_str());
+    m_deviceReady = s_hydra_dev->init(dev_name.c_str());
 
     // return success
     return (C_SUCCESS);
@@ -395,12 +396,14 @@ bool cRazerHydraDevice::getPosition(cVector3d& a_position)
         return (C_ERROR);
     }
 
+    // Lock the instance
+    std::lock_guard<std::mutex> lock(m_mutex);
     // acquire data from controller
     updateData();
 
     // return data
     tf::Vector3 grab(0.1,0.0,0.0);
-    tf::Transform tran(m_hydra_dev->quat[m_deviceNumber], m_hydra_dev->pos[m_deviceNumber]);
+    tf::Transform tran(s_hydra_dev->quat[m_deviceNumber], s_hydra_dev->pos[m_deviceNumber]);
     tf::Vector3 pos = tran * grab;
     double x =  -pos.getX() - 0.5;
     double y =  -pos.getY();
@@ -432,14 +435,16 @@ bool cRazerHydraDevice::getRotation(cMatrix3d& a_rotation)
         return (C_ERROR);
     }
 
+    // Lock the instance
+    std::lock_guard<std::mutex> lock(m_mutex);
     // acquire data from controller
     updateData();
 
     cMatrix3d frame;
-    a_rotation.setAxisAngleRotationRad(-m_hydra_dev->quat[m_deviceNumber].getAxis().getX(),
-                                       -m_hydra_dev->quat[m_deviceNumber].getAxis().getY(),
-                                        m_hydra_dev->quat[m_deviceNumber].getAxis().getZ(),
-                                        m_hydra_dev->quat[m_deviceNumber].getAngle());
+    a_rotation.setAxisAngleRotationRad(-s_hydra_dev->quat[m_deviceNumber].getAxis().getX(),
+                                       -s_hydra_dev->quat[m_deviceNumber].getAxis().getY(),
+                                        s_hydra_dev->quat[m_deviceNumber].getAxis().getZ(),
+                                        s_hydra_dev->quat[m_deviceNumber].getAngle());
 
     // estimate angular velocity
     estimateAngularVelocity(a_rotation);
@@ -463,6 +468,8 @@ bool cRazerHydraDevice::getGripperAngleRad(double& a_angle)
     // default value
     a_angle = 0.0;
 
+    // Lock the instance
+    std::lock_guard<std::mutex> lock(m_mutex);
     // check if the system is available
     if (!m_deviceReady)
     {
@@ -470,7 +477,7 @@ bool cRazerHydraDevice::getGripperAngleRad(double& a_angle)
     }
 
     // read gripper angle
-    a_angle =  1.0 - m_hydra_dev->analog[(3*m_deviceNumber)+2];
+    a_angle =  1.0 - s_hydra_dev->analog[(3*m_deviceNumber)+2];
 
     // estimate velocity
     estimateGripperVelocity(a_angle);
@@ -498,7 +505,9 @@ bool cRazerHydraDevice::getUserSwitches(unsigned int& a_userSwitches)
         return (C_ERROR);
     }
 
-    a_userSwitches = m_hydra_dev->raw_buttons[m_deviceNumber];
+    // Lock the instance
+    std::lock_guard<std::mutex> lock(m_mutex);
+    a_userSwitches = s_hydra_dev->raw_buttons[m_deviceNumber];
 
     // return success
     return (C_SUCCESS);
@@ -523,7 +532,7 @@ bool cRazerHydraDevice::updateData()
     // update data
     if (m_timeguard.timeoutOccurred())
     {
-        m_hydra_dev->poll(5, 3);
+        s_hydra_dev->poll(5, 3);
         m_timeguard.start(true);
     }
 
