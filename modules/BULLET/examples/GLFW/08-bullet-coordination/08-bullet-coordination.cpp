@@ -220,7 +220,6 @@ public:
     virtual ~Device();
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
-    virtual void update_measured_pose();
     virtual cVector3d measured_lin_vel();
     virtual cVector3d mearured_ang_vel();
     virtual double measured_gripper_angle();
@@ -301,13 +300,6 @@ cMatrix3d Device::measured_rot(){
     boost::lock_guard<boost::mutex> lock(m_mutex);
     m_hDevice->getRotation(m_rot);
     return m_rot;
-}
-
-///
-/// \brief Device::update_measured_pose
-///
-void Device::update_measured_pose(){
-    update_cursor_pose();
 }
 
 ///
@@ -1905,6 +1897,7 @@ void updateHaptics(void* a_arg){
         {
             bGripper->K_ah_ramp = bGripper->K_ah;
         }
+
         bGripper->set_loop_exec_flag();
     }
     // exit haptics thread

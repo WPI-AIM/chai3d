@@ -163,12 +163,14 @@ void cBulletMultiMesh::updatePositionFromDynamics()
 
         // orthogonalize frame
         m_localRot.orthogonalize();
+    }
 
-        // update Transform data for m_rosObj
-        if(m_rosObjPtr.get() != nullptr){
-            m_rosObjPtr->cur_position(pos[0],pos[1],pos[2]);
-            m_rosObjPtr->cur_orientation(q.getX(), q.getY(), q.getZ(), q.getW());
-        }
+    // update Transform data for m_rosObj
+    if(m_rosObjPtr.get() != nullptr){
+        m_rosObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
+        cQuaternion q;
+        q.fromRotMat(m_localRot);
+        m_rosObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
     }
 }
 
