@@ -523,7 +523,7 @@ bool cRazerHydraDevice::updateData()
     // update data
     if (m_timeguard.timeoutOccurred())
     {
-        m_hydra_dev->poll(1, 3);
+        m_hydra_dev->poll(5, 3);
         m_timeguard.start(true);
     }
 
