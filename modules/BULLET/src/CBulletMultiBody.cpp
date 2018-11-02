@@ -240,6 +240,8 @@ void afLink::add_parent_link(afLink* a_parentLink){
 ///
 void afLink::add_child_link(afLink* a_childLink, afJoint* a_jnt){
     a_childLink->add_parent_link(this);
+    a_childLink->m_parentLinks.insert(a_childLink->m_parentLinks.end(),
+                                      m_parentLinks.begin(), m_parentLinks.end());
     m_childrenLinks.push_back(a_childLink);
     m_childrenLinks.insert(m_childrenLinks.end(),
                            a_childLink->m_childrenLinks.begin(),
