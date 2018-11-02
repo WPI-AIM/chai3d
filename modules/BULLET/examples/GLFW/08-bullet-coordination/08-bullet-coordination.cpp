@@ -1740,7 +1740,7 @@ void updateHaptics(void* a_arg){
 
     double wait_time = 1.0;
     if (std::strcmp(hDev->m_hInfo.m_modelName.c_str(), "Razer Hydra") == 0 ){
-        wait_time = 4.0;
+        wait_time = 5.0;
     }
 
     // main haptic simulation loop

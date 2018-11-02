@@ -3,11 +3,11 @@ path: ../resources/config/
 world_config: world_config.yaml
 multibody_config: puzzle.yaml
 color_config: colors.yaml
-gripper_configs: ["Default", "MTMR", "MTML", "Novint Falcon", "Geomagic Touch", "Phantom Omni", "Razer Hydra"]
+gripper_configs: ["Default", "MTMR", "MTML", "Novint Falcon", "Geomagic Touch", "PHANTOM Omni", "Razer Hydra"]
 "Default": "gripper_type1.yaml"
 "MTMR": "gripper_type2.yaml"
 "MTML": "gripper_type2.yaml"
 "Novint Falcon": "gripper_type1.yaml"
 "Geomagic Touch": "gripper_type1.yaml"
-"Phantom Omni": "gripper_type1.yaml"
+"PHANTOM Omni": "gripper_type1.yaml"
 "Razer Hydra": "gripper_type1.yaml"
