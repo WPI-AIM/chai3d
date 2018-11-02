@@ -325,6 +325,9 @@ bool cRazerHydraDevice::open()
 
     // flag the device as ready for use
     m_deviceReady = s_hydra_dev->init(dev_name.c_str());
+    // Clear the buttons to prevent garbage values
+    s_hydra_dev->raw_buttons[0] = 0;
+    s_hydra_dev->raw_buttons[1] = 0;
 
     // return success
     return (C_SUCCESS);
@@ -402,7 +405,7 @@ bool cRazerHydraDevice::getPosition(cVector3d& a_position)
     updateData();
 
     // return data
-    tf::Vector3 grab(0.1,0.0,0.0);
+    tf::Vector3 grab(0.047,0.035,0.0);
     tf::Transform tran(s_hydra_dev->quat[m_deviceNumber], s_hydra_dev->pos[m_deviceNumber]);
     tf::Vector3 pos = tran * grab;
     double x =  -pos.getX() - 0.5;
