@@ -261,7 +261,7 @@ void afLink::add_child_link(afLink* a_childLink, afJoint* a_jnt){
 /// \param name_remapping
 /// \return
 ///
-bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB, std::string name_remapping) {
+bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
@@ -270,11 +270,21 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB, st
 
     if(fileNode["name"].IsDefined()){
         m_name = fileNode["name"].as<std::string>();
-        create_af_object(m_name);
     }
 
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
+
+    if(fileNode["scale"].IsDefined())
+        m_scale = fileNode["scale"].as<double>();
+
+    std::string rel_path_high_res = mB->high_res_path + m_mesh_name;
+    std::string rel_path_low_res = mB->low_res_path + m_mesh_name;
+    loadFromFile(RESOURCE_PATH(rel_path_high_res));
+    m_lowResMesh.loadFromFile(RESOURCE_PATH(rel_path_low_res));
+    scale(m_scale);
+    m_lowResMesh.scale(m_scale);
+    buildContactTriangles(0.001, &m_lowResMesh);
 
     if(fileNode["mass"].IsDefined()){
         m_mass = fileNode["mass"].as<double>();
@@ -290,18 +300,15 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB, st
         }
     }
 
-    if(fileNode["scale"].IsDefined())
-        m_scale = fileNode["scale"].as<double>();
+    if(fileNode["inertia"].IsDefined()){
+        setInertia(cVector3d(fileNode["inertia"]["ix"].as<double>(),
+                fileNode["inertia"]["iy"].as<double>(),
+                fileNode["inertia"]["iz"].as<double>()));
+    }
+    else{
+        estimateInertia();
+    }
 
-    std::string rel_path_high_res = mB->high_res_path + m_mesh_name;
-    std::string rel_path_low_res = mB->low_res_path + m_mesh_name;
-    loadFromFile(RESOURCE_PATH(rel_path_high_res));
-    m_lowResMesh.loadFromFile(RESOURCE_PATH(rel_path_low_res));
-    scale(m_scale);
-    m_lowResMesh.scale(m_scale);
-    buildContactTriangles(0.001, &m_lowResMesh);
-    setMass(m_mass);
-    estimateInertia();
     buildDynamicModel();
 
     if(fileNode["position"].IsDefined()){
@@ -811,8 +818,9 @@ afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
         std::string link_name = multiBodyNode["links"][i].as<std::string>();
         std::string remap_str = get_link_name_remapping(link_name);
 //        printf("Loading link: %s \n", (link_name + remap_str).c_str());
-        if (tmpLink->load(a_multibody_config.c_str(), link_name, this, remap_str)){
+        if (tmpLink->load(a_multibody_config.c_str(), link_name, this)){
             m_linkMap[(link_name + remap_str).c_str()] = tmpLink;
+            tmpLink->create_af_object(tmpLink->m_name + remap_str);
             temp_link_names.push_back((link_name + remap_str).c_str());
         }
     }

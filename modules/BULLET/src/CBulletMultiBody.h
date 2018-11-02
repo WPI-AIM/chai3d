@@ -123,7 +123,7 @@ public:
 
     afLink(cBulletWorld* a_chaiWorld);
     virtual void updateCmdFromROS(double dt);
-    virtual bool load (std::string file, std::string name, afBulletMultiBody* mB, std::string name_remapping_idx= "");
+    virtual bool load (std::string file, std::string name, afBulletMultiBody* mB);
     virtual void add_child_link(afLink* childLink, afJoint* jnt);
 
     std::vector<afJoint*> m_joints;

@@ -64,9 +64,13 @@ class afBulletGripperLink : public afLink{
     friend afBulletGripper;
 public:
 
-    afBulletGripperLink(cBulletWorld* a_chaiWorld): afLink(a_chaiWorld){}
+    afBulletGripperLink(cBulletWorld* a_chaiWorld): afLink(a_chaiWorld){
+        m_surfaceProps.m_linear_damping = 0.5;
+        m_surfaceProps.m_angular_damping = 1.0;
+        m_surfaceProps.m_static_friction = 0.5;
+        m_surfaceProps.m_rolling_friction = 0.5;
+    }
     ~afBulletGripperLink(){}
-    virtual bool load(std::string file, std::string name, afBulletGripper* mB);
 
 };
 
