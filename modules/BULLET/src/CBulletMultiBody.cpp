@@ -253,6 +253,10 @@ void afLink::add_child_link(afLink* a_childLink, afJoint* a_jnt){
     for (m_linkIt = m_parentLinks.begin() ; m_linkIt != m_parentLinks.end() ; ++m_linkIt){
         (*m_linkIt)->populate_parents_tree(a_childLink, a_jnt);
     }
+
+    for (m_linkIt = a_childLink->m_childrenLinks.begin() ; m_linkIt != a_childLink->m_childrenLinks.end() ; ++m_linkIt){
+        (*m_linkIt)->add_parent_link(this);
+    }
 }
 
 ///
