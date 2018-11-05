@@ -112,8 +112,8 @@ cBulletGenericObject::~cBulletGenericObject()
 void cBulletGenericObject::setMass(const double a_mass)
 {
     m_mass = a_mass;
-    if(m_rosObjPtr.get() != nullptr){
-        m_rosObjPtr->set_mass(a_mass);
+    if(m_afObjPtr.get() != nullptr){
+        m_afObjPtr->set_mass(a_mass);
     }
 }
 
@@ -128,8 +128,8 @@ void cBulletGenericObject::setMass(const double a_mass)
 void cBulletGenericObject::setInertia(const cVector3d& a_inertia)
 {
     m_inertia = a_inertia;
-    if(m_rosObjPtr.get() != nullptr){
-        m_rosObjPtr->set_principal_intertia(a_inertia(0),
+    if(m_afObjPtr.get() != nullptr){
+        m_afObjPtr->set_principal_intertia(a_inertia(0),
                                             a_inertia(1),
                                             a_inertia(2));
     }
@@ -172,8 +172,8 @@ void cBulletGenericObject::estimateInertia()
         m_inertia(1) = inertia[1];
         m_inertia(2) = inertia[2];
 
-        if(m_rosObjPtr.get() != nullptr){
-            m_rosObjPtr->set_principal_intertia(m_inertia(0),
+        if(m_afObjPtr.get() != nullptr){
+            m_afObjPtr->set_principal_intertia(m_inertia(0),
                                                 m_inertia(1),
                                                 m_inertia(2));
         }
@@ -195,8 +195,8 @@ void cBulletGenericObject::setStatic(bool a_static)
     {
         m_bulletRigidBody->activate(!a_static);
 
-        if(m_rosObjPtr.get() != nullptr){
-            m_rosObjPtr->set_mass(0);
+        if(m_afObjPtr.get() != nullptr){
+            m_afObjPtr->set_mass(0);
         }
     }
 }
@@ -287,9 +287,9 @@ void cBulletGenericObject::addExternalTorque(const cVector3d& a_torque)
 */
 //==============================================================================
 void cBulletGenericObject::updateROSMessageTime(const double *a_wall_time, const double *a_sim_time){
-     if (m_rosObjPtr.get() != nullptr){
-         m_rosObjPtr->set_chai_wall_time(*a_wall_time);
-         m_rosObjPtr->set_chai_sim_time(*a_sim_time);
+     if (m_afObjPtr.get() != nullptr){
+         m_afObjPtr->set_chai_wall_time(*a_wall_time);
+         m_afObjPtr->set_chai_sim_time(*a_sim_time);
      }
 }
 
@@ -299,10 +299,10 @@ void cBulletGenericObject::updateROSMessageTime(const double *a_wall_time, const
 */
 //==============================================================================
 void cBulletGenericObject::updateCmdFromROS(double dt){
-    if (m_rosObjPtr.get() != nullptr){
-        m_rosObjPtr->update_af_cmd();
+    if (m_afObjPtr.get() != nullptr){
+        m_afObjPtr->update_af_cmd();
         cVector3d force, torque;
-        if (m_rosObjPtr->m_afCmd.pos_ctrl){
+        if (m_afObjPtr->m_afCmd.pos_ctrl){
             cVector3d cur_pos, cmd_pos, rot_axis;
             cQuaternion cur_rot, cmd_rot;
             cMatrix3d cur_rot_mat, cmd_rot_mat;
@@ -321,14 +321,14 @@ void cBulletGenericObject::updateCmdFromROS(double dt){
             cur_rot.w = b_trans.getRotation().getW();
             cur_rot.toRotMat(cur_rot_mat);
 
-            cmd_pos.set(m_rosObjPtr->m_afCmd.px,
-                        m_rosObjPtr->m_afCmd.py,
-                        m_rosObjPtr->m_afCmd.pz);
+            cmd_pos.set(m_afObjPtr->m_afCmd.px,
+                        m_afObjPtr->m_afCmd.py,
+                        m_afObjPtr->m_afCmd.pz);
 
-            cmd_rot.x = m_rosObjPtr->m_afCmd.qx;
-            cmd_rot.y = m_rosObjPtr->m_afCmd.qy;
-            cmd_rot.z = m_rosObjPtr->m_afCmd.qz;
-            cmd_rot.w = m_rosObjPtr->m_afCmd.qw;
+            cmd_rot.x = m_afObjPtr->m_afCmd.qx;
+            cmd_rot.y = m_afObjPtr->m_afCmd.qy;
+            cmd_rot.z = m_afObjPtr->m_afCmd.qz;
+            cmd_rot.w = m_afObjPtr->m_afCmd.qw;
             cmd_rot.toRotMat(cmd_rot_mat);
 
             m_dpos_prev = m_dpos;
@@ -343,12 +343,12 @@ void cBulletGenericObject::updateCmdFromROS(double dt){
         }
         else{
 
-            force.set(m_rosObjPtr->m_afCmd.Fx,
-                      m_rosObjPtr->m_afCmd.Fy,
-                      m_rosObjPtr->m_afCmd.Fz);
-            torque.set(m_rosObjPtr->m_afCmd.Nx,
-                       m_rosObjPtr->m_afCmd.Ny,
-                       m_rosObjPtr->m_afCmd.Nz);
+            force.set(m_afObjPtr->m_afCmd.Fx,
+                      m_afObjPtr->m_afCmd.Fy,
+                      m_afObjPtr->m_afCmd.Fz);
+            torque.set(m_afObjPtr->m_afCmd.Nx,
+                       m_afObjPtr->m_afCmd.Ny,
+                       m_afObjPtr->m_afCmd.Nz);
         }
         addExternalForce(force);
         addExternalTorque(torque);

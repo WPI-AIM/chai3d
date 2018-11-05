@@ -59,7 +59,7 @@ namespace chai3d {
 cBulletWorld::cBulletWorld(std::string a_worldName)
 {
     if(!a_worldName.empty()){
-        m_rosWorldPtr.reset(new chai_env::World(a_worldName));
+        m_afWorldPtr.reset(new chai_env::World(a_worldName));
     }
     // reset simulation time
     m_simulationTime = 0.0;
@@ -155,8 +155,8 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double 
 
     m_wallClock = a_wallClock;
 
-    if(m_rosWorldPtr.get() != nullptr){
-        while (!m_rosWorldPtr->step_sim()){
+    if(m_afWorldPtr.get() != nullptr){
+        while (!m_afWorldPtr->step_sim()){
             usleep(1);
         }
     }
@@ -175,11 +175,11 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double 
     // add time to overall simulation
     m_simulationTime = m_simulationTime + a_interval;
 
-    if (m_rosWorldPtr.get() != nullptr){
-        m_rosWorldPtr->set_chai_sim_time(m_simulationTime);
-        m_rosWorldPtr->set_chai_wall_time(m_wallClock);
-        m_rosWorldPtr->set_loop_freq(a_loopFreq);
-        m_rosWorldPtr->set_num_devices(a_numDevices);
+    if (m_afWorldPtr.get() != nullptr){
+        m_afWorldPtr->set_chai_sim_time(m_simulationTime);
+        m_afWorldPtr->set_chai_wall_time(m_wallClock);
+        m_afWorldPtr->set_loop_freq(a_loopFreq);
+        m_afWorldPtr->set_num_devices(a_numDevices);
     }
 
     // update CHAI3D positions for of all object

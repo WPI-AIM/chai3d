@@ -366,7 +366,7 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
 /// \param a_obj_name
 ///
 void afLink::create_af_object(std::string a_obj_name){
-    m_rosObjPtr.reset(new chai_env::Object(a_obj_name));
+    m_afObjPtr.reset(new chai_env::Object(a_obj_name));
 }
 
 ///
@@ -411,11 +411,11 @@ void afLink::set_surface_properties(const afLink* a_link, const afLinkSurfacePro
 /// \param dt
 ///
 void afLink::updateCmdFromROS(double dt){
-    if (m_rosObjPtr.get() != nullptr){
-        m_rosObjPtr->update_af_cmd();
+    if (m_afObjPtr.get() != nullptr){
+        m_afObjPtr->update_af_cmd();
         cVector3d force, torque;
-        m_af_pos_ctrl_active = m_rosObjPtr->m_afCmd.pos_ctrl;
-        if (m_rosObjPtr->m_afCmd.pos_ctrl){
+        m_af_pos_ctrl_active = m_afObjPtr->m_afCmd.pos_ctrl;
+        if (m_afObjPtr->m_afCmd.pos_ctrl){
             compute_gains();
             cVector3d cur_pos, cmd_pos, rot_axis, rot_axix_w_gain;
             cQuaternion cur_rot, cmd_rot;
@@ -433,14 +433,14 @@ void afLink::updateCmdFromROS(double dt){
             cur_rot.w = b_trans.getRotation().getW();
             cur_rot.toRotMat(cur_rot_mat);
 
-            cmd_pos.set(m_rosObjPtr->m_afCmd.px,
-                        m_rosObjPtr->m_afCmd.py,
-                        m_rosObjPtr->m_afCmd.pz);
+            cmd_pos.set(m_afObjPtr->m_afCmd.px,
+                        m_afObjPtr->m_afCmd.py,
+                        m_afObjPtr->m_afCmd.pz);
 
-            cmd_rot.x = m_rosObjPtr->m_afCmd.qx;
-            cmd_rot.y = m_rosObjPtr->m_afCmd.qy;
-            cmd_rot.z = m_rosObjPtr->m_afCmd.qz;
-            cmd_rot.w = m_rosObjPtr->m_afCmd.qw;
+            cmd_rot.x = m_afObjPtr->m_afCmd.qx;
+            cmd_rot.y = m_afObjPtr->m_afCmd.qy;
+            cmd_rot.z = m_afObjPtr->m_afCmd.qz;
+            cmd_rot.w = m_afObjPtr->m_afCmd.qw;
             cmd_rot.toRotMat(cmd_rot_mat);
 
             m_dpos_prev = m_dpos;
@@ -455,23 +455,23 @@ void afLink::updateCmdFromROS(double dt){
             cur_rot_mat.mul(torque);
         }
         else{
-            force.set(m_rosObjPtr->m_afCmd.Fx,
-                      m_rosObjPtr->m_afCmd.Fy,
-                      m_rosObjPtr->m_afCmd.Fz);
-            torque.set(m_rosObjPtr->m_afCmd.Nx,
-                       m_rosObjPtr->m_afCmd.Ny,
-                       m_rosObjPtr->m_afCmd.Nz);
+            force.set(m_afObjPtr->m_afCmd.Fx,
+                      m_afObjPtr->m_afCmd.Fy,
+                      m_afObjPtr->m_afCmd.Fz);
+            torque.set(m_afObjPtr->m_afCmd.Nx,
+                       m_afObjPtr->m_afCmd.Ny,
+                       m_afObjPtr->m_afCmd.Nz);
         }
         addExternalForce(force);
         addExternalTorque(torque);
-        size_t jntCmdSize = m_rosObjPtr->m_afCmd.size_J_cmd;
+        size_t jntCmdSize = m_afObjPtr->m_afCmd.size_J_cmd;
         if (jntCmdSize > 0 && m_parentLinks.size() == 0){
             size_t jntCnt = m_joints.size() < jntCmdSize ? m_joints.size() : jntCmdSize;
             for (size_t jnt = 0 ; jnt < jntCnt ; jnt++){
-                if (m_rosObjPtr->m_afCmd.pos_ctrl)
-                    m_joints[jnt]->command_position(m_rosObjPtr->m_afCmd.J_cmd[jnt]);
+                if (m_afObjPtr->m_afCmd.pos_ctrl)
+                    m_joints[jnt]->command_position(m_afObjPtr->m_afCmd.J_cmd[jnt]);
                 else
-                    m_joints[jnt]->command_torque(m_rosObjPtr->m_afCmd.J_cmd[jnt]);
+                    m_joints[jnt]->command_torque(m_afObjPtr->m_afCmd.J_cmd[jnt]);
             }
 
         }

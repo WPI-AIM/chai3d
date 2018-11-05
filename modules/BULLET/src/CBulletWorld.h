@@ -187,7 +187,7 @@ protected:
     int m_integrationMaxIterations;
 
     //! World ROS Object
-    std::shared_ptr<chai_env::World> m_rosWorldPtr;
+    std::shared_ptr<chai_env::World> m_afWorldPtr;
 };
 
 //------------------------------------------------------------------------------

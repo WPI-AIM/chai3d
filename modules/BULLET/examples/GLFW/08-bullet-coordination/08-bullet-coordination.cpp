@@ -313,8 +313,8 @@ void Device::update_cursor_pose(){
     if(m_af_cursor){
         m_af_cursor->setLocalPos(m_pos * m_workspace_scale_factor);
         m_af_cursor->setLocalRot(m_rot);
-        m_af_cursor->m_rosObjPtr->set_userdata_desc("haptics frequency");
-        m_af_cursor->m_rosObjPtr->set_userdata(m_freq_ctr.getFrequency());
+        m_af_cursor->m_afObjPtr->set_userdata_desc("haptics frequency");
+        m_af_cursor->m_afObjPtr->set_userdata(m_freq_ctr.getFrequency());
     }
 }
 

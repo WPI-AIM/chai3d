@@ -166,11 +166,11 @@ void cBulletMesh::updatePositionFromDynamics()
     }
 
     // update Transform data for m_rosObj
-    if(m_rosObjPtr.get() != nullptr){
-        m_rosObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
+    if(m_afObjPtr.get() != nullptr){
+        m_afObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
         cQuaternion q;
         q.fromRotMat(m_localRot);
-        m_rosObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
+        m_afObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
     }
 }
 
