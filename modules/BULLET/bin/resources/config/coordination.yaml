@@ -9,5 +9,5 @@ gripper_configs: ["Default", "MTMR", "MTML", "Novint Falcon", "Geomagic Touch", 
 "MTML": "gripper_type2.yaml"
 "Novint Falcon": "gripper_type1.yaml"
 "Geomagic Touch": "gripper_type1.yaml"
-"PHANTOM Omni": "gripper_type1.yaml"
+"PHANTOM Omni": "gripper_type3.yaml"
 "Razer Hydra": "gripper_type1.yaml"

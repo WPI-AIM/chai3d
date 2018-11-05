@@ -1,0 +1,13 @@
+links: [hook]
+joints: []
+high_res_path: ../resources/models/gripper/high_res/
+low_res_path: ../resources/models/gripper/low_res/
+
+hook:
+ name: hook
+ mass: 0.04
+ mesh: Hook.STL
+ scale: 1.0
+ position: {x: 0.0, y: 0.0, z: 0.0}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: white_azure
