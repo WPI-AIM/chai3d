@@ -38,6 +38,7 @@ link4:
  name: CirclePuzzle
  mass: 0.8
  mesh: CirclePuzzle.STL
+ inertial offset: {position: {x: 0.0, y: 0.0, z: 0.135}, rotation: {r: 0.0, p: 0.0, y: 0.0}}
  scale: 1.0
  position: {x: 0.0, y: -0.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -48,6 +49,7 @@ link5:
  name: TrianglePuzzle
  mass: 0.8
  mesh: TrianglePuzzle.STL
+ inertial offset: {position: {x: 0.0, y: 0.0, z: 0.135}, rotation: {r: 0.0, p: 0.0, y: 0.0}}
  scale: 1.0
  position: {x: 0.0, y: 0.0, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -58,6 +60,7 @@ link6:
  name: SquarePuzzle
  mass: 0.8
  mesh: SquarePuzzle.STL
+ inertial offset: {position: {x: 0.0, y: 0.0, z: 0.135}}
  scale: 1.0
  position: {x: 0.0, y: 0.5, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}

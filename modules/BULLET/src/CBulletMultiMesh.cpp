@@ -150,6 +150,7 @@ void cBulletMultiMesh::updatePositionFromDynamics()
         // get transformation matrix of object
         btTransform trans;
         m_bulletRigidBody->getMotionState()->getWorldTransform(trans);
+        trans *= m_inertialOffsetTransform;
 
         btVector3 pos = trans.getOrigin();
         btQuaternion q = trans.getRotation();
@@ -254,6 +255,9 @@ void cBulletMultiMesh::buildContactTriangles(const double a_margin, cMultiMesh* 
         localTrans.setOrigin(pos);
         localTrans.setRotation(q);
 
+        // Apply the inertial transform offset
+        localTrans *= m_inertialOffsetTransform;
+
         // add collision shape to compound
         compound->addChildShape(localTrans, collisionShape);
     }
@@ -333,6 +337,9 @@ void cBulletMultiMesh::buildContactConvexTriangles(const double a_margin)
         localTrans.setOrigin(pos);
         localTrans.setRotation(q);
 
+        // Apply the inertial transform offset
+        localTrans *= m_inertialOffsetTransform;
+
         // add collision shape to compound
         compound->addChildShape(localTrans, collisionShape);
     }
@@ -386,6 +393,9 @@ void cBulletMultiMesh::buildContactHull(const double a_margin)
         // set new transform
         localTrans.setOrigin(pos);
         localTrans.setRotation(q);
+
+        // Apply the inertial transform offset
+        localTrans *= m_inertialOffsetTransform;
 
         // add collision shape to compound
         compound->addChildShape(localTrans, collisionShape);

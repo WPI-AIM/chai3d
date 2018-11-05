@@ -77,6 +77,9 @@ void cBulletGenericObject::initialize(cBulletWorld* a_world)
 
     // create motion state
     m_bulletMotionState = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 0)));
+
+    // set inertial offset transform to origin
+    m_inertialOffsetTransform.setIdentity();
 }
 
 
@@ -133,6 +136,19 @@ void cBulletGenericObject::setInertia(const cVector3d& a_inertia)
                                             a_inertia(1),
                                             a_inertia(2));
     }
+}
+
+
+//==============================================================================
+/*!
+    This method assigns Inertial Offset Transform.
+
+    \param  a_trans  Inertial Offset Transform.
+*/
+//==============================================================================
+void cBulletGenericObject::setInertialOffsetTransform(btTransform & a_trans)
+{
+    m_inertialOffsetTransform = a_trans;
 }
 
 

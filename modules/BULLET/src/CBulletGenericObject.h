@@ -207,6 +207,9 @@ public:
     //! This method returns the angular damping term for this object.
     double getDampingAng();
 
+    //! Set the Inertial Offset Transfrom;
+    void setInertialOffsetTransform(btTransform &a_trans);
+
 
     //--------------------------------------------------------------------------
     // PUBLIC MEMBERS:
@@ -259,6 +262,9 @@ protected:
     //! Command Position from Asynchronous Framework
     cVector3d m_dpos, m_dpos_prev, m_ddpos;
     cMatrix3d m_drot, m_drot_prev;
+
+    //! Inetial Offset Transform
+    btTransform m_inertialOffsetTransform;
 };
 
 //------------------------------------------------------------------------------

@@ -281,6 +281,27 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
 
+    if(fileNode["inertial offset"]["position"].IsDefined()){
+        btTransform trans;
+        btQuaternion quat;
+        btVector3 pos;
+        quat.setEuler(0,0,0);
+        pos.setValue(0,0,0);
+        if(fileNode["inertial offset"]["rotation"].IsDefined()){
+            double r = fileNode["inertial offset"]["rotation"]["r"].as<double>();
+            double p = fileNode["inertial offset"]["rotation"]["p"].as<double>();
+            double y = fileNode["inertial offset"]["rotation"]["y"].as<double>();
+            quat.setEuler(y, p, r);
+        }
+        double x = fileNode["inertial offset"]["position"]["x"].as<double>();
+        double y = fileNode["inertial offset"]["position"]["y"].as<double>();
+        double z = fileNode["inertial offset"]["position"]["z"].as<double>();
+        pos.setValue(x, y, z);
+        trans.setRotation(quat.inverse());
+        trans.setOrigin(-pos);
+        setInertialOffsetTransform(trans);
+    }
+
     if(fileNode["scale"].IsDefined())
         m_scale = fileNode["scale"].as<double>();
 
