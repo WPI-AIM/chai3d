@@ -154,6 +154,19 @@ void cBulletGenericObject::setInertialOffsetTransform(btTransform & a_trans)
 
 //==============================================================================
 /*!
+    This method gives the Inertial Offset Transform.
+
+    \param  a_trans  Inertial Offset Transform.
+*/
+//==============================================================================
+btTransform cBulletGenericObject::getInertialOffsetTransform()
+{
+    return m_inertialOffsetTransform;
+}
+
+
+//==============================================================================
+/*!
     This method assigns mass and inertia properties to this object.
 
     \param  a_mass     Mass value.

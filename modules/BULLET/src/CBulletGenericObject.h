@@ -210,6 +210,9 @@ public:
     //! Set the Inertial Offset Transfrom;
     void setInertialOffsetTransform(btTransform &a_trans);
 
+    //! Get the Inertial Offset Transfrom;
+    btTransform getInertialOffsetTransform();
+
 
     //--------------------------------------------------------------------------
     // PUBLIC MEMBERS:

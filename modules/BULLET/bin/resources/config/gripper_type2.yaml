@@ -16,6 +16,7 @@ gripper_r1:
  name: gripper_r1
  mass: 0.02
  mesh: MultiLinkR1.STL
+ inertial offset: {position: {x: -0.133, y: 0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: -0.262}}
  scale: 1.0
  position: {x: 0.0, y: 0.085, z: 0.0}
  #rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -25,6 +26,7 @@ gripper_l1:
  name: gripper_l1
  mass: 0.02
  mesh: MultiLinkL1.STL
+ inertial offset: {position: {x: -0.133, y: -0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: 0.262}}
  scale: 1.0
  position: {x: 0.0, y: -0.085, z: 0.0}
  #rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -34,6 +36,7 @@ gripper_r2:
  name: gripper_r2
  mass: 0.02
  mesh: MultiLinkR2.STL
+ inertial offset: {position: {x: -0.091, y: -0.052, z: -0.004}, rotation: {r: 0.0, p: 0.0, y: 0.523}}
  scale: 1.0
  position: {x: -0.26, y: 0.069, z: 0.0}
  #rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -43,6 +46,7 @@ gripper_l2:
  name: gripper_l2
  mass: 0.02
  mesh: MultiLinkL2.STL
+ inertial offset: {position: {x: -0.091, y: 0.052, z: -0.004}, rotation: {r: 0.0, p: 0.0, y: -0.523}}
  scale: 1.0
  position: {x: -0.26, y: -0.069, z: 0.0}
  #rotation: {r: 0.0, p: 0.0, y: 0.0}

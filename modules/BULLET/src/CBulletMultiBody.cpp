@@ -608,6 +608,10 @@ bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, st
         linkB = mB->m_linkMap[(m_child_name + name_remapping).c_str()];
         bodyA = linkA->m_bulletRigidBody;
         bodyB = linkB->m_bulletRigidBody;
+        m_pvtA = linkA->getInertialOffsetTransform() * m_pvtA;
+        m_pvtB = linkB->getInertialOffsetTransform() * m_pvtB;
+        m_axisA = linkA->getInertialOffsetTransform().getBasis() * m_axisA;
+        m_axisB = linkB->getInertialOffsetTransform().getBasis() * m_axisB;
         linkA->add_child_link(linkB, this);
     }
     else{

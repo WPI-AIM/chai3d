@@ -71,6 +71,7 @@ link7:
  name: HandleLeft
  mass: 0.3
  mesh: HandleLeft.STL
+ inertial offset: {position: {x: 0.0, y: -0.2, z: 0.0}}
  scale: 1.0
  position: {x: 1.0, y: -0.85, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -81,6 +82,7 @@ link8:
  name: HandleRight
  mass: 0.3
  mesh: HandleRight.STL
+ inertial offset: {position: {x: 0.0, y: 0.2, z: 0.0}}
  scale: 1.0
  position: {x: 1.0, y: 0.85, z: -1.0}
  rotation: {r: 0.0, p: 0.0, y: 0.0}
