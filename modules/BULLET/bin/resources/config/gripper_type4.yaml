@@ -1,25 +1,25 @@
 links: [gripper_l1, gripper_r1]
 joints: [base_joint]
-high_res_path: ../resources/models/grippers/type3/high_res/
-low_res_path: ../resources/models/grippers/type3/low_res/
+high_res_path: ../resources/models/grippers/type4/high_res/
+low_res_path: ../resources/models/grippers/type4/low_res/
 
 gripper_r1:
  name: gripper_r1
  mass: 0.04
  mesh: SingleLinkR1.STL
- inertial offset: {position: {x: -0.13, y: 0.049, z: 0.003}}
+ inertial offset: {position: {x: -0.136, y: 0.055, z: 0.0}}
  scale: 1.0
  friction: {static: 0.8}
- color: blue_navy
+ color: orange_coral
 
 gripper_l1:
  name: gripper_l1
  mass: 0.04
  mesh: SingleLinkL1.STL
- inertial offset: {position: {x: -0.13, y: -0.049, z: 0.003}}
+ inertial offset: {position: {x: -0.136, y: -0.055, z: 0.0}}
  scale: 1.0
  friction: {static: 0.8}
- color: white_mint_cream
+ color: green_teal
 
 base_joint:
  name: base_joint

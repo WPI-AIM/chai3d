@@ -1,7 +1,7 @@
 links: [gripper_base, gripper_l1, gripper_l2, gripper_r1, gripper_r2]
 joints: [base_l_joint, left_1_joint, base_r_joint, right_1_joint]
-high_res_path: ../resources/models/gripper/high_res/
-low_res_path: ../resources/models/gripper/low_res/
+high_res_path: ../resources/models/grippers/type2/high_res/
+low_res_path: ../resources/models/grippers/type2/low_res/
 
 gripper_base:
  name: gripper_base
@@ -16,7 +16,7 @@ gripper_r1:
  name: gripper_r1
  mass: 0.02
  mesh: MultiLinkR1.STL
- inertial offset: {position: {x: -0.133, y: 0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: -0.262}}
+ inertial offset: {position: {x: -0.133, y: 0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: 0.262}}
  scale: 1.0
  position: {x: 0.0, y: 0.085, z: 0.0}
  #rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -26,7 +26,7 @@ gripper_l1:
  name: gripper_l1
  mass: 0.02
  mesh: MultiLinkL1.STL
- inertial offset: {position: {x: -0.133, y: -0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: 0.262}}
+ inertial offset: {position: {x: -0.133, y: -0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: -0.262}}
  scale: 1.0
  position: {x: 0.0, y: -0.085, z: 0.0}
  #rotation: {r: 0.0, p: 0.0, y: 0.0}
@@ -68,11 +68,11 @@ base_r_joint:
  name: base_r_joint
  parent: gripper_base
  child: gripper_r1
- parent_pivot: {x: 0, y: 0.085, z: 0.0}
+ parent_pivot: {x: 0, y: 0.1, z: 0.0}
  parent_axis: {x: 0, y: 0, z: 1.0}
  child_axis: {x: 0, y: 0, z: 1.0}
  child_pivot: {x: 0, y: 0, z: 0.0}
- joint_limits: {low: 0.0, high: -0.7}
+ joint_limits: {low: 0.25, high: -0.20}
  enable_motor: 1
  max_motor_impulse: 0.05
 
@@ -80,11 +80,11 @@ base_l_joint:
  name: base_l_joint
  parent: gripper_base
  child: gripper_l1
- parent_pivot: {x: 0, y: -0.085, z: 0.0}
+ parent_pivot: {x: 0, y: -0.1, z: 0.0}
  parent_axis: {x: 0, y: 0, z: 1.0}
  child_axis: {x: 0, y: 0, z: 1.0}
  child_pivot: {x: 0, y: 0, z: 0.0}
- joint_limits: {low: 0.0, high: 0.7}
+ joint_limits: {low: -0.25, high: 0.20}
  enable_motor: 1
  max_motor_impulse: 0.05
 
@@ -92,11 +92,11 @@ right_1_joint:
  name: right_1_joint
  parent: gripper_r1
  child: gripper_r2
- parent_pivot: {x: -0.26, y: 0.069, z: 0.0}
+ parent_pivot: {x: -0.2627, y: 0.0702, z: 0.0}
  parent_axis: {x: 0, y: 0, z: 1.0}
  child_axis: {x: 0, y: 0, z: 1.0}
  child_pivot: {x: 0, y: 0, z: 0.0}
- joint_limits: {low: 0.08, high: -0.5}
+ joint_limits: {low: 0.45, high: -0.15}
  enable_motor: 1
  max_motor_impulse: 0.05
 
@@ -104,10 +104,10 @@ left_1_joint:
  name: left_1_joint
  parent: gripper_l1
  child: gripper_l2
- parent_pivot: {x: -0.26, y: -0.069, z: 0.0}
+ parent_pivot: {x: -0.2627, y: -0.0702, z: 0.0}
  parent_axis: {x: 0, y: 0, z: 1.0}
  child_axis: {x: 0, y: 0, z: 1.0}
  child_pivot: {x: 0, y: 0, z: 0.0}
- joint_limits: {low: -0.08, high: 0.5}
+ joint_limits: {low: -0.45, high: 0.15}
  enable_motor: 1
  max_motor_impulse: 0.05
