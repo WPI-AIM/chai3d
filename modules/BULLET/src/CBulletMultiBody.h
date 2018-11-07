@@ -118,6 +118,7 @@ public:
 class afLink : public cBulletMultiMesh{
 
     friend afBulletMultiBody;
+    friend afJoint;
 
 public:
 

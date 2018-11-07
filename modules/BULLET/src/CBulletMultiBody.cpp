@@ -281,6 +281,9 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
     if(fileNode["mesh"].IsDefined())
         m_mesh_name = fileNode["mesh"].as<std::string>();
 
+    if(fileNode["scale"].IsDefined())
+        m_scale = fileNode["scale"].as<double>();
+
     if(fileNode["inertial offset"]["position"].IsDefined()){
         btTransform trans;
         btQuaternion quat;
@@ -291,19 +294,16 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
             double r = fileNode["inertial offset"]["rotation"]["r"].as<double>();
             double p = fileNode["inertial offset"]["rotation"]["p"].as<double>();
             double y = fileNode["inertial offset"]["rotation"]["y"].as<double>();
-            quat.setEuler(y, p, r);
+            quat.setEulerZYX(y, p, r);
         }
         double x = fileNode["inertial offset"]["position"]["x"].as<double>();
         double y = fileNode["inertial offset"]["position"]["y"].as<double>();
         double z = fileNode["inertial offset"]["position"]["z"].as<double>();
         pos.setValue(x, y, z);
-        trans.setRotation(quat.inverse());
-        trans.setOrigin(-pos);
+        trans.setRotation(quat);
+        trans.setOrigin(pos);
         setInertialOffsetTransform(trans);
     }
-
-    if(fileNode["scale"].IsDefined())
-        m_scale = fileNode["scale"].as<double>();
 
     std::string rel_path_high_res = mB->high_res_path + m_mesh_name;
     std::string rel_path_low_res = mB->low_res_path + m_mesh_name;
@@ -608,10 +608,12 @@ bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, st
         linkB = mB->m_linkMap[(m_child_name + name_remapping).c_str()];
         bodyA = linkA->m_bulletRigidBody;
         bodyB = linkB->m_bulletRigidBody;
-        m_pvtA = linkA->getInertialOffsetTransform() * m_pvtA;
-        m_pvtB = linkB->getInertialOffsetTransform() * m_pvtB;
-        m_axisA = linkA->getInertialOffsetTransform().getBasis() * m_axisA;
-        m_axisB = linkB->getInertialOffsetTransform().getBasis() * m_axisB;
+        // Scale the pivot before transforming as the default scale methods don't move this pivot
+        m_pvtA *= linkA->m_scale;
+        m_pvtA = linkA->getInertialOffsetTransform().inverse() * m_pvtA;
+        m_pvtB = linkB->getInertialOffsetTransform().inverse() * m_pvtB;
+        m_axisA = linkA->getInertialOffsetTransform().getBasis().inverse() * m_axisA;
+        m_axisB = linkB->getInertialOffsetTransform().getBasis().inverse() * m_axisB;
         linkA->add_child_link(linkB, this);
     }
     else{
