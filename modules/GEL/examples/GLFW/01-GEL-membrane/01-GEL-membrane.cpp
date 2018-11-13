@@ -144,7 +144,8 @@ cGELWorld* defWorld;
 cGELMesh* defObject;
 
 // dynamic nodes
-cGELSkeletonNode* nodes[10][10];
+const int nNodes = 10;
+cGELSkeletonNode* nodes[nNodes][nNodes];
 
 // haptic device model
 cShapeSphere* device;
@@ -465,22 +466,24 @@ int main(int argc, char* argv[])
     defObject->m_useSkeletonModel = true;
 
     // create an array of nodes
-    for (int y=0; y<10; y++)
+    double x_stride = 0.9 / (nNodes-1);
+    double y_stride = 0.9 / (nNodes-1);
+    for (int y=0; y<nNodes; y++)
     {
-        for (int x=0; x<10; x++)
+        for (int x=0; x<nNodes; x++)
         {
             cGELSkeletonNode* newNode = new cGELSkeletonNode();
             nodes[x][y] = newNode;
             defObject->m_nodes.push_front(newNode);
-            newNode->m_pos.set( (-0.45 + 0.1*(double)x), (-0.43 + 0.1*(double)y), 0.0);
+            newNode->m_pos.set( (-0.45 + x_stride*(double)x), (-0.43 + y_stride*(double)y), 0.0);
         }
     }
 
     // set corner nodes as fixed
     nodes[0][0]->m_fixed = true;
-    nodes[0][9]->m_fixed = true;
-    nodes[9][0]->m_fixed = true;
-    nodes[9][9]->m_fixed = true;
+    nodes[0][nNodes-1]->m_fixed = true;
+    nodes[nNodes-1][0]->m_fixed = true;
+//    nodes[9][9]->m_fixed = true;
 
     // set default physical properties for links
     cGELSkeletonLink::s_default_kSpringElongation = 25.0;  // [N/m]
@@ -489,9 +492,9 @@ int main(int argc, char* argv[])
     cGELSkeletonLink::s_default_color.setBlueCornflower();
 
     // create links between nodes
-    for (int y=0; y<9; y++)
+    for (int y=0; y<nNodes - 1; y++)
     {
-        for (int x=0; x<9; x++)
+        for (int x=0; x<nNodes - 1; x++)
         {
             cGELSkeletonLink* newLinkX0 = new cGELSkeletonLink(nodes[x+0][y+0], nodes[x+1][y+0]);
             cGELSkeletonLink* newLinkX1 = new cGELSkeletonLink(nodes[x+0][y+1], nodes[x+1][y+1]);
@@ -509,6 +512,8 @@ int main(int argc, char* argv[])
 
     // show/hide underlying dynamic skeleton model
     defObject->m_showSkeletonModel = false;
+    // show/hide underlying dynamic skeleton model
+    defObject->m_showMassParticleModel = false;
 
 
     //--------------------------------------------------------------------------
@@ -618,6 +623,12 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_S)
     {
         defObject->m_showSkeletonModel = !defObject->m_showSkeletonModel;
+    }
+
+    // option - show/hide skeleton
+    else if (a_key == GLFW_KEY_L)
+    {
+        defObject->m_showMassParticleModel = !defObject->m_showMassParticleModel;
     }
 
     // option - toggle fullscreen
@@ -751,9 +762,9 @@ void updateHaptics(void)
 
         // compute reaction forces
         cVector3d force(0.0, 0.0, 0.0);
-        for (int y=0; y<10; y++)
+        for (int y=0; y<nNodes; y++)
         {
-            for (int x=0; x<10; x++)
+            for (int x=0; x<nNodes; x++)
             {
                cVector3d nodePos = nodes[x][y]->m_pos;
                cVector3d f = computeForce(pos, deviceRadius, nodePos, radius, stiffness);

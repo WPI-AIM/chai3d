@@ -101,6 +101,8 @@ double angG;
 double linStiffness = 4000;
 double angStiffness = 30;
 
+btSoftBody * softBody;
+
 
 //---------------------------------------------------------------------------
 // CHAI3D VARIABLES
@@ -399,7 +401,7 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // 3 BULLET BLOCKS
     //////////////////////////////////////////////////////////////////////////
-    double size = 0.40;
+    double size = 0.4;
 
     // create three objects that are added to the world
     bulletBox0 = new cBulletBox(bulletWorld, size, size, size);
@@ -504,6 +506,17 @@ int main(int argc, char* argv[])
     // assign linear and angular damping
     bulletTool->setDamping(1.0, 1.0);
 
+    softBody = btSoftBodyHelpers::CreateEllipsoid(*bulletWorld->m_bulletSoftBodyWorldInfo,
+                                                               btVector3(0,0,0.0), btVector3(1,1,1)*0.5, 300);
+    softBody->getCollisionShape()->setUserPointer(softBody);
+    softBody->m_materials[0]->m_kLST	=	0.45;
+    softBody->m_cfg.kVC				=	20;
+    softBody->setTotalMass(50,true);
+
+    btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) bulletWorld->m_bulletWorld;
+    softWorld->addSoftBody(softBody);
+
+    bulletWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
 
     //-----------------------------------------------------------------------
     // START SIMULATION
@@ -741,6 +754,79 @@ void close(void)
 }
 
 //---------------------------------------------------------------------------
+cPrecisionClock tClock;
+int cnt = 0;
+int first_time = true;
+cVector3d n[50];
+cVector3d p[50];
+int nElem = 0;
+
+void updateMesh(){
+    nElem = bulletTool->m_vertices->getNumElements();
+    if (first_time == true){
+        for(int i = 0 ; i < nElem ; i++){
+            p[i] = bulletTool->m_vertices->getLocalPos(i);
+            n[i] = bulletTool->m_vertices->getNormal(i);
+        }
+        first_time = false;
+    }
+    cnt ++;
+    cVector3d dp, dn;
+    double t = tClock.getCurrentTimeSeconds();
+    double tc = 2.0;
+    double scale = 20.0;
+    for(int i = 0 ; i < nElem ; i++){
+        dn = n[i] * (sin(tc*t)/scale);
+        dp = p[i] + dn;
+        bulletTool->m_vertices->setLocalPos(i, dp);
+//        if ((i == 10) && (cnt % 10 == 0)){
+//            printf("p %f, %f, %f \n", p[i].x(), p[i].y(), p[i].z());
+//            printf("dp %f, %f, %f \n", dp.x(), dp.y(), dp.z());
+//            printf("n %f, %f, %f \n", n[i].x(), n[i].y(), n[i].z());
+//            printf("sin(t) %f\n", sin(tc*t)/scale);
+//            cVector3d tp;
+//            tp = bulletTool->m_vertices->getLocalPos(i);
+//            printf("tp %f, %f, %f \n", tp.x(), tp.y(), tp.z());
+//        }
+        bulletTool->computeAllNormals();
+        bulletTool->markForUpdate(true);
+    }
+    if (cnt >= 2000){
+        cnt = 0;
+    }
+}
+
+void render_sb(){
+//    chai3d::cTransform mat;
+//    cQuaternion q(0,0,0,1);
+//    cMatrix3d rmat;
+//    q.toRotMat(rmat);
+//    mat.set(cVector3d(0,0,0), rmat);
+//    glPushMatrix();
+//    glMultMatrixd( (const double *)mat.getData() );
+    cColorf col;
+    col.setBlueAquamarine();
+    col.render();
+    for (int i = 0 ; i < softBody->m_nodes.size() ; i++){
+        cVector3d v(softBody->m_nodes[i].m_x.x(), softBody->m_nodes[i].m_x.y(), softBody->m_nodes[i].m_x.z());
+        glBegin(GL_POINTS);
+        glVertex3dv( (const double *)&v);
+        glEnd();
+//        if (i %300 == 0)
+//            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+    }
+    for (int i = 0 ; i < softBody->m_links.size() ; i++){
+        cVector3d v1(softBody->m_links[i].m_n[0]->m_x.x(), softBody->m_links[i].m_n[0]->m_x.y(), softBody->m_links[i].m_n[0]->m_x.z());
+        cVector3d v2(softBody->m_links[i].m_n[1]->m_x.x(), softBody->m_links[i].m_n[1]->m_x.y(), softBody->m_links[i].m_n[1]->m_x.z());
+        glColor4fv( (const float *)&col);
+        glBegin(GL_LINES);
+            glVertex3dv( (const double *)&v1);
+            glVertex3dv( (const double *)&v2);
+        glEnd();
+//        if (i %300 == 0)
+//            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+    }
+}
 
 void updateGraphics(void)
 {
@@ -755,7 +841,6 @@ void updateGraphics(void)
     // update position of label
     labelRates->setLocalPos((int)(0.5 * (width - labelRates->getWidth())), 15);
 
-
     /////////////////////////////////////////////////////////////////////
     // RENDER SCENE
     /////////////////////////////////////////////////////////////////////
@@ -766,6 +851,8 @@ void updateGraphics(void)
     // render world
     camera->renderView(width, height);
 
+    render_sb();
+
     // wait until all GL commands are completed
     glFinish();
 
@@ -773,6 +860,7 @@ void updateGraphics(void)
     GLenum err = glGetError();
     if (err != GL_NO_ERROR) printf("Error:  %s\n", gluErrorString(err));
 }
+
 
 //---------------------------------------------------------------------------
 
@@ -789,6 +877,9 @@ void updateHaptics(void)
     cPrecisionClock simClock;
     simClock.start(true);
 
+    tClock.start(true);
+    tClock.reset(0.0);
+
     cMatrix3d prevRotTool;
     prevRotTool.identity();
 
@@ -800,8 +891,7 @@ void updateHaptics(void)
 
         // retrieve simulation time and compute next interval
         double time = simClock.getCurrentTimeSeconds();
-        double nextSimInterval = 0.0005;//cClamp(time, 0.00001, 0.0002);
-        
+        double nextSimInterval = 0.001;//cClamp(time, 0.00001, 0.0002);
         // reset clock
         simClock.reset();
         simClock.start();

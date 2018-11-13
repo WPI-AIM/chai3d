@@ -88,6 +88,7 @@ cBulletStaticPlane* g_bulletBoxWallY[2];
 cBulletStaticPlane* g_bulletBoxWallZ[1];
 
 afBulletMultiBody *g_afBody;
+cBulletSoftMultiMesh* g_softBody;
 afWorld *g_afWorld;
 
 cVector3d g_camPos(0,0,0);
@@ -1226,6 +1227,19 @@ int main(int argc, char* argv[])
     g_afBody = new afBulletMultiBody(g_bulletWorld);
     g_afBody->load_multibody();
 
+    g_softBody = new cBulletSoftMultiMesh(g_bulletWorld);
+    g_softBody->loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/high_res/Sphere2.STL"));
+    g_softBody->buildContactTriangles(0.001);
+//    g_softBody->getSoftBody()->m_cfg.kMT = 0.001;
+//    g_softBody->getSoftBody()->m_cfg.kDF = 0.5;
+//    g_softBody->getSoftBody()->m_cfg.piterations = 2;
+//    g_softBody->getSoftBody()->randomizeConstraints();
+//    g_softBody->getSoftBody()->setTotalMass(0.5, true);
+//    g_softBody->scale(0.5);
+//    g_softBody->getSoftBody()->scale(btVector3(0.5,0.5,0.5));
+//    g_softBody->getSoftBody()->setPose(false, true);
+//    g_bulletWorld->addChild(g_softBody);
+
 
     // end puzzle meshes
     //////////////////////////////////////////////////////////////////////////
@@ -1556,6 +1570,93 @@ void close(void)
 }
 
 //---------------------------------------------------------------------------
+cPrecisionClock tClock;
+int cnt = 0;
+int first_time = true;
+const int tElemCnt = 400;
+cVector3d n[tElemCnt];
+cVector3d p[tElemCnt];
+int nElem = 0;
+afLink * tLink;
+cMesh * tMesh;
+
+void updateMesh(){
+    if (first_time == true){
+        tClock.start(true);
+        tClock.reset();
+        tLink = g_afBody->get_link("link2");
+        tMesh = (*(tLink->m_meshes))[0];
+        nElem = tElemCnt < tMesh->getNumVertices() ? tElemCnt : tMesh->getNumVertices();
+        for(int i = 0 ; i < nElem ; i++){
+            p[i] = tMesh->m_vertices->getLocalPos(i);
+            n[i] = tMesh->m_vertices->getNormal(i);
+        }
+        first_time = false;
+    }
+    cnt ++;
+    cVector3d dp, dn;
+    double t = tClock.getCurrentTimeSeconds();
+    double tc = 4.0;
+    double scale = 3.0;
+    for(int i = 0 ; i < nElem ; i++){
+        dn = p[i] * (sin(tc*t)/scale);
+        dp = p[i] + dn;
+        tMesh->m_vertices->setLocalPos(i, dp);
+//        if ((i == 10) && (cnt % 10 == 0)){
+//            printf("p %f, %f, %f \n", p[i].x(), p[i].y(), p[i].z());
+//            printf("dp %f, %f, %f \n", dp.x(), dp.y(), dp.z());
+//            printf("n %f, %f, %f \n", n[i].x(), n[i].y(), n[i].z());
+//            printf("sin(t) %f\n", sin(tc*t)/scale);
+//            cVector3d tp;
+//            tp = tMesh->m_vertices->getLocalPos(i);
+//            printf("tp %f, %f, %f \n", tp.x(), tp.y(), tp.z());
+//        }
+        tMesh->markForUpdate(true);
+    }
+    tMesh->computeAllNormals();
+    if (cnt >= 2000){
+        cnt = 0;
+    }
+}
+
+void renderSb(){
+//    chai3d::cTransform mat;
+//    cQuaternion q(0,0,0,1);
+//    cMatrix3d rmat;
+//    q.toRotMat(rmat);
+//    mat.set(cVector3d(0,0,0), rmat);
+//    glPushMatrix();
+//    glMultMatrixd( (const double *)mat.getData() );
+    cColorf col;
+    col.setBlueAquamarine();
+    btSoftBody *softBody = g_softBody->getSoftBody();
+    col.render();
+    glBegin(GL_POINTS);
+    for (int i = 0 ; i < softBody->m_nodes.size() ; i++){
+        cVector3d v(softBody->m_nodes[i].m_x.x(), softBody->m_nodes[i].m_x.y(), softBody->m_nodes[i].m_x.z());
+
+        glVertex3dv( (const double *)&v);
+
+//        if (i %300 == 0)
+//            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+    }
+    glEnd();
+    glBegin(GL_LINES);
+    for (int i = 0 ; i < softBody->m_links.size() ; i++){
+        cVector3d v1(softBody->m_links[i].m_n[0]->m_x.x(), softBody->m_links[i].m_n[0]->m_x.y(), softBody->m_links[i].m_n[0]->m_x.z());
+        cVector3d v2(softBody->m_links[i].m_n[1]->m_x.x(), softBody->m_links[i].m_n[1]->m_x.y(), softBody->m_links[i].m_n[1]->m_x.z());
+        glColor4fv( (const float *)&col);
+
+            glVertex3dv( (const double *)&v1);
+            glVertex3dv( (const double *)&v2);
+
+//        if (i %300 == 0)
+//            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+    }
+    glEnd();
+}
+
+//---------------------------------------------------------------------------
 
 void updateGraphics(void)
 {
@@ -1574,6 +1675,8 @@ void updateGraphics(void)
         g_labelDevRates[i]->setText(g_coordApp->m_hapticDevices[i].m_hInfo.m_modelName + ": " + cStr(g_coordApp->m_hapticDevices[i].m_freq_ctr.getFrequency(), 0) + " Hz");
         g_labelDevRates[i]->setLocalPos(10, (int)(g_height - (i+1)*20));
     }
+
+//    updateMesh();
 
     // update position of label
     g_labelTimes->setLocalPos((int)(0.5 * (g_width - g_labelTimes->getWidth())), 30);
@@ -1605,6 +1708,8 @@ void updateGraphics(void)
 
     // render world
     g_camera->renderView(g_width, g_height);
+
+//    renderSb();
 
     // wait until all GL commands are completed
     glFinish();

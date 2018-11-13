@@ -236,6 +236,7 @@ public:
     afBulletMultiBody(cBulletWorld* a_chaiWorld){m_chaiWorld = a_chaiWorld;}
     virtual ~afBulletMultiBody();
     virtual afLink* load_multibody(std::string a_multibody_config = "");
+    afLink* get_link(std::string a_name);
 
 protected:
 

@@ -49,6 +49,10 @@
 //------------------------------------------------------------------------------
 #include "btBulletDynamicsCommon.h"
 #include "BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h"
+#include "BulletSoftBody/btSoftBody.h"
+#include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
+#include "BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h"
+#include "BulletSoftBody/btSoftBodyHelpers.h"
 //------------------------------------------------------------------------------
 #include "chai_env/World.h"
 //------------------------------------------------------------------------------
@@ -158,6 +162,9 @@ public:
     //! Bullet broad phase collision detection algorithm.
     btBroadphaseInterface* m_bulletBroadphase;
 
+    //! Bullet Default Collision Configuraion
+    btDefaultCollisionConfiguration* m_bulletDefaultCollisionConfiguration;
+
     //! Bullet collision configuration.
     btCollisionConfiguration* m_bulletCollisionConfiguration;
 
@@ -166,6 +173,9 @@ public:
 
     //! Bullet physics solver.
     btConstraintSolver* m_bulletSolver;
+
+    //! Bullet Softbody World Info
+    btSoftBodyWorldInfo* m_bulletSoftBodyWorldInfo;
 
 
     //--------------------------------------------------------------------------

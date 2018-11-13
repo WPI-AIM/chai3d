@@ -889,6 +889,16 @@ afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
     return rootParentLink;
 }
 
+afLink* afBulletMultiBody::get_link(std::string a_name){
+    if (m_linkMap.find(a_name) != m_linkMap.end()){
+        return m_linkMap[a_name];
+    }
+    else{
+        std::cerr << "CAN'T FIND ANY LINK NAMED: " << a_name << std::endl;
+        return NULL;
+    }
+}
+
 ///
 /// \brief afBulletMultiBody::~afBulletMultiBody
 ///

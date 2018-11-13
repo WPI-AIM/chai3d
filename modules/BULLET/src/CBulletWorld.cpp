@@ -73,11 +73,14 @@ cBulletWorld::cBulletWorld(std::string a_worldName)
     // setup broad phase collision detection
     m_bulletBroadphase = new btDbvtBroadphase();
 
+    // setup the default collision configuration
+    m_bulletDefaultCollisionConfiguration = new btSoftBodyRigidBodyCollisionConfiguration();
+
     // setup the collision configuration
     m_bulletCollisionConfiguration = new btDefaultCollisionConfiguration();
 
     // setup the collision dispatcher
-    m_bulletCollisionDispatcher = new btCollisionDispatcher(m_bulletCollisionConfiguration);
+    m_bulletCollisionDispatcher = new btCollisionDispatcher(m_bulletDefaultCollisionConfiguration);
 
     // register GIMPACT collision detector for GIMPACT objects
     btGImpactCollisionAlgorithm::registerAlgorithm(m_bulletCollisionDispatcher);
@@ -86,10 +89,25 @@ cBulletWorld::cBulletWorld(std::string a_worldName)
     m_bulletSolver = new btSequentialImpulseConstraintSolver;
 
     // setup the dynamic world
-    m_bulletWorld = new btDiscreteDynamicsWorld(m_bulletCollisionDispatcher, m_bulletBroadphase, m_bulletSolver, m_bulletCollisionConfiguration);
+    m_bulletWorld = new btSoftRigidDynamicsWorld(m_bulletCollisionDispatcher, m_bulletBroadphase, m_bulletSolver, m_bulletCollisionConfiguration);
+
+//    m_bulletWorld = new bt(m_bulletCollisionDispatcher, m_bulletBroadphase, m_bulletSolver, m_bulletCollisionConfiguration);
 
     // assign gravity constant
     m_bulletWorld->setGravity(btVector3( 0.0, 0.0,-9.81));
+
+    // Set SoftBody World Info
+    m_bulletSoftBodyWorldInfo = new btSoftBodyWorldInfo();
+    m_bulletSoftBodyWorldInfo->m_broadphase = m_bulletBroadphase;
+    m_bulletSoftBodyWorldInfo->m_dispatcher = m_bulletCollisionDispatcher;
+    m_bulletSoftBodyWorldInfo->air_density		=	(btScalar)0.0;
+    m_bulletSoftBodyWorldInfo->water_density	=	0;
+    m_bulletSoftBodyWorldInfo->water_offset		=	0;
+    m_bulletSoftBodyWorldInfo->water_normal		=	btVector3(0,0,0);
+    m_bulletSoftBodyWorldInfo->m_gravity.setValue(0,0,-9.81);
+
+    m_bulletWorld->getDispatchInfo().m_enableSPU = true;
+    m_bulletSoftBodyWorldInfo->m_sparsesdf.Initialize();
 }
 
 

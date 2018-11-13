@@ -48,6 +48,7 @@
 #include "chai3d.h"
 //------------------------------------------------------------------------------
 #include "btBulletDynamicsCommon.h"
+#include "BulletSoftBody/btSoftBody.h"
 //------------------------------------------------------------------------------
 #include "chai_env/Object.h"
 
@@ -227,6 +228,9 @@ public:
 
     //! Bullet rigid body.
     btRigidBody* m_bulletRigidBody;
+
+    //! Bullet Soft Body
+    btSoftBody* m_bulletSoftBody;
 
     //! Bullet collision shape
     btCollisionShape* m_bulletCollisionShape;

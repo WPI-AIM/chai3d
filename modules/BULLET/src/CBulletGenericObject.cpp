@@ -63,6 +63,7 @@ void cBulletGenericObject::initialize(cBulletWorld* a_world)
     //! init variables
     m_dynamicWorld = NULL;
     m_bulletRigidBody = NULL;
+    m_bulletSoftBody = NULL;
     m_bulletCollisionShape = NULL;
     m_bulletMotionState = NULL;
     m_inertia.zero();
