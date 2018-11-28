@@ -45,7 +45,7 @@
 #ifndef CBulletSoftMultiMeshH
 #define CBulletSoftMultiMeshH
 //------------------------------------------------------------------------------
-#include "CBulletGenericObject.h"
+#include "CBulletMultiMesh.h"
 #include "chai3d.h"
 #include "CGELMesh.h"
 //------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ struct VertexTree{
     cBulletSoftMultiMesh models a dynamic soft multi-mesh object.
 */
 //==============================================================================
-class cBulletSoftMultiMesh : public cGELMesh, public cBulletGenericObject
+class cBulletSoftMultiMesh : public cBulletMultiMesh
 {
     //--------------------------------------------------------------------------
     // CONSTRUCTOR & DESTRUCTOR:
@@ -93,7 +93,7 @@ class cBulletSoftMultiMesh : public cGELMesh, public cBulletGenericObject
 public:
 
     //! Constructor of cBulletSoftMultiMesh.
-    cBulletSoftMultiMesh(cBulletWorld* a_world, std::string a_objName = "") : cBulletGenericObject(a_world, a_objName) {
+    cBulletSoftMultiMesh(cBulletWorld* a_world, std::string a_objName = "") : cBulletMultiMesh(a_world, a_objName) {
     }
 
     //! Destructor of cBulletSoftMultiMesh.
@@ -132,14 +132,6 @@ public:
     //--------------------------------------------------------------------------
 
 public:
-    //! This method loads a mesh from a file.
-//    virtual loadFromFile(std::string a_filename);
-
-    //! This method updates the skeletal model of GEL from Bullet's softBody.
-    virtual void updateGELSkeletonFrombtSoftBody();
-
-    virtual void render(cRenderOptions &a_options);
-
     //! This method creates a Bullet collision model for this object.
     virtual void buildContactConvexTriangles(const double a_margin = 0.01);
 
@@ -149,8 +141,17 @@ public:
     //! This method creates a Bullet collision model for this object.
     virtual void buildContactHull(const double a_margin = 0.01);
 
-    //! Create CGEL Links and Nodes based on bulletSoftBody
+    //! Create CGEL Bodys and Nodes based on bulletSoftBody
     virtual void createGELSkeleton();
+
+    //! Overrride the loadFromFile Method.
+    virtual bool loadFromFile(std::string a_filename);
+
+    //! Overrride the render method
+    virtual void render(cRenderOptions &a_options);
+
+    //! This method updates the skeletal model of GEL from Bullet's softBody.
+    virtual void updateGELSkeletonFrombtSoftBody();
 
     inline btSoftBody* getSoftBody(){return m_bulletSoftBody;}
 
@@ -170,6 +171,8 @@ private:
     void computeUniqueVerticesandTriangles(cMesh* mesh, std::vector<btScalar>* outputVertices, std::vector<int>* outputTriangles, bool print_debug_info=false);
 
     unsigned int m_counter = 0;
+
+    cGELMesh m_gelMesh;
 
 };
 

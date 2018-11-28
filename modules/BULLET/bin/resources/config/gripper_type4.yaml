@@ -1,4 +1,4 @@
-links: [gripper_l1, gripper_r1]
+bodies: [gripper_l1, gripper_r1]
 joints: [base_joint]
 high_res_path: ../resources/models/grippers/type4/high_res/
 low_res_path: ../resources/models/grippers/type4/low_res/

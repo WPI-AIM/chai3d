@@ -75,14 +75,11 @@ cBulletWorld::cBulletWorld(std::string a_worldName)
     // setup broad phase collision detection
     m_bulletBroadphase = new btDbvtBroadphase();
 
-    // setup the default collision configuration
-    m_bulletDefaultCollisionConfiguration = new btSoftBodyRigidBodyCollisionConfiguration();
-
     // setup the collision configuration
-    m_bulletCollisionConfiguration = new btDefaultCollisionConfiguration();
+    m_bulletCollisionConfiguration = new btSoftBodyRigidBodyCollisionConfiguration();
 
     // setup the collision dispatcher
-    m_bulletCollisionDispatcher = new btCollisionDispatcher(m_bulletDefaultCollisionConfiguration);
+    m_bulletCollisionDispatcher = new btCollisionDispatcher(m_bulletCollisionConfiguration);
 
     // register GIMPACT collision detector for GIMPACT objects
     btGImpactCollisionAlgorithm::registerAlgorithm(m_bulletCollisionDispatcher);
@@ -95,7 +92,7 @@ cBulletWorld::cBulletWorld(std::string a_worldName)
 
     // setup the dynamic world
     m_bulletWorld = new btSoftRigidDynamicsWorld(m_bulletCollisionDispatcher, m_bulletBroadphase,
-                                                 m_bulletSolver, m_bulletDefaultCollisionConfiguration, m_bulletSoftBodySolver);
+                                                 m_bulletSolver, m_bulletCollisionConfiguration);
 
 //    m_bulletWorld = new bt(m_bulletCollisionDispatcher, m_bulletBroadphase, m_bulletSolver, m_bulletCollisionConfiguration);
 

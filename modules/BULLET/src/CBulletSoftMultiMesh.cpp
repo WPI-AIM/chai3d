@@ -66,7 +66,7 @@ namespace chai3d {
 //==============================================================================
 void cBulletSoftMultiMesh::setLocalPos(const cVector3d& a_position)
 {
-    m_localPos = a_position;
+    m_gelMesh.setLocalPos(a_position);
 
     // get transformation matrix of object
     btTransform trans;
@@ -74,9 +74,9 @@ void cBulletSoftMultiMesh::setLocalPos(const cVector3d& a_position)
     btQuaternion q;
 
     // set new position
-    pos[0] = m_localPos(0);
-    pos[1] = m_localPos(1);
-    pos[2] = m_localPos(2);
+    pos[0] = a_position(0);
+    pos[1] = a_position(1);
+    pos[2] = a_position(2);
 
     // set new orientation
     cQuaternion quaternion;
@@ -90,10 +90,11 @@ void cBulletSoftMultiMesh::setLocalPos(const cVector3d& a_position)
     // set new transform
     trans.setOrigin(pos);
     trans.setRotation(q);
+
     if (m_bulletMotionState)
         m_bulletMotionState->setWorldTransform(trans);
-    if (m_bulletRigidBody)
-        m_bulletRigidBody->setCenterOfMassTransform(trans);
+    if (m_bulletSoftBody)
+        m_bulletSoftBody->translate(pos);
 }
 
 
@@ -106,7 +107,7 @@ void cBulletSoftMultiMesh::setLocalPos(const cVector3d& a_position)
 //==============================================================================
 void cBulletSoftMultiMesh::setLocalRot(const cMatrix3d& a_rotation)
 {
-    m_localRot = a_rotation;
+    m_gelMesh.setLocalRot(a_rotation);
 
     // get transformation matrix of object
     btTransform trans;
@@ -120,7 +121,7 @@ void cBulletSoftMultiMesh::setLocalRot(const cMatrix3d& a_rotation)
 
     // set new orientation
     cQuaternion quaternion;
-    quaternion.fromRotMat(m_localRot);
+    quaternion.fromRotMat(a_rotation);
 
     q.setW(quaternion.w);
     q.setX(quaternion.x);
@@ -130,10 +131,11 @@ void cBulletSoftMultiMesh::setLocalRot(const cMatrix3d& a_rotation)
     // set new transform
     trans.setOrigin(pos);
     trans.setRotation(q);
+
     if (m_bulletMotionState)
         m_bulletMotionState->setWorldTransform(trans);
-    if (m_bulletRigidBody)
-        m_bulletRigidBody->setCenterOfMassTransform(trans);
+    if (m_bulletSoftBody)
+        m_bulletSoftBody->rotate(q);
 }
 
 //==============================================================================
@@ -201,9 +203,9 @@ void updateMesh(cMesh* mesh, btSoftBody* sb, std::vector<VertexTree>* tree){
 }
 
 void cBulletSoftMultiMesh::render(cRenderOptions &a_options){
-    updateVertexPosition();
+    m_gelMesh.updateVertexPosition();
     computeAllNormals();
-    cGELMesh::render(a_options);
+    m_gelMesh.render(a_options);
 }
 
 
@@ -246,6 +248,10 @@ void clearArrays(bool * vtxChkBlock, int * vtxIdxBlock, int blockSize){
     int s = blockSize*blockSize*blockSize;
     memset(vtxChkBlock, false, s*sizeof(bool));
     memset(vtxIdxBlock, -1, s*sizeof(int));
+}
+
+bool cBulletSoftMultiMesh::loadFromFile(std::string a_filename){
+   return m_gelMesh.loadFromFile(a_filename);
 }
 
 void cBulletSoftMultiMesh::computeUniqueVerticesandTriangles(cMesh* mesh, std::vector<btScalar>* outputVertices, std::vector<int>* outputTriangles, bool print_debug_info){
@@ -466,7 +472,7 @@ void cBulletSoftMultiMesh::createGELSkeleton(){
     for (int i = 0 ; i < nNodes ; i++){
         auto btNode = m_bulletSoftBody->m_nodes[i];
         cGELSkeletonNode* gelNode = new cGELSkeletonNode;
-        m_nodes.push_back(gelNode);
+        m_gelMesh.m_nodes.push_back(gelNode);
         vNodes[i] = gelNode;
         gelNode->m_pos.set(btNode.m_x.x(), btNode.m_x.y(), btNode.m_x.z());
         gelNode->m_nextRot.identity();
@@ -478,25 +484,25 @@ void cBulletSoftMultiMesh::createGELSkeleton(){
         int nodeIdx2 = m_trianglesPtr[3*i + 2];
         if (m_bulletSoftBody->checkLink(nodeIdx0, nodeIdx1)){
             cGELSkeletonLink* link = new cGELSkeletonLink(vNodes[nodeIdx0], vNodes[nodeIdx1]);
-            m_links.push_back(link);
+            m_gelMesh.m_links.push_back(link);
         }
         if (m_bulletSoftBody->checkLink(nodeIdx1, nodeIdx2)){
             cGELSkeletonLink* link = new cGELSkeletonLink(vNodes[nodeIdx1], vNodes[nodeIdx2]);
-            m_links.push_back(link);
+            m_gelMesh.m_links.push_back(link);
         }
         if (m_bulletSoftBody->checkLink(nodeIdx2, nodeIdx0)){
             cGELSkeletonLink* link = new cGELSkeletonLink(vNodes[nodeIdx2], vNodes[nodeIdx0]);
-            m_links.push_back(link);
+            m_gelMesh.m_links.push_back(link);
         }
     }
-    m_showSkeletonModel = true;
-    m_useSkeletonModel = true;
+    m_gelMesh.m_showSkeletonModel = true;
+    m_gelMesh.m_useSkeletonModel = true;
 }
 
 void cBulletSoftMultiMesh::updateGELSkeletonFrombtSoftBody(){
     std::list<cGELSkeletonNode*>::iterator n;
     int i = 0;
-    for(n = m_nodes.begin(); n != m_nodes.end(); ++n)
+    for(n = m_gelMesh.m_nodes.begin(); n != m_gelMesh.m_nodes.end(); ++n)
     {
         btVector3 &vPos = m_bulletSoftBody->m_nodes[i].m_x;
         btVector3 &vNorm = m_bulletSoftBody->m_nodes[i].m_n;
@@ -511,7 +517,7 @@ void cBulletSoftMultiMesh::updateGELSkeletonFrombtSoftBody(){
 //        (*n)->m_nextRot.identity();
         i++;
     }
-    for(n = m_nodes.begin(); n != m_nodes.end(); ++n)
+    for(n = m_gelMesh.m_nodes.begin(); n != m_gelMesh.m_nodes.end(); ++n)
     {
         (*n)->applyNextPose();
     }
@@ -525,7 +531,7 @@ void cBulletSoftMultiMesh::updateGELSkeletonFrombtSoftBody(){
 //==============================================================================
 void cBulletSoftMultiMesh::buildContactTriangles(const double a_margin, cMultiMesh* lowResMesh)
 {
-    buildVertices();
+    m_gelMesh.buildVertices();
     // create compound shape
     btCompoundShape* compound = new btCompoundShape();
     m_bulletCollisionShape = compound;
@@ -535,7 +541,7 @@ void cBulletSoftMultiMesh::buildContactTriangles(const double a_margin, cMultiMe
         v_meshes = lowResMesh->m_meshes;
     }
     else{
-        v_meshes = m_meshes;
+        v_meshes = m_gelMesh.m_meshes;
     }
 
     // create collision detector for each mesh
@@ -550,7 +556,7 @@ void cBulletSoftMultiMesh::buildContactTriangles(const double a_margin, cMultiMe
         m_bulletSoftBody = btSoftBodyHelpers::CreateFromTriMesh(*m_dynamicWorld->m_bulletSoftBodyWorldInfo,
                                                                           m_verticesPtr.data(), m_trianglesPtr.data(), numTriangles);
         createGELSkeleton();
-        connectVerticesToSkeleton(false);
+        m_gelMesh.connectVerticesToSkeleton(false);
         // add to compound object
         btTransform localTrans;
         btVector3 pos;
@@ -598,16 +604,7 @@ void cBulletSoftMultiMesh::buildContactTriangles(const double a_margin, cMultiMe
 //==============================================================================
 void cBulletSoftMultiMesh::buildContactConvexTriangles(const double a_margin)
 {
-    // create compound shape
-    btCompoundShape* compound = new btCompoundShape();
-    m_bulletCollisionShape = compound;
 
-    // create collision detector for each mesh
-    std::vector<cMesh*>::iterator it;
-    for (it = m_meshes->begin(); it < m_meshes->end(); it++)
-    {
-        cMesh* mesh = (*it);
-    }
 }
 
 
@@ -618,7 +615,7 @@ void cBulletSoftMultiMesh::buildContactConvexTriangles(const double a_margin)
 //==============================================================================
 void cBulletSoftMultiMesh::buildContactHull(const double a_margin)
 {
-    buildVertices();
+    m_gelMesh.buildVertices();
     // create collision detector for each mesh
     std::vector<cMesh*>::iterator it;
     for (it = m_meshes->begin(); it < m_meshes->end(); it++)

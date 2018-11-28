@@ -79,7 +79,7 @@ afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
     if (multiBodyNode["color_config"].IsDefined())
         m_colorsNode = YAML::LoadFile(multiBodyNode["color_config"].as<std::string>().c_str());
 
-    afBulletGripperLink *tmpLink;
+    afBulletGripperLink *tmpBody;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
         high_res_path = multiBodyNode["high_res_path"].as<std::string>();
         low_res_path = multiBodyNode["low_res_path"].as<std::string>();
@@ -88,15 +88,15 @@ afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
         high_res_path = "../resources/models/gripper/high_res/";
         low_res_path = "../resources/models/gripper/low_res/";
     }
-    size_t totalLinks = multiBodyNode["links"].size();
-    std::vector<std::string> temp_link_names;
-    for (size_t i = 0; i < totalLinks; ++i) {
-        tmpLink = new afBulletGripperLink(m_chaiWorld);
-        std::string link_name = multiBodyNode["links"][i].as<std::string>();
-//        printf("Loading link: %s \n", link_name .c_str());
-        if (tmpLink->load(a_file.c_str(), link_name, this)){
-            m_linkMap[link_name.c_str()] = tmpLink;
-            temp_link_names.push_back(link_name.c_str());
+    size_t totalBodys = multiBodyNode["bodies"].size();
+    std::vector<std::string> temp_body_names;
+    for (size_t i = 0; i < totalBodys; ++i) {
+        tmpBody = new afBulletGripperLink(m_chaiWorld);
+        std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
+//        printf("Loading body: %s \n", body_name .c_str());
+        if (tmpBody->load(a_file.c_str(), body_name, this)){
+            m_bodyMap[body_name.c_str()] = tmpBody;
+            temp_body_names.push_back(body_name.c_str());
         }
     }
     afJoint *tmpJoint;
@@ -104,19 +104,19 @@ afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
     for (size_t i = 0; i < totalJoints; ++i) {
         tmpJoint = new afJoint();
         std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
-//        printf("Loading link: %s \n", jnt_name.c_str());
+//        printf("Loading body: %s \n", jnt_name.c_str());
         if (tmpJoint->load(a_file.c_str(), jnt_name, this)){
             m_jointMap[jnt_name] = tmpJoint;
         }
     }
-    afBulletGripperLink* rootParentLink = NULL;
+    afBulletGripperLink* rootParentBody = NULL;
     size_t rootParents = 0;
     std::vector<std::string>::const_iterator nIt;
-    cLinkMap::const_iterator mIt;
-    for(nIt = temp_link_names.begin() ; nIt != temp_link_names.end() ; ++nIt){
-        mIt = m_linkMap.find(*nIt);
-        if((*mIt).second->m_parentLinks.size() == 0){
-            rootParentLink = static_cast<afBulletGripperLink*>((*mIt).second);
+    cBodyMap::const_iterator mIt;
+    for(nIt = temp_body_names.begin() ; nIt != temp_body_names.end() ; ++nIt){
+        mIt = m_bodyMap.find(*nIt);
+        if((*mIt).second->m_parentBodies.size() == 0){
+            rootParentBody = static_cast<afBulletGripperLink*>((*mIt).second);
             rootParents++;
         }
     }
@@ -125,15 +125,15 @@ afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
     else{
         std::string sfx = m_suffix_name;
         sfx.erase(remove_if(sfx.begin(), sfx.end(), isspace), sfx.end());
-        rootParentLink->create_af_object(m_gripper_name + sfx);
+        rootParentBody->createAFObject(m_gripper_name + sfx);
     }
 
-    return rootParentLink;
+    return rootParentBody;
 }
 
 afBulletGripper::~afBulletGripper(){
-    cLinkMap::const_iterator lIt = m_linkMap.begin();
-    for ( ; lIt != m_linkMap.end() ; ++lIt){
+    cBodyMap::const_iterator lIt = m_bodyMap.begin();
+    for ( ; lIt != m_bodyMap.end() ; ++lIt){
         delete lIt->second;
     }
     cJointMap::const_iterator jIt = m_jointMap.begin();

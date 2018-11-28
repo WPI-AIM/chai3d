@@ -1,11 +1,11 @@
 # Generate By: Adnan Munawar
 # Testing, no version number yet
-links: [link1, link2]
+bodies: [body1, body2]
 joints: []
 high_res_path: ../resources/models/puzzle2/high_res/
 low_res_path: ../resources/models/puzzle2/low_res/
 
-link1:
+body1:
  name: Cube
  mass: 2.0
  mesh: Cube.STL
@@ -14,7 +14,7 @@ link1:
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: blue_corn_flower
 
-link2:
+body2:
  name: Sphere
  mass: 4.0
  mesh: Sphere.STL

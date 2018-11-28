@@ -55,16 +55,16 @@ class afBulletGripper;
 class afBulletGripperLink;
 
 typedef std::shared_ptr<afBulletGripper> afBulletGripperPtr;
-typedef std::map<std::string, afBulletGripperLink*> afGripperLinkMap;
+typedef std::map<std::string, afBulletGripperLink*> afGripperBodyMap;
 
 ///
-/// \brief The cBulletGripperLink class
+/// \brief The cBulletGripperBody class
 ///
-class afBulletGripperLink : public afLink{
-    friend afBulletGripper;
+class afBulletGripperLink : public afRigidBody{
+    friend class afBulletGripper;
 public:
 
-    afBulletGripperLink(cBulletWorld* a_chaiWorld): afLink(a_chaiWorld){
+    afBulletGripperLink(cBulletWorld* a_chaiWorld): afRigidBody(a_chaiWorld){
         m_surfaceProps.m_linear_damping = 0.5;
         m_surfaceProps.m_angular_damping = 1.0;
         m_surfaceProps.m_static_friction = 0.5;
@@ -80,7 +80,7 @@ public:
 class afBulletGripper: public afBulletMultiBody
 {
 
-    friend afBulletGripperLink;
+    friend class afBulletGripperLink;
 
 public:
 
@@ -93,7 +93,7 @@ public:
 
 private:
 
-//    cGripperLinkMap m_gripperLinkMap;
+//    cGripperBodyMap m_gripperBodyMap;
     std::string m_gripper_name, m_suffix_name;
 };
 

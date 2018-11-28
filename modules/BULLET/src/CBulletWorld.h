@@ -33,7 +33,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
+    POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
     \author    Francois Conti, Adnan Munawar
@@ -80,7 +80,7 @@ namespace chai3d {
     This class implements an Bullet dynamic world.
 
     \details
-    cBulletWorld implements a virtual world to handle Bullet based objects 
+    cBulletWorld implements a virtual world to handle Bullet based objects
     (cBulletGenericBody).
 */
 //==============================================================================
@@ -163,9 +163,6 @@ public:
 
     //! Bullet broad phase collision detection algorithm.
     btBroadphaseInterface* m_bulletBroadphase;
-
-    //! Bullet Default Collision Configuraion
-    btDefaultCollisionConfiguration* m_bulletDefaultCollisionConfiguration;
 
     //! Bullet collision configuration.
     btCollisionConfiguration* m_bulletCollisionConfiguration;

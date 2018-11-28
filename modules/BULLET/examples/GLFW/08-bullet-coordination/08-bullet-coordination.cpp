@@ -1235,23 +1235,20 @@ int main(int argc, char* argv[])
     cMultiMesh collObj;
     collObj.loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/low_res/Sphere4.STL"));
     g_softBody->buildContactTriangles(0.001);
-//    g_softBody->buildContactHull(0.001);
-//    btSoftBody::Material *pm = g_softBody->getSoftBody()->appendMaterial();
-//    pm->m_kLST = 0.1;
-    g_softBody->getSoftBody()->m_materials[0]->m_kLST = 0.03;
-    g_softBody->getSoftBody()->m_cfg.kDF				=	0.5;
+    btSoftBody* psb = g_softBody->getSoftBody();
+    psb->m_materials[0]->m_kLST = 0.5;
+    psb->m_cfg.kDF				=	0.5;
 //    g_softBody->getSoftBody()->m_cfg.kMT				=	0.001;
 //    g_softBody->getSoftBody()->generateBendingConstraints(2);
-    g_softBody->getSoftBody()->m_cfg.kDP				=	0.0001; // fun factor...
-    g_softBody->getSoftBody()->m_cfg.kPR				=	20;
-//    g_softBody->getSoftBody()->m_cfg.kDF = 0.5;
-    g_softBody->getSoftBody()->m_cfg.piterations = 2;
-    g_softBody->getSoftBody()->randomizeConstraints();
-    g_softBody->getSoftBody()->setTotalMass(0.8, true);
+    psb->m_cfg.kDP				=	0.0001; // fun factor...
+    psb->m_cfg.kPR				=	20;
+    psb->m_cfg.piterations = 2;
+    psb->randomizeConstraints();
+    psb->setTotalMass(0.8, true);
 //    g_softBody->scale(0.2);
-//    g_softBody->getSoftBody()->scale(btVector3(0.2,0.2,0.2));
-//    g_softBody->getSoftBody()->setPose(false, true);
+//    psb->scale(btVector3(0.2,0.2,0.2));
     g_bulletWorld->addChild(g_softBody);
+    g_softBody->setLocalPos(0,1,1);
 
 
 
@@ -1547,8 +1544,8 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         printf("Changing to next device mode:\n");
     }
     else if (a_key == GLFW_KEY_S){
-        g_softBody->m_showSkeletonModel = !g_softBody->m_showSkeletonModel;
-        printf("Show skeletal model: %d \n", g_softBody->m_showSkeletonModel);
+//        g_softBody->m_showSkeletonModel = !g_softBody->m_showSkeletonModel;
+//        printf("Show skeletal model: %d \n", g_softBody->m_showSkeletonModel);
     }
     //    // option - open gripper
     //    else if (a_key == GLFW_KEY_S)
@@ -1595,15 +1592,15 @@ const int tElemCnt = 400;
 cVector3d n[tElemCnt];
 cVector3d p[tElemCnt];
 int nElem = 0;
-afLink * tLink;
+afRigidBody * tBody;
 cMesh * tMesh;
 
 void updateMesh(){
     if (first_time == true){
         tClock.start(true);
         tClock.reset();
-        tLink = g_afBody->get_link("link2");
-        tMesh = (*(tLink->m_meshes))[0];
+        tBody = g_afBody->get_body("body2");
+        tMesh = (*(tBody->m_meshes))[0];
         nElem = tElemCnt < tMesh->getNumVertices() ? tElemCnt : tMesh->getNumVertices();
         for(int i = 0 ; i < nElem ; i++){
             p[i] = tMesh->m_vertices->getLocalPos(i);

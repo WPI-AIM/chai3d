@@ -1,11 +1,11 @@
 # Generate By: Adnan Munawar
 # Testing, no version number yet
-links: [link1, link2, link3, link4, link5, link6, link7, link8, link9]
+bodies: [body1, body2, body3, body4, body5, body6, body7, body8, body9]
 joints: [joint1, joint2]
 high_res_path: ../resources/models/puzzle/high_res/
 low_res_path: ../resources/models/puzzle/low_res/
 
-link1:
+body1:
  name: Torus
  mass: 0.8
  mesh: Torus.STL
@@ -14,7 +14,7 @@ link1:
  rotation: {r: 0.0, p: 0.0, y: 0.0}
  color: orange_tomato
 
-link2:
+body2:
  name: PegBase
  mass: 10.0
  mesh: PegBase.STL
@@ -24,7 +24,7 @@ link2:
  color: blue_navy
  friction: {static: 0.9, rolling: 0.1}
 
-link3:
+body3:
  name: PuzzleBase
  mass: 8.0
  mesh: PuzzleBase.STL
@@ -34,7 +34,7 @@ link3:
  color: purple_dark_magenta
  friction: {static: 0.9, rolling: 0.1}
 
-link4:
+body4:
  name: CirclePuzzle
  mass: 0.8
  mesh: CirclePuzzle.STL
@@ -45,7 +45,7 @@ link4:
  color: yellow
  friction: {linear: 0.8}
 
-link5:
+body5:
  name: TrianglePuzzle
  mass: 0.8
  mesh: TrianglePuzzle.STL
@@ -56,7 +56,7 @@ link5:
  color: pink_pale_violet_red
  friction: {linear: 0.8}
 
-link6:
+body6:
  name: SquarePuzzle
  mass: 0.8
  mesh: SquarePuzzle.STL
@@ -67,7 +67,7 @@ link6:
  color: blue_corn_flower
  friction: {linear: 0.8}
 
-link7:
+body7:
  name: HandleLeft
  mass: 0.3
  mesh: HandleLeft.STL
@@ -78,7 +78,7 @@ link7:
  color: orange
  friction: {linear: 0.5}
 
-link8:
+body8:
  name: HandleRight
  mass: 0.3
  mesh: HandleRight.STL
@@ -89,7 +89,7 @@ link8:
  color: orange_coral
  friction: {linear: 0.5}
 
-link9:
+body9:
  name: CenterPuzzle
  mass: 1.0
  linear_gain: {P: 200.0, D: 10.0}
@@ -103,8 +103,8 @@ link9:
 
 joint1:
  name: PuzzleLeftJoint
- parent: link9
- child: link7
+ parent: body9
+ child: body7
  parent_axis: {x: 1.0, y: 0, z: 0.0}
  parent_pivot: {x: 0, y: -0.85, z: 0.0}
  child_axis: {x: 1.0, y: 0, z: 0.0}
@@ -115,8 +115,8 @@ joint1:
 
 joint2:
  name: PuzzleRightJoint
- parent: link9
- child: link8
+ parent: body9
+ child: body8
  parent_axis: {x: 1.0, y: 0, z: 0}
  parent_pivot: {x: 0, y: 0.85, z: 0.0}
  child_axis: {x: 1.0, y: 0, z: 0}

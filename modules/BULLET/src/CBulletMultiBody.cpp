@@ -55,8 +55,8 @@ std::string resourceRootMB;
 namespace chai3d{
 
 /// Declare Static Variables
-cMaterial afLink::m_mat;
-afLinkSurfaceProperties afLink::m_surfaceProps;
+cMaterial afRigidBody::m_mat;
+afBodySurfaceProperties afRigidBody::m_surfaceProps;
 
 std::string afConfigHandler::m_path;
 std::string afConfigHandler::m_color_config;
@@ -203,71 +203,71 @@ std::vector<double> afConfigHandler::get_color_rgba(std::string a_color_name){
 }
 
 ///
-/// \brief afLink::afLink
+/// \brief afBody::afBody
 /// \param a_world
 ///
-afLink::afLink(cBulletWorld* a_world): cBulletMultiMesh(a_world){
+afRigidBody::afRigidBody(cBulletWorld* a_world): cBulletMultiMesh(a_world){
 }
 
 ///
-/// \brief afLink::populate_parents_tree
-/// \param a_link
+/// \brief afBody::populate_parents_tree
+/// \param a_body
 /// \param a_jnt
 ///
-void afLink::populate_parents_tree(afLink* a_link, afJoint* a_jnt){
-    m_childrenLinks.push_back(a_link);
-    m_childrenLinks.insert(m_childrenLinks.end(),
-                           a_link->m_childrenLinks.begin(),
-                           a_link->m_childrenLinks.end());
+void afRigidBody::populate_parents_tree(afRigidBody* a_body, afJoint* a_jnt){
+    m_childrenBodies.push_back(a_body);
+    m_childrenBodies.insert(m_childrenBodies.end(),
+                           a_body->m_childrenBodies.begin(),
+                           a_body->m_childrenBodies.end());
     m_joints.push_back(a_jnt);
     m_joints.insert(m_joints.end(),
-                           a_link->m_joints.begin(),
-                           a_link->m_joints.end());
+                           a_body->m_joints.begin(),
+                           a_body->m_joints.end());
 }
 
 ///
-/// \brief afLink::add_parent_link
-/// \param a_parentLink
+/// \brief afBody::add_parent_body
+/// \param a_parentBody
 ///
-void afLink::add_parent_link(afLink* a_parentLink){
-    m_parentLinks.push_back(a_parentLink);
+void afRigidBody::add_parent_body(afRigidBody* a_parentBody){
+    m_parentBodies.push_back(a_parentBody);
 }
 
 ///
-/// \brief afLink::add_child_link
-/// \param a_childLink
+/// \brief afBody::add_child_body
+/// \param a_childBody
 /// \param a_jnt
 ///
-void afLink::add_child_link(afLink* a_childLink, afJoint* a_jnt){
-    a_childLink->add_parent_link(this);
-    a_childLink->m_parentLinks.insert(a_childLink->m_parentLinks.end(),
-                                      m_parentLinks.begin(), m_parentLinks.end());
-    m_childrenLinks.push_back(a_childLink);
-    m_childrenLinks.insert(m_childrenLinks.end(),
-                           a_childLink->m_childrenLinks.begin(),
-                           a_childLink->m_childrenLinks.end());
+void afRigidBody::addChildBody(afRigidBody* a_childBody, afJoint* a_jnt){
+    a_childBody->add_parent_body(this);
+    a_childBody->m_parentBodies.insert(a_childBody->m_parentBodies.end(),
+                                      m_parentBodies.begin(), m_parentBodies.end());
+    m_childrenBodies.push_back(a_childBody);
+    m_childrenBodies.insert(m_childrenBodies.end(),
+                           a_childBody->m_childrenBodies.begin(),
+                           a_childBody->m_childrenBodies.end());
     m_joints.push_back(a_jnt);
     m_joints.insert(m_joints.end(),
-                           a_childLink->m_joints.begin(),
-                           a_childLink->m_joints.end());
-    for (m_linkIt = m_parentLinks.begin() ; m_linkIt != m_parentLinks.end() ; ++m_linkIt){
-        (*m_linkIt)->populate_parents_tree(a_childLink, a_jnt);
+                           a_childBody->m_joints.begin(),
+                           a_childBody->m_joints.end());
+    for (m_bodyIt = m_parentBodies.begin() ; m_bodyIt != m_parentBodies.end() ; ++m_bodyIt){
+        (*m_bodyIt)->populate_parents_tree(a_childBody, a_jnt);
     }
 
-    for (m_linkIt = a_childLink->m_childrenLinks.begin() ; m_linkIt != a_childLink->m_childrenLinks.end() ; ++m_linkIt){
-        (*m_linkIt)->add_parent_link(this);
+    for (m_bodyIt = a_childBody->m_childrenBodies.begin() ; m_bodyIt != a_childBody->m_childrenBodies.end() ; ++m_bodyIt){
+        (*m_bodyIt)->add_parent_body(this);
     }
 }
 
 ///
-/// \brief afLink::load
+/// \brief afBody::load
 /// \param file
 /// \param name
 /// \param mB
 /// \param name_remapping
 /// \return
 ///
-bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
+bool afRigidBody::load (std::string file, std::string name, afBulletMultiBody* mB) {
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
@@ -383,28 +383,28 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
 }
 
 ///
-/// \brief afLink::create_af_object
+/// \brief afBody::create_af_object
 /// \param a_obj_name
 ///
-void afLink::create_af_object(std::string a_obj_name){
-    #ifdef C_ENABLE_CHAI_ENV
+void afRigidBody::createAFObject(std::string a_obj_name){
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     m_afObjPtr.reset(new chai_env::Object(a_obj_name));
     #endif
 }
 
 ///
-/// \brief afLink::compute_gains
+/// \brief afBody::compute_gains
 ///
-void afLink::compute_gains(){
+void afRigidBody::compute_gains(){
     if (_lin_gains_computed && _ang_gains_computed){
         return;
     }
 
     double lumped_mass = m_mass;
     cVector3d lumped_intertia = m_inertia;
-    for(m_linkIt = m_childrenLinks.begin() ; m_linkIt != m_childrenLinks.end() ; ++m_linkIt){
-        lumped_mass += (*m_linkIt)->getMass();
-        lumped_intertia += (*m_linkIt)->getInertia();
+    for(m_bodyIt = m_childrenBodies.begin() ; m_bodyIt != m_childrenBodies.end() ; ++m_bodyIt){
+        lumped_mass += (*m_bodyIt)->getMass();
+        lumped_intertia += (*m_bodyIt)->getInertia();
     }
     if (!_lin_gains_computed){
         K_lin = lumped_mass * 20;
@@ -419,22 +419,22 @@ void afLink::compute_gains(){
 }
 
 ///
-/// \brief afLink::set_surface_properties
-/// \param a_link
+/// \brief afBody::set_surface_properties
+/// \param a_body
 /// \param a_props
 ///
-void afLink::set_surface_properties(const afLink* a_link, const afLinkSurfaceProperties *a_props){
-    a_link->m_bulletRigidBody->setFriction(a_props->m_static_friction);
-    a_link->m_bulletRigidBody->setDamping(a_props->m_linear_damping, a_props->m_angular_damping);
-    a_link->m_bulletRigidBody->setRollingFriction(a_props->m_rolling_friction);
+void afRigidBody::set_surface_properties(const afRigidBody* a_body, const afBodySurfaceProperties *a_props){
+    a_body->m_bulletRigidBody->setFriction(a_props->m_static_friction);
+    a_body->m_bulletRigidBody->setDamping(a_props->m_linear_damping, a_props->m_angular_damping);
+    a_body->m_bulletRigidBody->setRollingFriction(a_props->m_rolling_friction);
 }
 
 ///
-/// \brief afLink::updateCmdFromROS
+/// \brief afBody::updateCmdFromROS
 /// \param dt
 ///
-void afLink::updateCmdFromROS(double dt){
-    #ifdef C_ENABLE_CHAI_ENV
+void afRigidBody::updateCmdFromROS(double dt){
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if (m_afObjPtr.get() != nullptr){
         m_afObjPtr->update_af_cmd();
         cVector3d force, torque;
@@ -489,7 +489,7 @@ void afLink::updateCmdFromROS(double dt){
         addExternalForce(force);
         addExternalTorque(torque);
         size_t jntCmdSize = m_afObjPtr->m_afCmd.size_J_cmd;
-        if (jntCmdSize > 0 && m_parentLinks.size() == 0){
+        if (jntCmdSize > 0 && m_parentBodies.size() == 0){
             size_t jntCnt = m_joints.size() < jntCmdSize ? m_joints.size() : jntCmdSize;
             for (size_t jnt = 0 ; jnt < jntCnt ; jnt++){
                 if (m_afObjPtr->m_afCmd.pos_ctrl)
@@ -504,12 +504,12 @@ void afLink::updateCmdFromROS(double dt){
 }
 
 ///
-/// \brief afLink::set_angle
+/// \brief afBody::set_angle
 /// \param angle
 /// \param dt
 ///
-void afLink::set_angle(double &angle, double dt){
-    if (m_parentLinks.size() == 0){
+void afRigidBody::set_angle(double &angle, double dt){
+    if (m_parentBodies.size() == 0){
         double clipped_angle = cClamp(angle, 0.0, 1.0);
         for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
             double ang;
@@ -521,12 +521,12 @@ void afLink::set_angle(double &angle, double dt){
 }
 
 ///
-/// \brief afLink::set_angle
+/// \brief afBody::set_angle
 /// \param angles
 /// \param dt
 ///
-void afLink::set_angle(std::vector<double> &angles, double dt){
-    if (m_parentLinks.size() == 0){
+void afRigidBody::set_angle(std::vector<double> &angles, double dt){
+    if (m_parentBodies.size() == 0){
         double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
         for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
             double clipped_angle = cClamp(angles[jnt], 0.0, 1.0);
@@ -605,20 +605,21 @@ bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, st
     assign_vec("child_pivot", &m_pvtB,  &fileNode);
     assign_vec("child_axis", &m_axisB,  &fileNode);
 
-    afLink * linkA, * linkB;
-    if (mB->m_linkMap.find((m_parent_name + name_remapping).c_str()) != mB->m_linkMap.end()
-            || mB->m_linkMap.find((m_child_name + name_remapping).c_str()) != mB->m_linkMap.end()){
-        linkA =  mB->m_linkMap[(m_parent_name + name_remapping).c_str()];
-        linkB = mB->m_linkMap[(m_child_name + name_remapping).c_str()];
-        bodyA = linkA->m_bulletRigidBody;
-        bodyB = linkB->m_bulletRigidBody;
+    btRigidBody * bodyA, * bodyB;
+    afRigidBody * afBodyA, * afBodyB;
+    if (mB->m_bodyMap.find((m_parent_name + name_remapping).c_str()) != mB->m_bodyMap.end()
+            || mB->m_bodyMap.find((m_child_name + name_remapping).c_str()) != mB->m_bodyMap.end()){
+        afBodyA =  mB->m_bodyMap[(m_parent_name + name_remapping).c_str()];
+        afBodyB = mB->m_bodyMap[(m_child_name + name_remapping).c_str()];
+        bodyA = afBodyA->m_bulletRigidBody;
+        bodyB = afBodyB->m_bulletRigidBody;
         // Scale the pivot before transforming as the default scale methods don't move this pivot
-        m_pvtA *= linkA->m_scale;
-        m_pvtA = linkA->getInertialOffsetTransform().inverse() * m_pvtA;
-        m_pvtB = linkB->getInertialOffsetTransform().inverse() * m_pvtB;
-        m_axisA = linkA->getInertialOffsetTransform().getBasis().inverse() * m_axisA;
-        m_axisB = linkB->getInertialOffsetTransform().getBasis().inverse() * m_axisB;
-        linkA->add_child_link(linkB, this);
+        m_pvtA *= afBodyA->m_scale;
+        m_pvtA = afBodyA->getInertialOffsetTransform().inverse() * m_pvtA;
+        m_pvtB = afBodyB->getInertialOffsetTransform().inverse() * m_pvtB;
+        m_axisA = afBodyA->getInertialOffsetTransform().getBasis().inverse() * m_axisA;
+        m_axisB = afBodyB->getInertialOffsetTransform().getBasis().inverse() * m_axisB;
+        afBodyA->addChildBody(afBodyB, this);
     }
     else{
         std::cerr <<"ERROR:COULDN'T FIND RIGID BODIES FOR: " << m_name+name_remapping << std::endl;
@@ -780,15 +781,15 @@ void afBulletMultiBody::remap_name(std::string &name, std::string remap_idx_str)
 }
 
 ///
-/// \brief afBulletMultiBody::get_link_name_remapping
-/// \param a_link_name
+/// \brief afBulletMultiBody::get_body_name_remapping
+/// \param a_body_name
 /// \return
 ///
-std::string afBulletMultiBody::get_link_name_remapping(std::string a_link_name){
+std::string afBulletMultiBody::get_body_name_remapping(std::string a_body_name){
     int occurances = 0;
     std::string remap_string = "" ;
     std::stringstream ss;
-    if (m_linkMap.find(a_link_name) == m_linkMap.end()){
+    if (m_bodyMap.find(a_body_name) == m_bodyMap.end()){
         return remap_string;
     }
     do{
@@ -797,7 +798,7 @@ std::string afBulletMultiBody::get_link_name_remapping(std::string a_link_name){
         ss << occurances;
         remap_string = ss.str();
     }
-    while(m_linkMap.find(a_link_name + remap_string) != m_linkMap.end() && occurances < 100);
+    while(m_bodyMap.find(a_body_name + remap_string) != m_bodyMap.end() && occurances < 100);
     return remap_string;
 }
 
@@ -829,7 +830,7 @@ std::string afBulletMultiBody::get_joint_name_remapping(std::string a_joint_name
 /// \param a_multibody_config
 /// \return
 ///
-afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
+afRigidBody* afBulletMultiBody::load_multibody(std::string a_multibody_config){
     if (a_multibody_config.empty()){
         a_multibody_config = get_puzzle_config();
     }
@@ -839,7 +840,7 @@ afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
         return NULL;
     }
 
-    afLink *tmpLink;
+    afRigidBody *tmpBody;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
         high_res_path = multiBodyNode["high_res_path"].as<std::string>();
         low_res_path = multiBodyNode["low_res_path"].as<std::string>();
@@ -848,17 +849,17 @@ afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
         high_res_path = "../resources/models/puzzle/high_res/";
         low_res_path = "../resources/models/puzzle/low_res/";
     }
-    size_t totalLinks = multiBodyNode["links"].size();
-    std::vector<std::string> temp_link_names;
-    for (size_t i = 0; i < totalLinks; ++i) {
-        tmpLink = new afLink(m_chaiWorld);
-        std::string link_name = multiBodyNode["links"][i].as<std::string>();
-        std::string remap_str = get_link_name_remapping(link_name);
-//        printf("Loading link: %s \n", (link_name + remap_str).c_str());
-        if (tmpLink->load(a_multibody_config.c_str(), link_name, this)){
-            m_linkMap[(link_name + remap_str).c_str()] = tmpLink;
-            tmpLink->create_af_object(tmpLink->m_name + remap_str);
-            temp_link_names.push_back((link_name + remap_str).c_str());
+    size_t totalBodies = multiBodyNode["bodies"].size();
+    std::vector<std::string> temp_body_names;
+    for (size_t i = 0; i < totalBodies; ++i) {
+        tmpBody = new afRigidBody(m_chaiWorld);
+        std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
+        std::string remap_str = get_body_name_remapping(body_name);
+//        printf("Loading body: %s \n", (body_name + remap_str).c_str());
+        if (tmpBody->load(a_multibody_config.c_str(), body_name, this)){
+            m_bodyMap[(body_name + remap_str).c_str()] = tmpBody;
+            tmpBody->createAFObject(tmpBody->m_name + remap_str);
+            temp_body_names.push_back((body_name + remap_str).c_str());
         }
     }
     afJoint *tmpJoint;
@@ -867,19 +868,19 @@ afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
         tmpJoint = new afJoint();
         std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
         std::string remap_str = get_joint_name_remapping(jnt_name);
-//        printf("Loading link: %s \n", (jnt_name + remap_str).c_str());
+//        printf("Loading body: %s \n", (jnt_name + remap_str).c_str());
         if (tmpJoint->load(a_multibody_config.c_str(), jnt_name, this, remap_str)){
             m_jointMap[jnt_name+remap_str] = tmpJoint;
         }
     }
-    afLink* rootParentLink = NULL;
+    afRigidBody* rootParentBody = NULL;
     size_t rootParents = 0;
     std::vector<std::string>::const_iterator nIt;
-    cLinkMap::const_iterator mIt;
-    for(nIt = temp_link_names.begin() ; nIt != temp_link_names.end() ; ++nIt){
-        mIt = m_linkMap.find(*nIt);
-        if((*mIt).second->m_parentLinks.size() == 0){
-            rootParentLink = (*mIt).second;
+    cBodyMap::const_iterator mIt;
+    for(nIt = temp_body_names.begin() ; nIt != temp_body_names.end() ; ++nIt){
+        mIt = m_bodyMap.find(*nIt);
+        if((*mIt).second->m_parentBodies.size() == 0){
+            rootParentBody = (*mIt).second;
             rootParents++;
         }
     }
@@ -890,15 +891,15 @@ afLink* afBulletMultiBody::load_multibody(std::string a_multibody_config){
         std::cerr << "WARNING! " << rootParents << " ROOT PARENTS FOUND, RETURNING NULL\n";
 
 
-    return rootParentLink;
+    return rootParentBody;
 }
 
-afLink* afBulletMultiBody::get_link(std::string a_name){
-    if (m_linkMap.find(a_name) != m_linkMap.end()){
-        return m_linkMap[a_name];
+afRigidBody* afBulletMultiBody::get_body(std::string a_name){
+    if (m_bodyMap.find(a_name) != m_bodyMap.end()){
+        return m_bodyMap[a_name];
     }
     else{
-        std::cerr << "CAN'T FIND ANY LINK NAMED: " << a_name << std::endl;
+        std::cerr << "CAN'T FIND ANY BODY NAMED: " << a_name << std::endl;
         return NULL;
     }
 }
@@ -907,8 +908,8 @@ afLink* afBulletMultiBody::get_link(std::string a_name){
 /// \brief afBulletMultiBody::~afBulletMultiBody
 ///
 afBulletMultiBody::~afBulletMultiBody(){
-    cLinkMap::const_iterator lIt = m_linkMap.begin();
-    for ( ; lIt != m_linkMap.end() ; ++lIt){
+    cBodyMap::const_iterator lIt = m_bodyMap.begin();
+    for ( ; lIt != m_bodyMap.end() ; ++lIt){
         delete lIt->second;
     }
     cJointMap::const_iterator jIt = m_jointMap.begin();
