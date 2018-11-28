@@ -387,7 +387,9 @@ bool afLink::load (std::string file, std::string name, afBulletMultiBody* mB) {
 /// \param a_obj_name
 ///
 void afLink::create_af_object(std::string a_obj_name){
+    #ifdef C_ENABLE_CHAI_ENV
     m_afObjPtr.reset(new chai_env::Object(a_obj_name));
+    #endif
 }
 
 ///
@@ -432,6 +434,7 @@ void afLink::set_surface_properties(const afLink* a_link, const afLinkSurfacePro
 /// \param dt
 ///
 void afLink::updateCmdFromROS(double dt){
+    #ifdef C_ENABLE_CHAI_ENV
     if (m_afObjPtr.get() != nullptr){
         m_afObjPtr->update_af_cmd();
         cVector3d force, torque;
@@ -497,6 +500,7 @@ void afLink::updateCmdFromROS(double dt){
 
         }
     }
+    #endif
 }
 
 ///
@@ -914,4 +918,3 @@ afBulletMultiBody::~afBulletMultiBody(){
 }
 
 }
-

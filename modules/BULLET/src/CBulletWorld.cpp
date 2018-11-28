@@ -33,7 +33,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
+    POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
     \author    Francois Conti, Adnan Munawar
@@ -58,9 +58,11 @@ namespace chai3d {
 //==============================================================================
 cBulletWorld::cBulletWorld(std::string a_worldName)
 {
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if(!a_worldName.empty()){
         m_afWorldPtr.reset(new chai_env::World(a_worldName));
     }
+    #endif
     // reset simulation time
     m_simulationTime = 0.0;
 
@@ -88,8 +90,12 @@ cBulletWorld::cBulletWorld(std::string a_worldName)
     // setup the actual physics solver
     m_bulletSolver = new btSequentialImpulseConstraintSolver;
 
+    // setup softbody solver
+    m_bulletSolver = 0;
+
     // setup the dynamic world
-    m_bulletWorld = new btSoftRigidDynamicsWorld(m_bulletCollisionDispatcher, m_bulletBroadphase, m_bulletSolver, m_bulletCollisionConfiguration);
+    m_bulletWorld = new btSoftRigidDynamicsWorld(m_bulletCollisionDispatcher, m_bulletBroadphase,
+                                                 m_bulletSolver, m_bulletDefaultCollisionConfiguration, m_bulletSoftBodySolver);
 
 //    m_bulletWorld = new bt(m_bulletCollisionDispatcher, m_bulletBroadphase, m_bulletSolver, m_bulletCollisionConfiguration);
 
@@ -106,7 +112,7 @@ cBulletWorld::cBulletWorld(std::string a_worldName)
     m_bulletSoftBodyWorldInfo->water_normal		=	btVector3(0,0,0);
     m_bulletSoftBodyWorldInfo->m_gravity.setValue(0,0,-9.81);
 
-    m_bulletWorld->getDispatchInfo().m_enableSPU = true;
+//    m_bulletWorld->getDispatchInfo().m_enableSPU = true;
     m_bulletSoftBodyWorldInfo->m_sparsesdf.Initialize();
 }
 
@@ -173,11 +179,13 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double 
 
     m_wallClock = a_wallClock;
 
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if(m_afWorldPtr.get() != nullptr){
         while (!m_afWorldPtr->step_sim()){
             usleep(1);
         }
     }
+    #endif
     // apply wrench from ROS
     list<cBulletGenericObject*>::iterator i;
 
@@ -193,12 +201,14 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double 
     // add time to overall simulation
     m_simulationTime = m_simulationTime + a_interval;
 
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if (m_afWorldPtr.get() != nullptr){
         m_afWorldPtr->set_chai_sim_time(m_simulationTime);
         m_afWorldPtr->set_chai_wall_time(m_wallClock);
         m_afWorldPtr->set_loop_freq(a_loopFreq);
         m_afWorldPtr->set_num_devices(a_numDevices);
     }
+    #endif
 
     // update CHAI3D positions for of all object
     updatePositionFromDynamics();
@@ -207,7 +217,7 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double 
 
 //==============================================================================
 /*!
-    This methods updates the position and orientation from the Bullet models 
+    This methods updates the position and orientation from the Bullet models
     to CHAI3D models.
 */
 //==============================================================================

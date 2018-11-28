@@ -33,7 +33,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
+    POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
     \author    Francois Conti, Adnan Munawar
@@ -139,7 +139,7 @@ void cBulletMesh::setLocalRot(const cMatrix3d& a_rotation)
 
 //==============================================================================
 /*!
-    This method updates the position and orientation data from the Bullet 
+    This method updates the position and orientation data from the Bullet
     representation to the CHAI3D representation.
 */
 //==============================================================================
@@ -165,6 +165,7 @@ void cBulletMesh::updatePositionFromDynamics()
         m_localRot.orthogonalize();
     }
 
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     // update Transform data for m_rosObj
     if(m_afObjPtr.get() != nullptr){
         m_afObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
@@ -172,6 +173,7 @@ void cBulletMesh::updatePositionFromDynamics()
         q.fromRotMat(m_localRot);
         m_afObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
     }
+    #endif
 }
 
 
@@ -187,7 +189,7 @@ void cBulletMesh::buildContactTriangles(const double a_margin)
 
     // read number of triangles of the object
     unsigned int numTriangles = m_triangles->getNumElements();
- 
+
     // add all triangles to Bullet model
     for (unsigned int i=0; i<numTriangles; i++)
     {
@@ -199,8 +201,8 @@ void cBulletMesh::buildContactTriangles(const double a_margin)
         cVector3d vertex1 = m_vertices->getLocalPos(vertexIndex1);
         cVector3d vertex2 = m_vertices->getLocalPos(vertexIndex2);
 
-        mesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)), 
-                          btVector3(vertex1(0), vertex1(1), vertex1(2)), 
+        mesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)),
+                          btVector3(vertex1(0), vertex1(1), vertex1(2)),
                           btVector3(vertex2(0), vertex2(1), vertex2(2)));
     }
 
@@ -224,7 +226,7 @@ void cBulletMesh::buildContactConvexTriangles(const double a_margin)
 
     // read number of triangles of the object
     unsigned int numTriangles = m_triangles->getNumElements();
- 
+
     // add all triangles to Bullet model
     for (unsigned int i=0; i<numTriangles; i++)
     {
@@ -236,8 +238,8 @@ void cBulletMesh::buildContactConvexTriangles(const double a_margin)
         cVector3d vertex1 = m_vertices->getLocalPos(vertexIndex1);
         cVector3d vertex2 = m_vertices->getLocalPos(vertexIndex2);
 
-        mesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)), 
-                          btVector3(vertex1(0), vertex1(1), vertex1(2)), 
+        mesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)),
+                          btVector3(vertex1(0), vertex1(1), vertex1(2)),
                           btVector3(vertex2(0), vertex2(1), vertex2(2)));
     }
 
@@ -258,7 +260,7 @@ void cBulletMesh::buildContactHull(const double a_margin)
 {
     // create convex hull
     m_bulletCollisionShape = new btConvexHullShape((double*)(&m_vertices->m_localPos[0]), m_vertices->getNumElements(), sizeof(cVector3d));
-    
+
     // set margin
     m_bulletCollisionShape->setMargin(a_margin);
 }

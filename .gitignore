@@ -11,3 +11,4 @@ extras/hdPhantom/log\.txt
 extras/hdPhantom/obj/release/lin-x86_64-gcc/shared/hdPhantom\.o
 
 *.autosave
+*.DS_Store

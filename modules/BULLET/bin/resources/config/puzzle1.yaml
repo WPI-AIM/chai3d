@@ -1,0 +1,25 @@
+# Generate By: Adnan Munawar
+# Testing, no version number yet
+links: [link1, link2]
+joints: []
+high_res_path: ../resources/models/puzzle2/high_res/
+low_res_path: ../resources/models/puzzle2/low_res/
+
+link1:
+ name: Cube
+ mass: 2.0
+ mesh: Cube.STL
+ scale: 0.4
+ position: {x: -1.5, y: -1.5, z: -0.5}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: blue_corn_flower
+
+link2:
+ name: Sphere
+ mass: 4.0
+ mesh: Sphere.STL
+ scale: 0.4
+ position: {x: -1.5, y: -1.5, z: -1.0}
+ rotation: {r: 0.0, p: 0.0, y: 0.0}
+ color: pink_hot
+ friction: {static: 0.9, rolling: 0.1}

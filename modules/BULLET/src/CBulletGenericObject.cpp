@@ -116,9 +116,11 @@ cBulletGenericObject::~cBulletGenericObject()
 void cBulletGenericObject::setMass(const double a_mass)
 {
     m_mass = a_mass;
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if(m_afObjPtr.get() != nullptr){
         m_afObjPtr->set_mass(a_mass);
     }
+    #endif
 }
 
 
@@ -132,11 +134,13 @@ void cBulletGenericObject::setMass(const double a_mass)
 void cBulletGenericObject::setInertia(const cVector3d& a_inertia)
 {
     m_inertia = a_inertia;
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if(m_afObjPtr.get() != nullptr){
         m_afObjPtr->set_principal_intertia(a_inertia(0),
                                             a_inertia(1),
                                             a_inertia(2));
     }
+    #endif
 }
 
 
@@ -202,11 +206,13 @@ void cBulletGenericObject::estimateInertia()
         m_inertia(1) = inertia[1];
         m_inertia(2) = inertia[2];
 
+        #ifdef C_ENABLE_CHAI_ENV_SUPPORT
         if(m_afObjPtr.get() != nullptr){
             m_afObjPtr->set_principal_intertia(m_inertia(0),
                                                 m_inertia(1),
                                                 m_inertia(2));
         }
+        #endif
     }
 }
 
@@ -225,9 +231,11 @@ void cBulletGenericObject::setStatic(bool a_static)
     {
         m_bulletRigidBody->activate(!a_static);
 
+        #ifdef C_ENABLE_CHAI_ENV_SUPPORT
         if(m_afObjPtr.get() != nullptr){
             m_afObjPtr->set_mass(0);
         }
+        #endif
     }
 }
 
@@ -317,10 +325,12 @@ void cBulletGenericObject::addExternalTorque(const cVector3d& a_torque)
 */
 //==============================================================================
 void cBulletGenericObject::updateROSMessageTime(const double *a_wall_time, const double *a_sim_time){
+     #ifdef C_ENABLE_CHAI_ENV_SUPPORT
      if (m_afObjPtr.get() != nullptr){
          m_afObjPtr->set_chai_wall_time(*a_wall_time);
          m_afObjPtr->set_chai_sim_time(*a_sim_time);
      }
+     #endif
 }
 
 //==============================================================================
@@ -329,6 +339,7 @@ void cBulletGenericObject::updateROSMessageTime(const double *a_wall_time, const
 */
 //==============================================================================
 void cBulletGenericObject::updateCmdFromROS(double dt){
+  #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if (m_afObjPtr.get() != nullptr){
         m_afObjPtr->update_af_cmd();
         cVector3d force, torque;
@@ -383,6 +394,7 @@ void cBulletGenericObject::updateCmdFromROS(double dt){
         addExternalForce(force);
         addExternalTorque(torque);
     }
+    #endif
 }
 
 //==============================================================================

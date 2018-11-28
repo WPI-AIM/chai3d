@@ -37,7 +37,7 @@
 
     \author    <http://www.chai3d.org>
     \author    Adnan Munawar
-    \version   3.2.0 $Rev: 2161 $
+    \version   3.2.1 $Rev: 2161 $
 */
 //==============================================================================
 
@@ -136,6 +136,76 @@ void cBulletSoftMultiMesh::setLocalRot(const cMatrix3d& a_rotation)
         m_bulletRigidBody->setCenterOfMassTransform(trans);
 }
 
+//==============================================================================
+/*!
+    This method updates x,y,z to the max value as compared to v
+*/
+//==============================================================================
+void updateMins(double &x, double &y, double &z, cVector3d &v){
+    x = cMin(x,v.x());
+    y = cMin(y,v.y());
+    z = cMin(z,v.z());
+}
+
+//==============================================================================
+/*!
+    This method updates vMin to the min value as compared to v
+*/
+//==============================================================================
+void updateMins(cVector3d &vMin, cVector3d &v){
+    vMin.x(cMin(vMin.x(),v.x()));
+    vMin.y(cMin(vMin.y(),v.y()));
+    vMin.z(cMin(vMin.z(),v.z()));
+}
+
+//==============================================================================
+/*!
+    This method updates x,y,z to the max value as compared to v
+*/
+//==============================================================================
+void updateMaxs(double &x, double &y, double &z, cVector3d &v){
+    x = cMax(x,v.x());
+    y = cMax(y,v.y());
+    z = cMax(z,v.z());
+}
+
+//==============================================================================
+/*!
+    This method updates vMax to the max value as compared to v
+*/
+//==============================================================================
+void updateMaxs(cVector3d &vMax, cVector3d &v){
+    vMax.x(cMax(vMax.x(),v.x()));
+    vMax.y(cMax(vMax.y(),v.y()));
+    vMax.z(cMax(vMax.z(),v.z()));
+}
+
+
+//==============================================================================
+/*!
+    This method updates the vertices from the nodes of bullet soft body
+*/
+//==============================================================================
+void updateMesh(cMesh* mesh, btSoftBody* sb, std::vector<VertexTree>* tree){
+    btVector3 bVec;
+    cVector3d cVec;
+    for (int i = 0 ; i < tree->size() ; i++){
+        bVec = sb->m_nodes[i].m_x;
+        cVec.set(bVec.x(), bVec.y(), bVec.z());
+        for (int j = 0 ; j < (*tree)[i].vertexIdx.size() ; j++){
+            int idx = (*tree)[i].vertexIdx[j];
+            mesh->m_vertices->setLocalPos(idx, cVec);
+        }
+    }
+    mesh->computeAllNormals();
+}
+
+void cBulletSoftMultiMesh::render(cRenderOptions &a_options){
+    updateVertexPosition();
+    computeAllNormals();
+    cGELMesh::render(a_options);
+}
+
 
 //==============================================================================
 /*!
@@ -147,73 +217,22 @@ void cBulletSoftMultiMesh::updatePositionFromDynamics()
 {
     if (m_bulletSoftBody)
     {
-        // create collision detector for each mesh
-        std::vector<cMesh*>::iterator it;
-        for (it = m_meshes->begin(); it < m_meshes->end(); it++)
-        {
-            cMesh* mesh = (*it);
-
-            // read number of triangles of the object
-            unsigned int nVerts = m_bulletSoftBody->m_nodes.size();
-            // add all triangles to Bullet model
-            m_counter++;
-            if(m_counter % 2 ==0){
-                for (unsigned int i=0; i<nVerts; i++)
-                {
-                    btVector3 v = m_bulletSoftBody->m_nodes[i].m_x;
-                    for(unsigned int j=0 ; j < 3 ; j++){
-                        mesh->m_vertices->setLocalPos(i,v.x(), v.y(), v.z());
-                    }
-                }
-
-            }
-
-        }
-        markForUpdate(true);
+        updateGELSkeletonFrombtSoftBody();
     }
 
     // update Transform data for m_rosObj
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if(m_afObjPtr.get() != nullptr){
         m_afObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
         cQuaternion q;
         q.fromRotMat(m_localRot);
         m_afObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
     }
+#endif
 }
 
-struct TVPair{
-    std::list<unsigned int> triangleIdx;
-    std::list<unsigned int> vertexIdx;
-} g_tvPair;
-
-std::map<unsigned int, TVPair> g_vertexTVMap;
-
-void updateMins(double &x, double &y, double &z, cVector3d &v){
-    x = cMin(x,v.x());
-    y = cMin(y,v.y());
-    z = cMin(z,v.z());
-}
-
-void updateMins(cVector3d &vMin, cVector3d &v){
-    vMin.x(cMin(vMin.x(),v.x()));
-    vMin.y(cMin(vMin.y(),v.y()));
-    vMin.z(cMin(vMin.z(),v.z()));
-}
-
-void updateMaxs(double &x, double &y, double &z, cVector3d &v){
-    x = cMax(x,v.x());
-    y = cMax(y,v.y());
-    z = cMax(z,v.z());
-}
-
-void updateMaxs(cVector3d &vMax, cVector3d &v){
-    vMax.x(cMax(vMax.x(),v.x()));
-    vMax.y(cMax(vMax.y(),v.y()));
-    vMax.z(cMax(vMax.z(),v.z()));
-}
-
-//bool isPresentInGrid(unsigned int cntIdx, cVector3d &v, cVector3d &vMin, cVector3d &vBounds, bool* vtxCheckGrid, int* vtxIdxGrid){
-//    unsigned int xIdx, yIdx, zIdx;
+//bool isPresentInGrid(int cntIdx, cVector3d &v, cVector3d &vMin, cVector3d &vBounds, bool* vtxCheckGrid, int* vtxIdxGrid){
+//    int xIdx, yIdx, zIdx;
 //    xIdx = (v.x() + vMin.x()) / vBounds.x();
 //    yIdx = (v.y() + vMin.y()) / vBounds.y();
 //    zIdx = (v.z() + vMin.z()) / vBounds.z();
@@ -223,6 +242,281 @@ void updateMaxs(cVector3d &vMax, cVector3d &v){
 //    }
 //}
 
+void clearArrays(bool * vtxChkBlock, int * vtxIdxBlock, int blockSize){
+    int s = blockSize*blockSize*blockSize;
+    memset(vtxChkBlock, false, s*sizeof(bool));
+    memset(vtxIdxBlock, -1, s*sizeof(int));
+}
+
+void cBulletSoftMultiMesh::computeUniqueVerticesandTriangles(cMesh* mesh, std::vector<btScalar>* outputVertices, std::vector<int>* outputTriangles, bool print_debug_info){
+
+    // read number of triangles of the object
+    int numTriangles = mesh->m_triangles->getNumElements();
+    int numVertices = mesh->m_vertices->getNumElements();
+
+    if (print_debug_info){
+        printf("# Triangles %d, # Vertices %d \n", numTriangles, numVertices);
+    }
+
+    // The max number of vertices to check per block
+    int blockSize = 60;
+    // Number of default blocks
+    int numBlocks = 1;
+    //Define bound for lowest value of vertices
+    cVector3d vMin(9999,9999,9999);
+    //Define bound for max value of vertices
+    cVector3d vMax(-9999,-9999,-9999);
+    cVector3d vBounds;
+
+    // Update the min and max value x,y,z value of vertices to get bounds
+    for (int x = 0 ; x < numVertices ; x++){
+        cVector3d v = mesh->m_vertices->getLocalPos(x);
+        updateMins(vMin, v);
+        updateMaxs(vMax, v);
+    }
+    // Update magnitude of bound
+    vBounds = vMax - vMin;
+    if (print_debug_info){
+        printf("***************************************\n");
+        printf("Vmin = [%f, %f, %f] \n", vMin.x(), vMin.y(), vMin.z());
+        printf("Vmax = [%f, %f, %f] \n", vMax.x(), vMax.y(), vMax.z());
+        printf("VBounds = [%f, %f, %f] \n", vBounds.x(), vBounds.y(), vBounds.z());
+        printf("***************************************\n");
+    }
+    // Place holder for count of repeat and duplicate vertices
+    int uniqueVtxCount = 0;
+    int duplicateVtxCount = 0;
+
+    // If number of vertices is greater the vertices per block, increase no of blocks
+    // This is to prevent memory exhaustion
+    if (numVertices > blockSize){
+        numBlocks = std::ceil((float)numVertices / (float)blockSize);
+    }
+
+    if (print_debug_info){
+        printf("Using %d blocks \n", numBlocks);
+    }
+    // Copy over the vertices to process without altering the original data
+    auto vtxArrCopy = mesh->m_vertices->copy();
+    // This tri vector is to store the unaltered indices in the first row vertices referring to their
+    // original copy in the second row. The third row contains the index to the vertices after
+    // the unique vertices have been place in the outputVertices array
+    // . E.g. if a vertex at idx 5 was a repeat of vtx at idx 3, vtxIdxPair[5][0] = 5 ; vtxIdxPair[5][1] = 3;
+    // and if the vertex was added to the array of unique vertices at Idx 2 then vtxIdxPair[5][2] = 2;
+    int vtxIdxTriPair [numVertices][3];
+    memset(vtxIdxTriPair, -1, numVertices*3*sizeof(int));
+
+    // This forms a 3D block with all value init to false
+    // If we visit a specific 3D idx, its set to true to know that we have been there
+    bool vtxChkBlock[blockSize][blockSize][blockSize];
+    // This forms a 3D block with all values init to -1
+    // What ever 3D idx we visited we set the corresponding corrected idx value in this 3D block
+    int vtxIdxBlock[blockSize][blockSize][blockSize];
+    // To reduce computational cost, if we have already checked a vertex, we can mark it
+    bool vtxAlreadyChkd[numVertices];
+    memset(vtxAlreadyChkd, false, numVertices*sizeof(bool));
+    int xblockLowerBound; int xblockUpperBound;
+    int yblockLowerBound; int yblockUpperBound;
+    int zblockLowerBound; int zblockUpperBound;
+    int vxKey;
+    int vyKey;
+    int vzKey;
+    cVector3d vPos;
+    double xCoeff = (double) (numVertices - 1) / vBounds.x();
+    double yCoeff = (double) (numVertices - 1) / vBounds.y();
+    double zCoeff = (double) (numVertices - 1) / vBounds.z();
+    for (int xblockNum = 0 ; xblockNum < numBlocks ; xblockNum ++){
+        xblockLowerBound = xblockNum * blockSize;
+        xblockUpperBound = xblockLowerBound + blockSize;
+        for (int yblockNum = 0 ; yblockNum < numBlocks ; yblockNum ++){
+            yblockLowerBound = yblockNum * blockSize;
+            yblockUpperBound = yblockLowerBound + blockSize;
+            for (int zblockNum = 0 ; zblockNum < numBlocks ; zblockNum ++){
+                zblockLowerBound = zblockNum * blockSize;
+                zblockUpperBound = zblockLowerBound + blockSize;
+                if (print_debug_info) {printf("Block Num [%d, %d, %d] \n", xblockNum, yblockNum, zblockNum);}
+                // Clear the 3D idx and chk arrays to be reused for the new block
+                clearArrays(&vtxChkBlock[0][0][0], &vtxIdxBlock[0][0][0], blockSize);
+                for(int idx = 0; idx < numVertices ; idx++){
+                    if (!vtxAlreadyChkd[idx]){
+                        vPos = vtxArrCopy->getLocalPos(idx);
+                        // Generate keys to parse the 3D idx and chk block
+                        vxKey = xCoeff * (vPos.x() - vMin.x());
+                        vyKey = yCoeff * (vPos.y() - vMin.y());
+                        vzKey = zCoeff * (vPos.z() - vMin.z());
+                        // Check if the generated keys are in the bounds of the current block
+                        if (vxKey >= xblockLowerBound && vyKey >= yblockLowerBound && vzKey >= zblockLowerBound){
+                            if (vxKey <= xblockUpperBound && vyKey <= yblockUpperBound && vzKey <= zblockUpperBound){
+                                // If the key lies inside the block, offset the value to the block bounds
+                                vxKey -= xblockLowerBound; vyKey -= yblockLowerBound; vzKey -= zblockLowerBound;
+                                // Mark that we already checked this vertex, so we don't have to check it again
+                                vtxAlreadyChkd[idx] = true;
+                                // Check if the key is already set in the chk block
+                                if (vtxChkBlock[vxKey][vyKey][vzKey] == false){
+                                    // Unique vertex, so mark it as such in the corresponding blocks
+                                    vtxChkBlock[vxKey][vyKey][vzKey] = true;
+                                    // Set the idx block to the original idx
+                                    vtxIdxBlock[vxKey][vyKey][vzKey] = idx;
+                                    // Set the vertexIdx Pair value
+                                    vtxIdxTriPair[idx][0] = idx;
+                                    vtxIdxTriPair[idx][1] = idx;
+                                    uniqueVtxCount ++;
+                                }
+                                else{
+                                    // This is not a unique vertex, so get the original idx
+                                    // and set it in the corresponding blocks
+                                    vtxIdxTriPair[idx][0] = idx;
+                                    vtxIdxTriPair[idx][1] = vtxIdxBlock[vxKey][vyKey][vzKey];
+                                    duplicateVtxCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //Resize once to save on iterative push/pop time
+    outputVertices->resize(uniqueVtxCount*3);
+    outputTriangles->resize(numTriangles*3);
+    m_vertexTree.resize(uniqueVtxCount);
+
+    // This loop uses a logic that appends the index of the new resized array containing
+    // the unique vertices to the index of the original array of duplicated vertices.
+    int vtxCounted = -1;
+    for (int i = 0 ; i < numVertices ; i++){
+        if (vtxIdxTriPair[i][1] == vtxIdxTriPair[i][0] && vtxIdxTriPair[i][2] == -1){
+            vPos = mesh->m_vertices->getLocalPos(i);
+            vtxCounted++;
+            (*outputVertices)[3*vtxCounted + 0] = vPos.x();
+            (*outputVertices)[3*vtxCounted + 1] = vPos.y();
+            (*outputVertices)[3*vtxCounted + 2] = vPos.z();
+
+            vtxIdxTriPair[i][2] = vtxCounted;
+            m_vertexTree[vtxCounted].vertexIdx.push_back(i);
+        }
+        else if(vtxIdxTriPair[i][1] < vtxIdxTriPair[i][0]){
+            int bi = vtxIdxTriPair[i][1];
+            int ci = vtxIdxTriPair[bi][2];
+            if (vtxIdxTriPair[bi][1] != vtxIdxTriPair[bi][0] || ci == -1){
+                throw 'Algorithm Failed for (b[i] < a[i]), a[b[i]] != b[b[i]] : %d and c[b[i]] != -1';
+            }
+            vtxIdxTriPair[i][2] = ci;
+            m_vertexTree[ci].vertexIdx.push_back(i);
+        }
+        else if(vtxIdxTriPair[i][1] > vtxIdxTriPair[i][0]){
+            int bi = vtxIdxTriPair[i][1];
+            if (vtxIdxTriPair[bi][1] != vtxIdxTriPair[bi][0]){
+                throw 'Algorithm Failed for (b[i] > a[i]), a[b[i]] != b[b[i]] : %d';
+            }
+            if (vtxIdxTriPair[bi][2] == -1){
+                vPos = mesh->m_vertices->getLocalPos(bi);
+                vtxCounted++;
+                (*outputVertices)[3*vtxCounted + 0] = vPos.x();
+                (*outputVertices)[3*vtxCounted + 1] = vPos.y();
+                (*outputVertices)[3*vtxCounted + 2] = vPos.z();
+                vtxIdxTriPair[bi][2] = vtxCounted;
+            }
+            vtxIdxTriPair[i][2] = vtxIdxTriPair[bi][2];
+        }
+    }
+
+    // This last loop iterates over the triangle idxes and assigns the re-idxd vertices from the
+    // third row of vtxIdxTriPair
+    for (int i = 0 ; i < numTriangles*3 ; i++){
+        (*outputTriangles)[i] = vtxIdxTriPair[i][2];
+    }
+
+    if (print_debug_info){
+        for (int i = 0 ; i < uniqueVtxCount; i ++){
+            printf("Vertex %d = [%f, %f, %f] \n", i, (*outputVertices)[3*i + 0], (*outputVertices)[3*i + 1], (*outputVertices)[3*i + 2]);
+        }
+
+        for (int i = 0 ; i < uniqueVtxCount; i ++){
+            printf("%d) Children = [", i );
+            for (int j = 0 ; j < m_vertexTree[i].vertexIdx.size(); j++){
+                printf(" %d", m_vertexTree[i].vertexIdx[j]);
+            }
+            printf(" ]\n");
+        }
+
+        for (int i = 0 ; i < numTriangles; i ++){
+            printf("Triangle %d = [%d, %d, %d] \n", i, (*outputTriangles)[3*i], (*outputTriangles)[3*i+1], (*outputTriangles)[3*i+2]);
+        }
+
+        for (int i = 0 ; i < numTriangles*3 ; i++){
+            printf("v[0] = %d \t v[1] = %d \t v[2] = %d \n", vtxIdxTriPair[i][0], vtxIdxTriPair[i][1], vtxIdxTriPair[i][2]);
+        }
+    }
+
+    printf("Unique Vertices Found = %d, Duplicate Vertices Found = %d\n", uniqueVtxCount, duplicateVtxCount);
+}
+
+
+//==============================================================================
+/*!
+    This method creates a GEL Skeleton based on the underlying bullet softbody
+*/
+//==============================================================================
+void cBulletSoftMultiMesh::createGELSkeleton(){
+    int nLinks = m_bulletSoftBody->m_links.size();
+    int nNodes = m_bulletSoftBody->m_nodes.size();
+    std::vector<cGELSkeletonNode*> vNodes;
+    vNodes.resize(nNodes);
+    for (int i = 0 ; i < nNodes ; i++){
+        auto btNode = m_bulletSoftBody->m_nodes[i];
+        cGELSkeletonNode* gelNode = new cGELSkeletonNode;
+        m_nodes.push_back(gelNode);
+        vNodes[i] = gelNode;
+        gelNode->m_pos.set(btNode.m_x.x(), btNode.m_x.y(), btNode.m_x.z());
+        gelNode->m_nextRot.identity();
+    }
+
+    for (int i = 0 ; i < m_trianglesPtr.size()/3 ; i++){
+        int nodeIdx0 = m_trianglesPtr[3*i + 0];
+        int nodeIdx1 = m_trianglesPtr[3*i + 1];
+        int nodeIdx2 = m_trianglesPtr[3*i + 2];
+        if (m_bulletSoftBody->checkLink(nodeIdx0, nodeIdx1)){
+            cGELSkeletonLink* link = new cGELSkeletonLink(vNodes[nodeIdx0], vNodes[nodeIdx1]);
+            m_links.push_back(link);
+        }
+        if (m_bulletSoftBody->checkLink(nodeIdx1, nodeIdx2)){
+            cGELSkeletonLink* link = new cGELSkeletonLink(vNodes[nodeIdx1], vNodes[nodeIdx2]);
+            m_links.push_back(link);
+        }
+        if (m_bulletSoftBody->checkLink(nodeIdx2, nodeIdx0)){
+            cGELSkeletonLink* link = new cGELSkeletonLink(vNodes[nodeIdx2], vNodes[nodeIdx0]);
+            m_links.push_back(link);
+        }
+    }
+    m_showSkeletonModel = true;
+    m_useSkeletonModel = true;
+}
+
+void cBulletSoftMultiMesh::updateGELSkeletonFrombtSoftBody(){
+    std::list<cGELSkeletonNode*>::iterator n;
+    int i = 0;
+    for(n = m_nodes.begin(); n != m_nodes.end(); ++n)
+    {
+        btVector3 &vPos = m_bulletSoftBody->m_nodes[i].m_x;
+        btVector3 &vNorm = m_bulletSoftBody->m_nodes[i].m_n;
+        (*n)->m_nextPos.set(vPos.x(), vPos.y(), vPos.z());
+        cVector3d nz = (*n)->m_rot.getCol2();
+        cVector3d nzSB(vNorm.x(), vNorm.y(), vNorm.z());
+        double angle = cAngle(nz, nzSB);
+        cVector3d rotAxes = cNormalize(cCross(nz, nzSB));
+        if (rotAxes.length() == 1.0){
+            (*n)->m_nextRot.rotateAboutGlobalAxisRad(rotAxes, angle);
+        }
+//        (*n)->m_nextRot.identity();
+        i++;
+    }
+    for(n = m_nodes.begin(); n != m_nodes.end(); ++n)
+    {
+        (*n)->applyNextPose();
+    }
+}
+
 
 //==============================================================================
 /*!
@@ -231,6 +525,7 @@ void updateMaxs(cVector3d &vMax, cVector3d &v){
 //==============================================================================
 void cBulletSoftMultiMesh::buildContactTriangles(const double a_margin, cMultiMesh* lowResMesh)
 {
+    buildVertices();
     // create compound shape
     btCompoundShape* compound = new btCompoundShape();
     m_bulletCollisionShape = compound;
@@ -250,151 +545,49 @@ void cBulletSoftMultiMesh::buildContactTriangles(const double a_margin, cMultiMe
         cMesh* mesh = (*it);
 
         // read number of triangles of the object
-        unsigned int numTriangles = mesh->m_triangles->getNumElements();
-        unsigned int numVertices = mesh->m_vertices->getNumElements();
+        int numTriangles = mesh->m_triangles->getNumElements();
+        computeUniqueVerticesandTriangles(mesh, &m_verticesPtr, &m_trianglesPtr);
+        m_bulletSoftBody = btSoftBodyHelpers::CreateFromTriMesh(*m_dynamicWorld->m_bulletSoftBodyWorldInfo,
+                                                                          m_verticesPtr.data(), m_trianglesPtr.data(), numTriangles);
+        createGELSkeleton();
+        connectVerticesToSkeleton(false);
+        // add to compound object
+        btTransform localTrans;
+        btVector3 pos;
+        btQuaternion q;
 
-        printf("# Triangles %d, # Vertices %d \n", numTriangles, numVertices);
+        // set new position
+        cVector3d posMesh = mesh->getLocalPos();
+        pos[0] = posMesh(0);
+        pos[1] = posMesh(1);
+        pos[2] = posMesh(2);
 
+        // set new orientation
+        cMatrix3d rotMesh = mesh->getLocalRot();
+        cQuaternion quaternion;
+        quaternion.fromRotMat(rotMesh);
 
+        q.setW(quaternion.w);
+        q.setX(quaternion.x);
+        q.setY(quaternion.y);
+        q.setZ(quaternion.z);
 
-        bool vertexCheckGrid [numVertices][numVertices][numVertices];
-        unsigned int vertexIdxGrid [numVertices][numVertices][numVertices];
-        double sbTriangleArray[numTriangles * 3];
-        std::vector<double> sbVertexArray;
-        cVector3d vMin(9999,9999,9999);
-        cVector3d vMax(-9999,-9999,-9999);
-        cVector3d vBounds;
+        // set new transform
+        localTrans.setOrigin(pos);
+        localTrans.setRotation(q);
 
-        for (unsigned int x = 0 ; x < numVertices ; x++){
-            cVector3d v = mesh->m_vertices->getLocalPos(x);
-            updateMins(vMin, v);
-            updateMaxs(vMax, v);
-            for (unsigned int y = 0 ; y < numVertices ; y++){
-                for (unsigned int z = 0 ; z < numVertices ; z++){
-                    vertexCheckGrid[x][y][z] = false;
-                    vertexIdxGrid[x][y][z] = -1;
-                }
-            }
-        }
-        vBounds = vMax - vMin;
-        printf("***************************************\n");
-        printf("Vmin = [%f, %f, %f] \n", vMin.x(), vMin.y(), vMin.z());
-        printf("Vmax = [%f, %f, %f] \n", vMax.x(), vMax.y(), vMax.z());
-        printf("VBounds = [%f, %f, %f] \n", vBounds.x(), vBounds.y(), vBounds.z());
-        printf("***************************************\n");
-        int unique = 0;
-        int duplicate = 0;
-        for (unsigned int tNum = 0 ; tNum < numTriangles ; tNum ++){
-            for (unsigned int vNum = 0 ; vNum < 3 ; vNum++){
+        // Apply the inertial transform offset
+        localTrans *= m_inertialOffsetTransform.inverse();
 
-                auto vIdx = mesh->m_triangles->getVertexIndex(tNum, vNum);
-                auto vPos = mesh->m_vertices->getLocalPos(vIdx);
-//                printf("Triangle # %d, Vertex # %d, Idx # %d \n", tNum, vNum, vIdx);
-
-                unsigned int xKey = (double) (numVertices - 1) * ((vPos.x() - vMin.x()) / vBounds.x());
-                unsigned int yKey = (double) (numVertices - 1) * ((vPos.y() - vMin.y()) / vBounds.y());
-                unsigned int zKey = (double) (numVertices - 1) * ((vPos.z() - vMin.z()) / vBounds.z());
-
-//                printf("vPos = [%f, %f, %f] \n", vPos.x(), vPos.y(), vPos.z());
-                printf("Keys = [%d, %d, %d] ", xKey, yKey, zKey);
-
-                if (vertexCheckGrid[xKey][yKey][zKey] == false){
-                    vertexCheckGrid[xKey][yKey][zKey] = true;
-                    vertexIdxGrid[xKey][yKey][zKey] = 3*tNum + vNum;
-                    sbTriangleArray[tNum + vNum] = sbVertexArray.size();
-                    sbVertexArray.push_back(vPos.x());
-                    sbVertexArray.push_back(vPos.y());
-                    sbVertexArray.push_back(vPos.z());
-                    TVPair tvPair;
-                    tvPair.triangleIdx.push_back(tNum);
-                    tvPair.vertexIdx.push_back(vIdx);
-                    g_vertexTVMap[tNum] = tvPair;
-                    printf("New Vertex \n");
-                    unique++;
-
-                }
-                else{
-                    unsigned int matchedVtxIdx = vertexIdxGrid[xKey][yKey][zKey];
-                    g_vertexTVMap[matchedVtxIdx].triangleIdx.push_back(tNum);
-                    g_vertexTVMap[matchedVtxIdx].vertexIdx.push_back(vIdx);
-                    sbTriangleArray[tNum + vNum] = matchedVtxIdx;
-                    printf("Duplicate Vertex \n");
-                    duplicate++;
-                }
-            }
-        }
-
-        for (int i = 0; i < numVertices ; i++){
-            printf("Vertex %d, TV Map Size %d \n", i, g_vertexTVMap[i].triangleIdx.size());
-        }
-        printf("Unique Vertices Found = %d, Duplicate Vertices Found = %d\n", unique, duplicate);
-
-
-//        for (int i = 0 ; i < numVertices ; i ++){
-//            auto p = mesh->m_vertices->getLocalPos(i);
-//            printf("Vertices %d = [%f, %f, %f]\n", i, p.x(), p.y(), p.z());
-//        }
-
-//        // bullet mesh
-//        m_trianglesPtr = new int[numTriangles*3];
-//        m_verticesPtr = new btScalar[numTriangles*9];
-
-//        // add all triangles to Bullet model
-//        for (unsigned int i=0; i<numTriangles; i++)
-//        {
-//            m_trianglesPtr[3*i + 0] = mesh->m_triangles->getVertexIndex0(i);
-//            m_trianglesPtr[3*i + 1] = mesh->m_triangles->getVertexIndex1(i);
-//            m_trianglesPtr[3*i + 2] = mesh->m_triangles->getVertexIndex2(i);
-
-//            for(unsigned int j=0 ; j < 3 ; j++){
-//                cVector3d vertex = mesh->m_vertices->getLocalPos(m_trianglesPtr[3*i + j]);
-//                m_verticesPtr[ (9*i) + (3*j) + 0] = vertex.x();
-//                m_verticesPtr[ (9*i) + (3*j) + 1] = vertex.y();
-//                m_verticesPtr[ (9*i) + (3*j) + 2] = vertex.z();
-//            }
-//        }
-//        // create mesh collision model
-//        m_bulletSoftBody = btSoftBodyHelpers::CreateFromTriMesh(*m_dynamicWorld->m_bulletSoftBodyWorldInfo,
-//                                                                          m_verticesPtr, m_trianglesPtr, numTriangles);
-
-//        // add to compound object
-//        btTransform localTrans;
-//        btVector3 pos;
-//        btQuaternion q;
-
-//        // set new position
-//        cVector3d posMesh = mesh->getLocalPos();
-//        pos[0] = posMesh(0);
-//        pos[1] = posMesh(1);
-//        pos[2] = posMesh(2);
-
-//        // set new orientation
-//        cMatrix3d rotMesh = mesh->getLocalRot();
-//        cQuaternion quaternion;
-//        quaternion.fromRotMat(rotMesh);
-
-//        q.setW(quaternion.w);
-//        q.setX(quaternion.x);
-//        q.setY(quaternion.y);
-//        q.setZ(quaternion.z);
-
-//        // set new transform
-//        localTrans.setOrigin(pos);
-//        localTrans.setRotation(q);
-
-//        // Apply the inertial transform offset
-//        localTrans *= m_inertialOffsetTransform.inverse();
-
-//        // add collision shape to compound
-//        m_bulletSoftBody->getCollisionShape()->setUserPointer(m_bulletSoftBody);
-////        m_bulletSoftBody->setTotalMass(50,true);
-//        btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) m_dynamicWorld->m_bulletWorld;
-//        softWorld->addSoftBody(m_bulletSoftBody);
-//        m_dynamicWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
+        // add collision shape to compound
+        m_bulletSoftBody->getCollisionShape()->setUserPointer(m_bulletSoftBody);
+        btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) m_dynamicWorld->m_bulletWorld;
+        softWorld->addSoftBody(m_bulletSoftBody);
+        m_dynamicWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
     }
-//    if(lowResMesh){
-//        lowResMesh->m_meshes->clear();
-//    }
+    if(lowResMesh){
+        lowResMesh->m_meshes->clear();
+    }
 }
 
 
@@ -414,65 +607,6 @@ void cBulletSoftMultiMesh::buildContactConvexTriangles(const double a_margin)
     for (it = m_meshes->begin(); it < m_meshes->end(); it++)
     {
         cMesh* mesh = (*it);
-
-        // bullet mesh
-        btTriangleMesh* bulletMesh = new btTriangleMesh();
-
-        // read number of triangles of the object
-        unsigned int numTriangles = mesh->m_triangles->getNumElements();
-
-        // add all triangles to Bullet model
-        for (unsigned int i=0; i<numTriangles; i++)
-        {
-            unsigned int vertexIndex0 = mesh->m_triangles->getVertexIndex0(i);
-            unsigned int vertexIndex1 = mesh->m_triangles->getVertexIndex1(i);
-            unsigned int vertexIndex2 = mesh->m_triangles->getVertexIndex2(i);
-
-            cVector3d vertex0 = mesh->m_vertices->getLocalPos(vertexIndex0);
-            cVector3d vertex1 = mesh->m_vertices->getLocalPos(vertexIndex1);
-            cVector3d vertex2 = mesh->m_vertices->getLocalPos(vertexIndex2);
-
-            bulletMesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)), 
-                btVector3(vertex1(0), vertex1(1), vertex1(2)), 
-                btVector3(vertex2(0), vertex2(1), vertex2(2)));
-        }
-
-        // create mesh collision model
-        btConvexTriangleMeshShape* collisionShape = new btConvexTriangleMeshShape(bulletMesh);
-
-        // assign settings
-        collisionShape->setMargin(a_margin);
-
-        // add to compound object
-        btTransform localTrans;
-        btVector3 pos;
-        btQuaternion q;
-
-        // set new position
-        cVector3d posMesh = mesh->getLocalPos();
-        pos[0] = posMesh(0);
-        pos[1] = posMesh(1);
-        pos[2] = posMesh(2);
-
-        // set new orientation
-        cMatrix3d rotMesh = mesh->getLocalRot();
-        cQuaternion quaternion;
-        quaternion.fromRotMat(rotMesh);
-
-        q.setW(quaternion.w);
-        q.setX(quaternion.x);
-        q.setY(quaternion.y);
-        q.setZ(quaternion.z);
-
-        // set new transform
-        localTrans.setOrigin(pos);
-        localTrans.setRotation(q);
-
-        // Apply the inertial transform offset
-        localTrans *= m_inertialOffsetTransform.inverse();
-
-        // add collision shape to compound
-        compound->addChildShape(localTrans, collisionShape);
     }
 }
 
@@ -484,52 +618,35 @@ void cBulletSoftMultiMesh::buildContactConvexTriangles(const double a_margin)
 //==============================================================================
 void cBulletSoftMultiMesh::buildContactHull(const double a_margin)
 {
-    // create compound shape
-    btCompoundShape* compound = new btCompoundShape();
-    m_bulletCollisionShape = compound;
-
+    buildVertices();
     // create collision detector for each mesh
     std::vector<cMesh*>::iterator it;
     for (it = m_meshes->begin(); it < m_meshes->end(); it++)
     {
         cMesh* mesh = (*it);
 
-        // create convex hull
-        btConvexHullShape* collisionShape = new btConvexHullShape((double*)(&mesh->m_vertices->m_localPos[0]), mesh->m_vertices->getNumElements(), sizeof(cVector3d));
+        // read number of triangles of the object
+        int numVertices = mesh->m_vertices->getNumElements();
 
-        // set margin
-        collisionShape->setMargin(a_margin);
+        m_verticesVecPtr.resize(numVertices);
 
-        // add to compound object
-        btTransform localTrans;
-        btVector3 pos;
-        btQuaternion q;
+        // add all triangles to Bullet model
+        for (int i=0; i<numVertices; i++)
+        {
+            auto vPos = mesh->m_vertices->getLocalPos(i);
+            m_verticesVecPtr[i].setValue(vPos.x(), vPos.y(), vPos.z());
 
-        // set new position
-        cVector3d posMesh = mesh->getLocalPos();
-        pos[0] = posMesh(0);
-        pos[1] = posMesh(1);
-        pos[2] = posMesh(2);
+        }
 
-        // set new orientation
-        cMatrix3d rotMesh = mesh->getLocalRot();
-        cQuaternion quaternion;
-        quaternion.fromRotMat(rotMesh);
+        m_bulletSoftBody = btSoftBodyHelpers::CreateFromConvexHull(*m_dynamicWorld->m_bulletSoftBodyWorldInfo, m_verticesVecPtr.data(), numVertices);
 
-        q.setW(quaternion.w);
-        q.setX(quaternion.x);
-        q.setY(quaternion.y);
-        q.setZ(quaternion.z);
+//         add collision shape to compound
+        m_bulletSoftBody->getCollisionShape()->setUserPointer(m_bulletSoftBody);
+//        m_bulletSoftBody->setTotalMass(50,true);
+        btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) m_dynamicWorld->m_bulletWorld;
+        softWorld->addSoftBody(m_bulletSoftBody);
+//        m_dynamicWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
 
-        // set new transform
-        localTrans.setOrigin(pos);
-        localTrans.setRotation(q);
-
-        // Apply the inertial transform offset
-        localTrans *= m_inertialOffsetTransform.inverse();
-
-        // add collision shape to compound
-        compound->addChildShape(localTrans, collisionShape);
     }
 }
 

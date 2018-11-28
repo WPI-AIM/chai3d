@@ -47,11 +47,20 @@
 //------------------------------------------------------------------------------
 #include "CBulletGenericObject.h"
 #include "chai3d.h"
+#include "CGELMesh.h"
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
+
+///
+/// \brief The TVPair struct: A tree
+///
+struct VertexTree{
+    std::vector<int> triangleIdx;
+    std::vector<int> vertexIdx;
+};
 
 //==============================================================================
 /*!
@@ -59,7 +68,7 @@ namespace chai3d {
 
     \brief
     <b> Bullet Module </b> \n 
-    Bullet MultiMesh Object.
+    Bullet Soft MultiMesh Object.
 */
 //==============================================================================
 
@@ -72,10 +81,10 @@ namespace chai3d {
     This class implements a Bullet dynamic soft multi-mesh.
 
     \details
-    cBulletMesh models a dynamic multi-mesh object.
+    cBulletSoftMultiMesh models a dynamic soft multi-mesh object.
 */
 //==============================================================================
-class cBulletSoftMultiMesh : public cMultiMesh, public cBulletGenericObject
+class cBulletSoftMultiMesh : public cGELMesh, public cBulletGenericObject
 {
     //--------------------------------------------------------------------------
     // CONSTRUCTOR & DESTRUCTOR:
@@ -84,11 +93,11 @@ class cBulletSoftMultiMesh : public cMultiMesh, public cBulletGenericObject
 public:
 
     //! Constructor of cBulletSoftMultiMesh.
-    cBulletSoftMultiMesh(cBulletWorld* a_world, std::string a_objName = "") : cBulletGenericObject(a_world, a_objName), cMultiMesh() {
+    cBulletSoftMultiMesh(cBulletWorld* a_world, std::string a_objName = "") : cBulletGenericObject(a_world, a_objName) {
     }
 
     //! Destructor of cBulletSoftMultiMesh.
-    virtual ~cBulletSoftMultiMesh() {};
+    virtual ~cBulletSoftMultiMesh() {}
 
 
     //--------------------------------------------------------------------------
@@ -123,6 +132,13 @@ public:
     //--------------------------------------------------------------------------
 
 public:
+    //! This method loads a mesh from a file.
+//    virtual loadFromFile(std::string a_filename);
+
+    //! This method updates the skeletal model of GEL from Bullet's softBody.
+    virtual void updateGELSkeletonFrombtSoftBody();
+
+    virtual void render(cRenderOptions &a_options);
 
     //! This method creates a Bullet collision model for this object.
     virtual void buildContactConvexTriangles(const double a_margin = 0.01);
@@ -133,13 +149,25 @@ public:
     //! This method creates a Bullet collision model for this object.
     virtual void buildContactHull(const double a_margin = 0.01);
 
+    //! Create CGEL Links and Nodes based on bulletSoftBody
+    virtual void createGELSkeleton();
+
     inline btSoftBody* getSoftBody(){return m_bulletSoftBody;}
 
+    inline void setSoftBody(btSoftBody* a_softBody){m_bulletSoftBody = a_softBody;}
+
+
 private:
-    //! Ptr to vertex arrays of the sofy body
-    btScalar * m_verticesPtr;
+    //! Ptr to scalar vertex arrays of the sofy body
+    std::vector<btScalar> m_verticesPtr;
     //! Ptr to Triangles arrays referring to vertices by indices
-    int * m_trianglesPtr;
+    std::vector<int> m_trianglesPtr;
+     //! Ptr to vector vertex arrays of the sofy body
+    std::vector<btVector3> m_verticesVecPtr;
+    //! Vertex Tree containing vtx idx's that are repeated for a given vtx
+    std::vector<VertexTree> m_vertexTree;
+    //! Function to detect, index and store repeat vertices
+    void computeUniqueVerticesandTriangles(cMesh* mesh, std::vector<btScalar>* outputVertices, std::vector<int>* outputTriangles, bool print_debug_info=false);
 
     unsigned int m_counter = 0;
 

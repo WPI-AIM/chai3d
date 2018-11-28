@@ -46,6 +46,7 @@
 //---------------------------------------------------------------------------
 #include <GLFW/glfw3.h>
 #include <boost/program_options.hpp>
+#include <mutex>
 //---------------------------------------------------------------------------
 using namespace chai3d;
 using namespace std;
@@ -94,7 +95,7 @@ afWorld *g_afWorld;
 cVector3d g_camPos(0,0,0);
 cVector3d g_dev_vel;
 cMatrix3d g_cam_rot_last[10], g_dev_rot_last[10], g_dev_rot_cur[10];
-bool _cam_pressed[10];;
+bool _cam_pressed[10];
 double g_dt_fixed = 0;
 bool g_force_enable = true;
 // Default switch index for clutches
@@ -243,7 +244,7 @@ public:
     cFrequencyCounter m_freq_ctr;
 
 private:
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
     void update_cursor_pose();
     bool m_dev_force_enabled = true;
 };
@@ -291,14 +292,14 @@ cBulletSphere* Device::create_af_cursor(cBulletWorld *a_world, string a_name){
 /// \return
 ///
 cVector3d Device::measured_pos(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getPosition(m_pos);
     update_cursor_pose();
     return m_pos;
 }
 
 cMatrix3d Device::measured_rot(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getRotation(m_rot);
     return m_rot;
 }
@@ -314,8 +315,10 @@ void Device::update_cursor_pose(){
     if(m_af_cursor){
         m_af_cursor->setLocalPos(m_pos * m_workspace_scale_factor);
         m_af_cursor->setLocalRot(m_rot);
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
         m_af_cursor->m_afObjPtr->set_userdata_desc("haptics frequency");
         m_af_cursor->m_afObjPtr->set_userdata(m_freq_ctr.getFrequency());
+#endif
     }
 }
 
@@ -324,7 +327,7 @@ void Device::update_cursor_pose(){
 /// \return
 ///
 cVector3d Device::measured_lin_vel(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getLinearVelocity(m_vel);
     return m_vel;
 }
@@ -334,7 +337,7 @@ cVector3d Device::measured_lin_vel(){
 /// \return
 ///
 cVector3d Device::mearured_ang_vel(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getAngularVelocity(m_avel);
     return m_avel;
 }
@@ -344,7 +347,7 @@ cVector3d Device::mearured_ang_vel(){
 /// \return
 ///
 double Device::measured_gripper_angle(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     double angle;
     m_hDevice->getGripperAngleRad(angle);
     return angle;
@@ -356,7 +359,7 @@ double Device::measured_gripper_angle(){
 /// \return
 ///
 bool Device::is_button_pressed(int button_index){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     bool status;
     m_hDevice->getUserSwitch(button_index, status);
     return status;
@@ -368,7 +371,7 @@ bool Device::is_button_pressed(int button_index){
 /// \return
 ///
 bool Device::is_button_press_rising_edge(int button_index){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     bool status;
     m_hDevice->getUserSwitch(button_index, status);
     if (m_btn_prev_state_rising[button_index] ^ status){
@@ -389,7 +392,7 @@ bool Device::is_button_press_rising_edge(int button_index){
 /// \return
 ///
 bool Device::is_button_press_falling_edge(int button_index){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     bool status;
     m_hDevice->getUserSwitch(button_index, status);
     if (m_btn_prev_state_falling[button_index] ^ status){
@@ -410,7 +413,7 @@ bool Device::is_button_press_falling_edge(int button_index){
 /// \param torque
 ///
 void Device::apply_wrench(cVector3d force, cVector3d torque){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     force = force * m_dev_force_enabled;
     torque = torque * m_dev_force_enabled;
     m_hDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
@@ -552,7 +555,7 @@ public:
     cMatrix3d m_rot;
     double m_gripper_angle;
 
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 };
 
 ///
@@ -574,7 +577,7 @@ ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
 /// \return
 ///
 cVector3d ToolGripper::measured_pos(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_gripperRoot->getLocalPos();
 }
 
@@ -583,7 +586,7 @@ cVector3d ToolGripper::measured_pos(){
 /// \return
 ///
 cMatrix3d ToolGripper::measured_rot(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_gripperRoot->getLocalRot();
 }
 
@@ -591,7 +594,7 @@ cMatrix3d ToolGripper::measured_rot(){
 /// \brief ToolGripper::update_measured_pose
 ///
 void ToolGripper::update_measured_pose(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_pos  = m_gripperRoot->getLocalPos();
     m_rot = m_gripperRoot->getLocalRot();
 }
@@ -610,7 +613,7 @@ void ToolGripper::set_gripper_angle(double angle, double dt){
 /// \param offset
 ///
 void ToolGripper::offset_gripper_angle(double offset){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_gripper_angle += offset;
     m_gripper_angle = cClamp(m_gripper_angle, 0.0, 1.0);
 }
@@ -1228,17 +1231,28 @@ int main(int argc, char* argv[])
     g_afBody->load_multibody();
 
     g_softBody = new cBulletSoftMultiMesh(g_bulletWorld);
-    g_softBody->loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/high_res/Sphere2.STL"));
+    g_softBody->loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/low_res/Sphere4.STL"));
+    cMultiMesh collObj;
+    collObj.loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/low_res/Sphere4.STL"));
     g_softBody->buildContactTriangles(0.001);
-//    g_softBody->getSoftBody()->m_cfg.kMT = 0.001;
+//    g_softBody->buildContactHull(0.001);
+//    btSoftBody::Material *pm = g_softBody->getSoftBody()->appendMaterial();
+//    pm->m_kLST = 0.1;
+    g_softBody->getSoftBody()->m_materials[0]->m_kLST = 0.03;
+    g_softBody->getSoftBody()->m_cfg.kDF				=	0.5;
+//    g_softBody->getSoftBody()->m_cfg.kMT				=	0.001;
+//    g_softBody->getSoftBody()->generateBendingConstraints(2);
+    g_softBody->getSoftBody()->m_cfg.kDP				=	0.0001; // fun factor...
+    g_softBody->getSoftBody()->m_cfg.kPR				=	20;
 //    g_softBody->getSoftBody()->m_cfg.kDF = 0.5;
-//    g_softBody->getSoftBody()->m_cfg.piterations = 2;
-//    g_softBody->getSoftBody()->randomizeConstraints();
-//    g_softBody->getSoftBody()->setTotalMass(0.5, true);
-//    g_softBody->scale(0.5);
-//    g_softBody->getSoftBody()->scale(btVector3(0.5,0.5,0.5));
+    g_softBody->getSoftBody()->m_cfg.piterations = 2;
+    g_softBody->getSoftBody()->randomizeConstraints();
+    g_softBody->getSoftBody()->setTotalMass(0.8, true);
+//    g_softBody->scale(0.2);
+//    g_softBody->getSoftBody()->scale(btVector3(0.2,0.2,0.2));
 //    g_softBody->getSoftBody()->setPose(false, true);
-//    g_bulletWorld->addChild(g_softBody);
+    g_bulletWorld->addChild(g_softBody);
+
 
 
     // end puzzle meshes
@@ -1307,7 +1321,7 @@ int main(int argc, char* argv[])
     matGround.setGreenChartreuse();
     matGround.m_emission.setGrayLevel(0.3);
     g_bulletGround->setMaterial(matGround);
-    g_bulletGround->m_bulletRigidBody->setFriction(1);
+    g_bulletGround->m_bulletRigidBody->setFriction(1.0);
 
     //-----------------------------------------------------------------------
     // START SIMULATION
@@ -1532,6 +1546,10 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         g_coordApp->next_mode();
         printf("Changing to next device mode:\n");
     }
+    else if (a_key == GLFW_KEY_S){
+        g_softBody->m_showSkeletonModel = !g_softBody->m_showSkeletonModel;
+        printf("Show skeletal model: %d \n", g_softBody->m_showSkeletonModel);
+    }
     //    // option - open gripper
     //    else if (a_key == GLFW_KEY_S)
     //    {
@@ -1620,27 +1638,18 @@ void updateMesh(){
 }
 
 void renderSb(){
-//    chai3d::cTransform mat;
-//    cQuaternion q(0,0,0,1);
-//    cMatrix3d rmat;
-//    q.toRotMat(rmat);
-//    mat.set(cVector3d(0,0,0), rmat);
-//    glPushMatrix();
-//    glMultMatrixd( (const double *)mat.getData() );
     cColorf col;
-    col.setBlueAquamarine();
+    col.setPurpleAmethyst();
     btSoftBody *softBody = g_softBody->getSoftBody();
     col.render();
-    glBegin(GL_POINTS);
-    for (int i = 0 ; i < softBody->m_nodes.size() ; i++){
-        cVector3d v(softBody->m_nodes[i].m_x.x(), softBody->m_nodes[i].m_x.y(), softBody->m_nodes[i].m_x.z());
-
-        glVertex3dv( (const double *)&v);
-
-//        if (i %300 == 0)
-//            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
-    }
-    glEnd();
+//    glBegin(GL_POINTS);
+//    for (int i = 0 ; i < softBody->m_nodes.size() ; i++){
+//        cVector3d v(softBody->m_nodes[i].m_x.x(), softBody->m_nodes[i].m_x.y(), softBody->m_nodes[i].m_x.z());
+//        glVertex3dv( (const double *)&v);
+////        if (i %300 == 0)
+////            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+//    }
+//    glEnd();
     glBegin(GL_LINES);
     for (int i = 0 ; i < softBody->m_links.size() ; i++){
         cVector3d v1(softBody->m_links[i].m_n[0]->m_x.x(), softBody->m_links[i].m_n[0]->m_x.y(), softBody->m_links[i].m_n[0]->m_x.z());
@@ -1649,11 +1658,26 @@ void renderSb(){
 
             glVertex3dv( (const double *)&v1);
             glVertex3dv( (const double *)&v2);
-
 //        if (i %300 == 0)
 //            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
     }
+//    glEnd();
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
+//    glBegin(GL_TRIANGLES);
+//    for (int i = 0 ; i < softBody->m_faces.size() ; i++){
+//        cVector3d v1(softBody->m_faces[i].m_n[0]->m_x.x(), softBody->m_faces[i].m_n[0]->m_x.y(), softBody->m_faces[i].m_n[0]->m_x.z());
+//        cVector3d v2(softBody->m_faces[i].m_n[1]->m_x.x(), softBody->m_faces[i].m_n[1]->m_x.y(), softBody->m_faces[i].m_n[1]->m_x.z());
+//        cVector3d v3(softBody->m_faces[i].m_n[2]->m_x.x(), softBody->m_faces[i].m_n[2]->m_x.y(), softBody->m_faces[i].m_n[2]->m_x.z());
+//        glColor4fv( (const float *)&col);
+//            glVertex3dv( (const double *)&v1);
+//            glVertex3dv( (const double *)&v2);
+//            glVertex3dv( (const double *)&v3);
+////        if (i %300 == 0)
+////            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+//    }
     glEnd();
+
 }
 
 //---------------------------------------------------------------------------
@@ -1709,8 +1733,6 @@ void updateGraphics(void)
     // render world
     g_camera->renderView(g_width, g_height);
 
-//    renderSb();
-
     // wait until all GL commands are completed
     glFinish();
 
@@ -1747,23 +1769,31 @@ void updateBulletSim(){
     // start haptic device
     g_clockWorld.start(true);
     // main Bullet simulation loop
-    int n = g_coordApp->m_num_devices;
-    cVector3d dpos[n], ddpos[n], dposPre[n];
-    cMatrix3d drot[n], ddrot[n], drotPre[n];
+    unsigned int n = g_coordApp->m_num_devices;
+    std::vector<cVector3d> dpos, ddpos, dposPre;
+    std::vector<cMatrix3d> drot, ddrot, drotPre;
 
-    for(int i = 0 ; i < n; i ++){
+    dpos.resize(n); ddpos.resize(n); dposPre.resize(n);
+    drot.resize(n); ddrot.resize(n); drotPre.resize(n);
+
+    for(unsigned int i = 0 ; i < n; i ++){
         dpos[i].set(0,0,0); ddpos[i].set(0,0,0); dposPre[i].set(0,0,0);
         drot[i].identity(); ddrot[i].identity(); drotPre[i].identity();
     }
-    RateSleep rateSleep(1000);
+    double sleepHz;
+    if (g_dt_fixed > 0.0)
+        sleepHz = (1.0/g_dt_fixed);
+    else
+        sleepHz= 1000;
 
+    RateSleep rateSleep(sleepHz);
     while(g_simulationRunning)
     {
         g_freqCounterHaptics.signal(1);
         double dt;
         if (g_dt_fixed > 0.0) dt = g_dt_fixed;
         else dt = compute_dt(true);
-        for (int i = 0 ; i<g_coordApp->m_num_devices ; i++){
+        for (unsigned int i = 0 ; i < g_coordApp->m_num_devices ; i++){
             // update position of tool
             ToolGripper * bGripper = g_coordApp->m_bulletGrippers[i];
             bGripper->update_measured_pose();

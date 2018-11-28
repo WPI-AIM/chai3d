@@ -141,6 +141,7 @@ endif ()
 # header search path
 include_directories (${PROJECT_SOURCE_DIR}/src)
 include_directories (${PROJECT_SOURCE_DIR}/external/bullet/src)
+include_directories (${PROJECT_SOURCE_DIR}/../GEL/src)
 
 # static library source files
 file (GLOB_RECURSE source RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp ${PROJECT_SOURCE_DIR}/src/*.h)
@@ -151,7 +152,9 @@ file (GLOB_RECURSE source_dynamics   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SO
 file (GLOB_RECURSE source_softbody   RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/external/bullet/src/BulletSoftBody/*.cpp  ${PROJECT_SOURCE_DIR}/external/bullet/src/BulletSoftBody/*.h)
 file (GLOB_RECURSE source_linearmath RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/external/bullet/src/LinearMath/*.cpp      ${PROJECT_SOURCE_DIR}/external/bullet/src/LinearMath/*.h)
 
+file (GLOB_RECURSE source_gel  RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/../GEL/src/*.cpp ${PROJECT_SOURCE_DIR}/../GEL/src/*.h)
 # build flags
+
 set (PROJECT_DEFINITIONS "${PROJECT_DEFINITIONS} -DBT_USE_DOUBLE_PRECISION")
 add_definitions (${PROJECT_DEFINITIONS})
 
@@ -169,13 +172,15 @@ endforeach ()
 # internal library build flags
 if (${CMAKE_BUILD_TYPE} MATCHES Debug)
   add_definitions ("-DDEBUG")
+  message (USING X86_64_ASM)
 endif ()
 if (${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+    message (USING X86_64_ASM)
   add_definitions ("-DUSE_X86_64_ASM")
 endif ()
 
 # static library
-add_library (chai3d-BULLET STATIC ${source} ${source_collision} ${source_dynamics} ${source_softbody} ${source_linearmath} )
+add_library (chai3d-BULLET STATIC ${source} ${source_collision} ${source_dynamics} ${source_softbody} ${source_linearmath} ${source_gel})
 
 # library exports
 set (CHAI3D-BULLET_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/external/bullet/src")

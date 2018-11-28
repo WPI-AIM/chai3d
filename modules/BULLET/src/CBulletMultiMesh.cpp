@@ -33,7 +33,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
+    POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
     \author    Francois Conti, Adnan Munawar
@@ -139,7 +139,7 @@ void cBulletMultiMesh::setLocalRot(const cMatrix3d& a_rotation)
 
 //==============================================================================
 /*!
-    This method updates the position and orientation data from the Bullet 
+    This method updates the position and orientation data from the Bullet
     representation to the CHAI3D representation.
 */
 //==============================================================================
@@ -167,12 +167,14 @@ void cBulletMultiMesh::updatePositionFromDynamics()
     }
 
     // update Transform data for m_rosObj
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if(m_afObjPtr.get() != nullptr){
         m_afObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
         cQuaternion q;
         q.fromRotMat(m_localRot);
         m_afObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
     }
+    #endif
 }
 
 
@@ -218,8 +220,8 @@ void cBulletMultiMesh::buildContactTriangles(const double a_margin, cMultiMesh* 
             cVector3d vertex1 = mesh->m_vertices->getLocalPos(vertexIndex1);
             cVector3d vertex2 = mesh->m_vertices->getLocalPos(vertexIndex2);
 
-            bulletMesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)), 
-                btVector3(vertex1(0), vertex1(1), vertex1(2)), 
+            bulletMesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)),
+                btVector3(vertex1(0), vertex1(1), vertex1(2)),
                 btVector3(vertex2(0), vertex2(1), vertex2(2)));
         }
 
@@ -301,8 +303,8 @@ void cBulletMultiMesh::buildContactConvexTriangles(const double a_margin)
             cVector3d vertex1 = mesh->m_vertices->getLocalPos(vertexIndex1);
             cVector3d vertex2 = mesh->m_vertices->getLocalPos(vertexIndex2);
 
-            bulletMesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)), 
-                btVector3(vertex1(0), vertex1(1), vertex1(2)), 
+            bulletMesh->addTriangle(btVector3(vertex0(0), vertex0(1), vertex0(2)),
+                btVector3(vertex1(0), vertex1(1), vertex1(2)),
                 btVector3(vertex2(0), vertex2(1), vertex2(2)));
         }
 
