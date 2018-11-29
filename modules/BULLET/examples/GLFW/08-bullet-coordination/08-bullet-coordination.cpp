@@ -1225,34 +1225,10 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     g_afWorld = new afWorld(g_bulletWorld);
     g_afWorld->loadYAML("../resources/config/coordination.yaml");
-    g_afWorld->load_world();
+    g_afWorld->loadWorld();
 
     g_multiBodyHandle = new afBulletMultiBody(g_bulletWorld);
     g_multiBodyHandle->loadMultiBody();
-
-    g_softBody = new cBulletSoftMultiMesh(g_bulletWorld);
-    g_softBody->loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/low_res/Sphere4.STL"));
-    cMultiMesh collObj;
-    collObj.loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/low_res/Sphere4.STL"));
-    g_softBody->buildContactTriangles(0.001);
-    btSoftBody* psb = g_softBody->getSoftBody();
-    psb->m_materials[0]->m_kLST = 0.5;
-    psb->m_cfg.kDF				=	0.5;
-//    g_softBody->getSoftBody()->m_cfg.kMT				=	0.001;
-//    g_softBody->getSoftBody()->generateBendingConstraints(2);
-    psb->m_cfg.kDP				=	0.0001; // fun factor...
-    psb->m_cfg.kPR				=	20;
-    psb->m_cfg.piterations = 2;
-    psb->randomizeConstraints();
-//    psb->setTotalMass(0.8, true);
-//    g_softBody->scale(0.2);
-//    psb->scale(btVector3(0.2,0.2,0.2));
-    g_softBody->setMass(0.8);
-    g_softBody->setLocalPos(0,1,1);
-    g_softBody->buildDynamicModel();
-    g_bulletWorld->addChild(g_softBody);
-
-
 
     // end puzzle meshes
     //////////////////////////////////////////////////////////////////////////
@@ -1549,7 +1525,7 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         auto sbMap = g_multiBodyHandle->getSoftBodyMap();
         cSoftBodyMap::const_iterator sbIt;
         for (sbIt = sbMap->begin() ; sbIt != sbMap->end(); ++sbIt){
-            (sbIt->second)->toggleSkeletalModelVisibility();
+            sbIt->second->toggleSkeletalModelVisibility();
         }
     }
     //    // option - open gripper

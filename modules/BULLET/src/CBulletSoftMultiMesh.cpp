@@ -204,7 +204,7 @@ void updateMesh(cMesh* mesh, btSoftBody* sb, std::vector<VertexTree>* tree){
 
 void cBulletSoftMultiMesh::render(cRenderOptions &a_options){
     m_gelMesh.updateVertexPosition();
-    computeAllNormals();
+    m_gelMesh.computeAllNormals();
     m_gelMesh.render(a_options);
 }
 
@@ -634,6 +634,11 @@ void cBulletSoftMultiMesh::buildContactHull(const double a_margin)
     }
 }
 
+//==============================================================================
+/*!
+    Build the dynamic model of the bullet soft body.
+*/
+//==============================================================================
 void cBulletSoftMultiMesh::buildDynamicModel(){
     // add collision shape to compound
     m_bulletSoftBody->setTotalMass(m_mass, true);
@@ -641,6 +646,15 @@ void cBulletSoftMultiMesh::buildDynamicModel(){
     btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) m_dynamicWorld->m_bulletWorld;
     softWorld->addSoftBody(m_bulletSoftBody);
     m_dynamicWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
+}
+
+//==============================================================================
+/*!
+    Scale the mesh for the softBody
+*/
+//==============================================================================
+void cBulletSoftMultiMesh::scale(const double &a_scaleFactor, const bool a_affectChildren){
+    m_gelMesh.scale(a_scaleFactor);
 }
 
 
