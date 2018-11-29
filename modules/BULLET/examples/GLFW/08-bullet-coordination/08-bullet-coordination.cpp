@@ -88,7 +88,7 @@ cBulletStaticPlane* g_bulletBoxWallX[2];
 cBulletStaticPlane* g_bulletBoxWallY[2];
 cBulletStaticPlane* g_bulletBoxWallZ[1];
 
-afBulletMultiBody *g_afBody;
+afBulletMultiBody *g_multiBodyHandle;
 cBulletSoftMultiMesh* g_softBody;
 afWorld *g_afWorld;
 
@@ -549,7 +549,7 @@ public:
     bool is_wrench_set();
     void clear_wrench();
     void offset_gripper_angle(double offset);
-    void set_gripper_angle(double angle, double dt=0.001);
+    void setGripperAngle(double angle, double dt=0.001);
     afBulletGripperLink* m_gripperRoot;
     cVector3d m_pos;
     cMatrix3d m_rot;
@@ -568,8 +568,8 @@ ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
                          std::string a_gripper_name,
                          std::string a_device_name): afBulletGripper (a_chaiWorld){
     m_gripper_angle = 3.0;
-    std::string config = get_gripper_config(a_device_name);
-    m_gripperRoot = load_multibody(config, a_gripper_name, a_device_name);
+    std::string config = getGripperConfig(a_device_name);
+    m_gripperRoot = loadMultiBody(config, a_gripper_name, a_device_name);
 }
 
 ///
@@ -604,8 +604,8 @@ void ToolGripper::update_measured_pose(){
 /// \param angle
 /// \param dt
 ///
-void ToolGripper::set_gripper_angle(double angle, double dt){
-    m_gripperRoot->set_angle(angle, dt);
+void ToolGripper::setGripperAngle(double angle, double dt){
+    m_gripperRoot->setAngle(angle, dt);
 }
 
 ///
@@ -784,7 +784,7 @@ void Coordination::create_bullet_gripper(uint dev_num){
     m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
     cVector3d localGripperPos = m_bulletGrippers[dev_num]->m_gripperRoot->getLocalPos();
     double l,w,h;
-    m_bulletGrippers[dev_num]->get_enclosure_extents(l,w,h);
+    m_bulletGrippers[dev_num]->getEnclosureExtents(l,w,h);
     if (localGripperPos.length() == 0.0){
         double x = (int(dev_num / 2.0) * 0.8);
         double y = (dev_num % 2) ? +0.4 : -0.4;
@@ -1224,11 +1224,11 @@ int main(int argc, char* argv[])
     // AF MULTIBODY HANDLER
     //////////////////////////////////////////////////////////////////////////
     g_afWorld = new afWorld(g_bulletWorld);
-    g_afWorld->load_yaml("../resources/config/coordination.yaml");
+    g_afWorld->loadYAML("../resources/config/coordination.yaml");
     g_afWorld->load_world();
 
-    g_afBody = new afBulletMultiBody(g_bulletWorld);
-    g_afBody->load_multibody();
+    g_multiBodyHandle = new afBulletMultiBody(g_bulletWorld);
+    g_multiBodyHandle->loadMultiBody();
 
     g_softBody = new cBulletSoftMultiMesh(g_bulletWorld);
     g_softBody->loadFromFile(RESOURCE_PATH("../resources/models/puzzle2/low_res/Sphere4.STL"));
@@ -1244,11 +1244,13 @@ int main(int argc, char* argv[])
     psb->m_cfg.kPR				=	20;
     psb->m_cfg.piterations = 2;
     psb->randomizeConstraints();
-    psb->setTotalMass(0.8, true);
+//    psb->setTotalMass(0.8, true);
 //    g_softBody->scale(0.2);
 //    psb->scale(btVector3(0.2,0.2,0.2));
-    g_bulletWorld->addChild(g_softBody);
+    g_softBody->setMass(0.8);
     g_softBody->setLocalPos(0,1,1);
+    g_softBody->buildDynamicModel();
+    g_bulletWorld->addChild(g_softBody);
 
 
 
@@ -1258,9 +1260,9 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double box_l, box_w, box_h;
-    box_l = g_afWorld->get_enclosure_length();
-    box_w = g_afWorld->get_enclosure_width();
-    box_h = g_afWorld->get_enclosure_height();
+    box_l = g_afWorld->getEnclosureLength();
+    box_w = g_afWorld->getEnclosureWidth();
+    box_h = g_afWorld->getEnclosureHeight();
     g_bulletBoxWallZ[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -0.5 * box_h);
     g_bulletBoxWallY[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -0.5 * box_w);
     g_bulletBoxWallY[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -0.5 * box_w);
@@ -1544,8 +1546,11 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         printf("Changing to next device mode:\n");
     }
     else if (a_key == GLFW_KEY_S){
-//        g_softBody->m_showSkeletonModel = !g_softBody->m_showSkeletonModel;
-//        printf("Show skeletal model: %d \n", g_softBody->m_showSkeletonModel);
+        auto sbMap = g_multiBodyHandle->getSoftBodyMap();
+        cSoftBodyMap::const_iterator sbIt;
+        for (sbIt = sbMap->begin() ; sbIt != sbMap->end(); ++sbIt){
+            (sbIt->second)->toggleSkeletalModelVisibility();
+        }
     }
     //    // option - open gripper
     //    else if (a_key == GLFW_KEY_S)
@@ -1599,7 +1604,7 @@ void updateMesh(){
     if (first_time == true){
         tClock.start(true);
         tClock.reset();
-        tBody = g_afBody->get_body("body2");
+        tBody = g_multiBodyHandle->getRidigBody("body2");
         tMesh = (*(tBody->m_meshes))[0];
         nElem = tElemCnt < tMesh->getNumVertices() ? tElemCnt : tMesh->getNumVertices();
         for(int i = 0 ; i < nElem ; i++){
@@ -1816,7 +1821,7 @@ void updateBulletSim(){
 
             bGripper->apply_force(force);
             bGripper->apply_torque(torque);
-            bGripper->set_gripper_angle(bGripper->m_gripper_angle, dt);
+            bGripper->setGripperAngle(bGripper->m_gripper_angle, dt);
 
             if (bGripper->K_lc_ramp < 1.0)
             {

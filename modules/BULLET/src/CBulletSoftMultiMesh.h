@@ -126,6 +126,9 @@ public:
     //! This method update the CHAI3D position representation from the Bullet dynamics engine.
     virtual void updatePositionFromDynamics();
 
+    //! Override method
+    virtual void buildDynamicModel();
+
 
     //--------------------------------------------------------------------------
     // PUBLIC METHODS - CONTACT MODEL:
@@ -156,6 +159,8 @@ public:
     inline btSoftBody* getSoftBody(){return m_bulletSoftBody;}
 
     inline void setSoftBody(btSoftBody* a_softBody){m_bulletSoftBody = a_softBody;}
+
+    inline void toggleSkeletalModelVisibility(){m_gelMesh.m_showSkeletonModel = !m_gelMesh.m_showSkeletonModel;}
 
 
 private:

@@ -464,7 +464,7 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     std::string config = "../resources/config/gripper_type1.yaml";
     afBulletGripper gripperObj(g_bulletWorld);
-    bulletTool = gripperObj.load_multibody(config, "Gripper", "Demo");
+    bulletTool = gripperObj.loadMultiBody(config, "Gripper", "Demo");
     cMatrix3d rotMat;
     rotMat.setAxisAngleRotationDeg(0.0,0.0,1.0,180);
     //bulletTool->setLocalRot(rotMat);
@@ -810,7 +810,7 @@ void updateHaptics(void)
         hapticDevice->getPosition(posDevice);
         hapticDevice->getRotation(rotDevice);
 
-        bulletTool->set_angle(grip_angle, 0.001);
+        bulletTool->setAngle(grip_angle, 0.001);
 
         // send forces to device
         bool _cam_clutch_pressed;

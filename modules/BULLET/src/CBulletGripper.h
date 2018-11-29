@@ -86,8 +86,8 @@ public:
 
     afBulletGripper(cBulletWorld *a_chaiWorld) : afBulletMultiBody(a_chaiWorld){}
     ~afBulletGripper();
-    void set_gripper_angle(const double &angle,double dt=0.001);
-    virtual afBulletGripperLink* load_multibody(std::string a_file,
+    void setGripperAngle(const double &angle,double dt=0.001);
+    virtual afBulletGripperLink* loadMultiBody(std::string a_file,
                                                std::string a_gripper_name,
                                                std::string a_suffix_name);
 

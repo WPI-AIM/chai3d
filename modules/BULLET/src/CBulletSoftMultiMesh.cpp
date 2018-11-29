@@ -584,12 +584,6 @@ void cBulletSoftMultiMesh::buildContactTriangles(const double a_margin, cMultiMe
 
         // Apply the inertial transform offset
         localTrans *= m_inertialOffsetTransform.inverse();
-
-        // add collision shape to compound
-        m_bulletSoftBody->getCollisionShape()->setUserPointer(m_bulletSoftBody);
-        btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) m_dynamicWorld->m_bulletWorld;
-        softWorld->addSoftBody(m_bulletSoftBody);
-        m_dynamicWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
     }
     if(lowResMesh){
         lowResMesh->m_meshes->clear();
@@ -637,14 +631,16 @@ void cBulletSoftMultiMesh::buildContactHull(const double a_margin)
 
         m_bulletSoftBody = btSoftBodyHelpers::CreateFromConvexHull(*m_dynamicWorld->m_bulletSoftBodyWorldInfo, m_verticesVecPtr.data(), numVertices);
 
-//         add collision shape to compound
-        m_bulletSoftBody->getCollisionShape()->setUserPointer(m_bulletSoftBody);
-//        m_bulletSoftBody->setTotalMass(50,true);
-        btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) m_dynamicWorld->m_bulletWorld;
-        softWorld->addSoftBody(m_bulletSoftBody);
-//        m_dynamicWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
-
     }
+}
+
+void cBulletSoftMultiMesh::buildDynamicModel(){
+    // add collision shape to compound
+    m_bulletSoftBody->setTotalMass(m_mass, true);
+    m_bulletSoftBody->getCollisionShape()->setUserPointer(m_bulletSoftBody);
+    btSoftRigidDynamicsWorld *softWorld = (btSoftRigidDynamicsWorld*) m_dynamicWorld->m_bulletWorld;
+    softWorld->addSoftBody(m_bulletSoftBody);
+    m_dynamicWorld->m_bulletSoftBodyWorldInfo->m_sparsesdf.Reset();
 }
 
 

@@ -56,7 +56,7 @@ namespace chai3d {
 /// \param angle
 /// \param dt
 ///
-void afBulletGripper::set_gripper_angle(const double &angle, double dt){
+void afBulletGripper::setGripperAngle(const double &angle, double dt){
 }
 
 ///
@@ -64,7 +64,7 @@ void afBulletGripper::set_gripper_angle(const double &angle, double dt){
 /// \param file
 /// \return
 ///
-afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
+afBulletGripperLink* afBulletGripper::loadMultiBody(std::string a_file,
                                                    std::string a_gripper_name,
                                                    std::string a_suffix_name){
     m_gripper_name = a_gripper_name;
@@ -95,7 +95,7 @@ afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
         std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
 //        printf("Loading body: %s \n", body_name .c_str());
         if (tmpBody->load(a_file.c_str(), body_name, this)){
-            m_bodyMap[body_name.c_str()] = tmpBody;
+            m_rigidBodyMap[body_name.c_str()] = tmpBody;
             temp_body_names.push_back(body_name.c_str());
         }
     }
@@ -112,9 +112,9 @@ afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
     afBulletGripperLink* rootParentBody = NULL;
     size_t rootParents = 0;
     std::vector<std::string>::const_iterator nIt;
-    cBodyMap::const_iterator mIt;
+    cRigidBodyMap::const_iterator mIt;
     for(nIt = temp_body_names.begin() ; nIt != temp_body_names.end() ; ++nIt){
-        mIt = m_bodyMap.find(*nIt);
+        mIt = m_rigidBodyMap.find(*nIt);
         if((*mIt).second->m_parentBodies.size() == 0){
             rootParentBody = static_cast<afBulletGripperLink*>((*mIt).second);
             rootParents++;
@@ -132,8 +132,8 @@ afBulletGripperLink* afBulletGripper::load_multibody(std::string a_file,
 }
 
 afBulletGripper::~afBulletGripper(){
-    cBodyMap::const_iterator lIt = m_bodyMap.begin();
-    for ( ; lIt != m_bodyMap.end() ; ++lIt){
+    cRigidBodyMap::const_iterator lIt = m_rigidBodyMap.begin();
+    for ( ; lIt != m_rigidBodyMap.end() ; ++lIt){
         delete lIt->second;
     }
     cJointMap::const_iterator jIt = m_jointMap.begin();
