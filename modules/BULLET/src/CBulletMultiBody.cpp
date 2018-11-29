@@ -93,17 +93,17 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
         std::cerr << "ERROR! FAILED TO LOAD CONFIG FILE \n";
     }
     // Check if a world config file or a plain multibody config file
-    if (configNode["path"].IsDefined() && configNode["multibody_config"].IsDefined()){
+    if (configNode["path"].IsDefined() && configNode["multibody config"].IsDefined()){
         m_path = configNode["path"].as<std::string>();
-        m_puzzle_config = m_path + configNode["multibody_config"].as<std::string>();
+        m_puzzle_config = m_path + configNode["multibody config"].as<std::string>();
 
     }
     else{
         std::cerr << "PATH AND MULTIBODY CONFIG NOT DEFINED \n";
         return 0;
     }
-    if(configNode["color_config"].IsDefined()){
-        m_color_config = m_path + configNode["color_config"].as<std::string>();
+    if(configNode["color config"].IsDefined()){
+        m_color_config = m_path + configNode["color config"].as<std::string>();
         m_colorsNode = YAML::LoadFile(m_color_config.c_str());
         if (!m_colorsNode){
             std::cerr << "ERROR! COLOR CONFIG NOT FOUND \n";
@@ -113,9 +113,9 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
         return 0;
     }
 
-    if(configNode["gripper_configs"].IsDefined()){
-        for(size_t i=0 ; i < configNode["gripper_configs"].size(); ++i){
-            std::string gconf = configNode["gripper_configs"][i].as<std::string>();
+    if(configNode["gripper configs"].IsDefined()){
+        for(size_t i=0 ; i < configNode["gripper configs"].size(); ++i){
+            std::string gconf = configNode["gripper configs"][i].as<std::string>();
             m_gripperConfigFiles[gconf] = m_path + configNode[gconf].as<std::string>();
         }
     }
@@ -124,8 +124,8 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
         return 0;
     }
 
-    if(configNode["world_config"].IsDefined()){
-        std::string gconf = configNode["world_config"].as<std::string>();
+    if(configNode["world config"].IsDefined()){
+        std::string gconf = configNode["world config"].as<std::string>();
         m_world_config = m_path + gconf;
     }
     else{
@@ -311,11 +311,15 @@ bool afRigidBody::load(std::string file, std::string name, afBulletMultiBody* mB
     std::string rel_path_low_res;
     if (fileNode["high_res_path"].IsDefined())
         rel_path_high_res = fileNode["high_res_path"].as<std::string>() + m_mesh_name;
+    else if (fileNode["high resolution path"].IsDefined())
+        rel_path_high_res = fileNode["high resolution path"].as<std::string>() + m_mesh_name;
     else
         rel_path_high_res = mB->getHighResPath() + m_mesh_name;
 
     if (fileNode["low_res_path"].IsDefined())
         rel_path_low_res = fileNode["low_res_path"].as<std::string>() + m_mesh_name;
+    else if (fileNode["low resolution path"].IsDefined())
+        rel_path_high_res = fileNode["low resolution path"].as<std::string>() + m_mesh_name;
     else
         rel_path_low_res = mB->getLowResPath() + m_mesh_name;
 
@@ -327,14 +331,14 @@ bool afRigidBody::load(std::string file, std::string name, afBulletMultiBody* mB
 
     if(fileNode["mass"].IsDefined()){
         m_mass = fileNode["mass"].as<double>();
-        if(fileNode["linear_gain"].IsDefined()){
-            K_lin = fileNode["linear_gain"]["P"].as<double>();
-            D_lin = fileNode["linear_gain"]["D"].as<double>();
+        if(fileNode["linear gain"].IsDefined()){
+            K_lin = fileNode["linear gain"]["P"].as<double>();
+            D_lin = fileNode["linear gain"]["D"].as<double>();
             _lin_gains_computed = true;
         }
-        if(fileNode["angular_gain"].IsDefined()){
-            K_ang = fileNode["angular_gain"]["P"].as<double>();
-            D_ang = fileNode["angular_gain"]["D"].as<double>();
+        if(fileNode["angular gain"].IsDefined()){
+            K_ang = fileNode["angular gain"]["P"].as<double>();
+            D_ang = fileNode["angular gain"]["D"].as<double>();
             _ang_gains_computed = true;
         }
     }
@@ -366,11 +370,11 @@ bool afRigidBody::load(std::string file, std::string name, afBulletMultiBody* mB
         setLocalRot(rot);
     }
 
-    if(fileNode["color_raw"].IsDefined()){
-            m_mat.setColorf(fileNode["color_raw"]["r"].as<float>(),
-                            fileNode["color_raw"]["g"].as<float>(),
-                            fileNode["color_raw"]["b"].as<float>(),
-                            fileNode["color_raw"]["a"].as<float>());
+    if(fileNode["color raw"].IsDefined()){
+            m_mat.setColorf(fileNode["color raw"]["r"].as<float>(),
+                            fileNode["color raw"]["g"].as<float>(),
+                            fileNode["color raw"]["b"].as<float>(),
+                            fileNode["color raw"]["a"].as<float>());
         }
     else if(fileNode["color"].IsDefined()){
         std::vector<double> rgba = mB->getColorRGBA(fileNode["color"].as<std::string>());
@@ -612,11 +616,15 @@ bool afSoftBody::load(std::string file, std::string name, afBulletMultiBody* mB)
     std::string rel_path_low_res;
     if (fileNode["high_res_path"].IsDefined())
         rel_path_high_res = fileNode["high_res_path"].as<std::string>() + m_mesh_name;
+    else if (fileNode["high resolution path"].IsDefined())
+        rel_path_high_res = fileNode["high resolution path"].as<std::string>() + m_mesh_name;
     else
         rel_path_high_res = mB->getHighResPath() + m_mesh_name;
 
     if (fileNode["low_res_path"].IsDefined())
         rel_path_low_res = fileNode["low_res_path"].as<std::string>() + m_mesh_name;
+    else if (fileNode["low resolution path"].IsDefined())
+        rel_path_high_res = fileNode["low resolution path"].as<std::string>() + m_mesh_name;
     else
         rel_path_low_res = mB->getLowResPath() + m_mesh_name;
 
@@ -628,14 +636,14 @@ bool afSoftBody::load(std::string file, std::string name, afBulletMultiBody* mB)
 
     if(fileNode["mass"].IsDefined()){
         m_mass = fileNode["mass"].as<double>();
-        if(fileNode["linear_gain"].IsDefined()){
-            K_lin = fileNode["linear_gain"]["P"].as<double>();
-            D_lin = fileNode["linear_gain"]["D"].as<double>();
+        if(fileNode["linear gain"].IsDefined()){
+            K_lin = fileNode["linear gain"]["P"].as<double>();
+            D_lin = fileNode["linear gain"]["D"].as<double>();
             _lin_gains_computed = true;
         }
-        if(fileNode["angular_gain"].IsDefined()){
-            K_ang = fileNode["angular_gain"]["P"].as<double>();
-            D_ang = fileNode["angular_gain"]["D"].as<double>();
+        if(fileNode["angular gain"].IsDefined()){
+            K_ang = fileNode["angular gain"]["P"].as<double>();
+            D_ang = fileNode["angular gain"]["D"].as<double>();
             _ang_gains_computed = true;
         }
     }
@@ -658,11 +666,11 @@ bool afSoftBody::load(std::string file, std::string name, afBulletMultiBody* mB)
         setLocalRot(rot);
     }
 
-    if(fileNode["color_raw"].IsDefined()){
-            m_mat.setColorf(fileNode["color_raw"]["r"].as<float>(),
-                            fileNode["color_raw"]["g"].as<float>(),
-                            fileNode["color_raw"]["b"].as<float>(),
-                            fileNode["color_raw"]["a"].as<float>());
+    if(fileNode["color raw"].IsDefined()){
+            m_mat.setColorf(fileNode["color raw"]["r"].as<float>(),
+                            fileNode["color raw"]["g"].as<float>(),
+                            fileNode["color raw"]["b"].as<float>(),
+                            fileNode["color raw"]["a"].as<float>());
         }
     else if(fileNode["color"].IsDefined()){
         std::vector<double> rgba = mB->getColorRGBA(fileNode["color"].as<std::string>());
@@ -798,18 +806,18 @@ bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, st
     m_parent_name = fileNode["parent"].as<std::string>();
     m_child_name = fileNode["child"].as<std::string>();
 
-    if (!fileNode["parent_pivot"].IsDefined() ||
-            !fileNode["parent_axis"].IsDefined() ||
-            !fileNode["child_pivot"].IsDefined() ||
-            !fileNode["child_axis"].IsDefined()){
+    if (!fileNode["parent pivot"].IsDefined() ||
+            !fileNode["parent axis"].IsDefined() ||
+            !fileNode["child pivot"].IsDefined() ||
+            !fileNode["child axis"].IsDefined()){
         std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << name << " NOT DEFINED \n";
         return false;
     }
 
-    assignVec("parent_pivot", &m_pvtA,  &fileNode);
-    assignVec("parent_axis", &m_axisA, &fileNode);
-    assignVec("child_pivot", &m_pvtB,  &fileNode);
-    assignVec("child_axis", &m_axisB,  &fileNode);
+    assignVec("parent pivot", &m_pvtA,  &fileNode);
+    assignVec("parent axis", &m_axisA, &fileNode);
+    assignVec("child pivot", &m_pvtB,  &fileNode);
+    assignVec("child axis", &m_axisB,  &fileNode);
 
     btRigidBody * bodyA, * bodyB;
     afRigidBody * afBodyA, * afBodyB;
@@ -832,11 +840,11 @@ bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, st
         return -1;
     }
     m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
-    if (fileNode["enable_motor"].IsDefined()){
-        enable_motor = fileNode["enable_motor"].as<int>();
+    if (fileNode["enable motor"].IsDefined()){
+        enable_motor = fileNode["enable motor"].as<int>();
         m_hinge->enableMotor(enable_motor);
-        if(fileNode["max_motor_impluse"].IsDefined()){
-            max_motor_impluse = fileNode["max_motor_impluse"].as<double>();
+        if(fileNode["max motor impluse"].IsDefined()){
+            max_motor_impluse = fileNode["max motor impluse"].as<double>();
             m_hinge->setMaxMotorImpulse(max_motor_impluse);
         }
         else{
@@ -845,9 +853,9 @@ bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, st
         }
     }
 
-    if(fileNode["joint_limits"].IsDefined()){
-        jnt_lim_low = fileNode["joint_limits"]["low"].as<double>();
-        jnt_lim_high = fileNode["joint_limits"]["high"].as<double>();
+    if(fileNode["joint limits"].IsDefined()){
+        jnt_lim_low = fileNode["joint limits"]["low"].as<double>();
+        jnt_lim_high = fileNode["joint limits"]["high"].as<double>();
         m_hinge->setLimit(jnt_lim_low, jnt_lim_high);
     }
     mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
@@ -933,7 +941,7 @@ void afWorld::getEnclosureExtents(double &length, double &width, double &height)
 /// \param a_world_config
 /// \return
 ///
-bool afWorld::load_world(std::string a_world_config){
+bool afWorld::loadWorld(std::string a_world_config){
     if (a_world_config.empty()){
         a_world_config = getWorldConfig();
     }
@@ -943,9 +951,9 @@ bool afWorld::load_world(std::string a_world_config){
         return -1;
     }
     else{
-        m_encl_length = worldNode["enclosure_size"]["length"].as<double>();
-        m_encl_width = worldNode["enclosure_size"]["width"].as<double>();
-        m_encl_height = worldNode["enclosure_size"]["height"].as<double>();
+        m_encl_length = worldNode["enclosure size"]["length"].as<double>();
+        m_encl_width = worldNode["enclosure size"]["width"].as<double>();
+        m_encl_height = worldNode["enclosure size"]["height"].as<double>();
     }
 
     return true;
@@ -1051,6 +1059,10 @@ afRigidBody* afBulletMultiBody::loadMultiBody(std::string a_multibody_config){
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
         high_res_path = multiBodyNode["high_res_path"].as<std::string>();
         low_res_path = multiBodyNode["low_res_path"].as<std::string>();
+    }
+    else if(multiBodyNode["high resolution path"].IsDefined() && multiBodyNode["low resolution path"].IsDefined()){
+        high_res_path = multiBodyNode["high resolution path"].as<std::string>();
+        low_res_path = multiBodyNode["low resolution path"].as<std::string>();
     }
     else{
         high_res_path = "../resources/models/puzzle/high_res/";

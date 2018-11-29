@@ -76,17 +76,21 @@ afBulletGripperLink* afBulletGripper::loadMultiBody(std::string a_file,
         return NULL;
     }
     std::string color_config;
-    if (multiBodyNode["color_config"].IsDefined())
-        m_colorsNode = YAML::LoadFile(multiBodyNode["color_config"].as<std::string>().c_str());
+    if (multiBodyNode["color config"].IsDefined())
+        m_colorsNode = YAML::LoadFile(multiBodyNode["color config"].as<std::string>().c_str());
 
     afBulletGripperLink *tmpBody;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
         high_res_path = multiBodyNode["high_res_path"].as<std::string>();
         low_res_path = multiBodyNode["low_res_path"].as<std::string>();
     }
+    else if(multiBodyNode["high resolution path"].IsDefined() && multiBodyNode["low resolution path"].IsDefined()){
+        high_res_path = multiBodyNode["high resolution path"].as<std::string>();
+        low_res_path = multiBodyNode["low resolution path"].as<std::string>();
+    }
     else{
-        high_res_path = "../resources/models/gripper/high_res/";
-        low_res_path = "../resources/models/gripper/low_res/";
+        high_res_path = "../resources/models/puzzle/high_res/";
+        low_res_path = "../resources/models/puzzle/low_res/";
     }
     size_t totalBodys = multiBodyNode["bodies"].size();
     std::vector<std::string> temp_body_names;

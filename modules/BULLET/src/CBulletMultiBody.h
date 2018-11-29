@@ -259,7 +259,7 @@ class afWorld: public afConfigHandler{
 public:
     afWorld(cBulletWorld *bulletWorld);
     virtual ~afWorld(){}
-    virtual bool load_world(std::string a_world_config = "");
+    virtual bool loadWorld(std::string a_world_config = "");
     double getEnclosureLength();
     double getEnclosureWidth();
     double getEnclosureHeight();

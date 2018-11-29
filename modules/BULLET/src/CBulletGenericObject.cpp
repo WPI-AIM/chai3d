@@ -95,6 +95,10 @@ cBulletGenericObject::~cBulletGenericObject()
     {
         delete m_bulletRigidBody;
     }
+    if (m_bulletRigidBody)
+    {
+        delete m_bulletSoftBody;
+    }
     if (m_bulletCollisionShape)
     {
         delete m_bulletCollisionShape;

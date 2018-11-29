@@ -156,10 +156,16 @@ public:
     //! This method updates the skeletal model of GEL from Bullet's softBody.
     virtual void updateGELSkeletonFrombtSoftBody();
 
+    //! This method returns the Bullet Soft Body's Ptr
     inline btSoftBody* getSoftBody(){return m_bulletSoftBody;}
 
+    //! This method set the Bullet SoftBody Ptr
     inline void setSoftBody(btSoftBody* a_softBody){m_bulletSoftBody = a_softBody;}
 
+    //! This method scales this object by a_scaleFactor (uniform scale).
+    virtual void scale(const double& a_scaleFactor, const bool a_affectChildren = true);
+
+    //! This method toggles the drawing of skeletal model.
     inline void toggleSkeletalModelVisibility(){m_gelMesh.m_showSkeletonModel = !m_gelMesh.m_showSkeletonModel;}
 
 

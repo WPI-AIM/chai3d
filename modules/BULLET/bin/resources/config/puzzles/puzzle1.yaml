@@ -2,8 +2,8 @@
 # Testing, no version number yet
 bodies: [body1, body2, body3, body4, body5, body6, body7, body8, body9]
 joints: [joint1, joint2]
-high_res_path: ../resources/models/puzzle/high_res/
-low_res_path: ../resources/models/puzzle/low_res/
+high resolution path: ../resources/models/puzzle/high_res/
+low resolution path: ../resources/models/puzzle/low_res/
 
 body1:
  name: Torus
@@ -92,8 +92,8 @@ body8:
 body9:
  name: CenterPuzzle
  mass: 1.0
- linear_gain: {P: 200.0, D: 10.0}
- angular_gain: {P: 1.0, D: 1.0}
+ linear gain: {P: 200.0, D: 10.0}
+ angular gain: {P: 1.0, D: 1.0}
  mesh: Center.STL
  scale: 1.0
  position: {x: 1.0, y: 0.0, z: -1.0}
@@ -105,11 +105,11 @@ joint1:
  name: PuzzleLeftJoint
  parent: body9
  child: body7
- parent_axis: {x: 1.0, y: 0, z: 0.0}
- parent_pivot: {x: 0, y: -0.85, z: 0.0}
- child_axis: {x: 1.0, y: 0, z: 0.0}
- child_pivot: {x: 0, y: 0, z: 0}
- joint_limits: {low: -1.2, high: 1.2}
+ parent axis: {x: 1.0, y: 0, z: 0.0}
+ parent pivot: {x: 0, y: -0.85, z: 0.0}
+ child axis: {x: 1.0, y: 0, z: 0.0}
+ child pivot: {x: 0, y: 0, z: 0}
+ joint limits: {low: -1.2, high: 1.2}
  #enable_motor: 1
  #max_motor_impulse: 0.05
 
@@ -117,10 +117,10 @@ joint2:
  name: PuzzleRightJoint
  parent: body9
  child: body8
- parent_axis: {x: 1.0, y: 0, z: 0}
- parent_pivot: {x: 0, y: 0.85, z: 0.0}
- child_axis: {x: 1.0, y: 0, z: 0}
- child_pivot: {x: 0, y: 0, z: 0}
- joint_limits: {low: -1.2, high: 1.2}
+ parent axis: {x: 1.0, y: 0, z: 0}
+ parent pivot: {x: 0, y: 0.85, z: 0.0}
+ child axis: {x: 1.0, y: 0, z: 0}
+ child pivot: {x: 0, y: 0, z: 0}
+ joint limits: {low: -1.2, high: 1.2}
  #enable_motor: 1
  #max_motor_impulse: 0.05
