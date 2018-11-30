@@ -278,6 +278,7 @@ bool afRigidBody::load(std::string file, std::string name, afBulletMultiBody* mB
 
     if(fileNode["name"].IsDefined()){
         m_name = fileNode["name"].as<std::string>();
+        m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     }
 
     if(fileNode["mesh"].IsDefined())
@@ -583,6 +584,7 @@ bool afSoftBody::load(std::string file, std::string name, afBulletMultiBody* mB)
 
     if(fileNode["name"].IsDefined()){
         m_name = fileNode["name"].as<std::string>();
+        m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     }
 
     if(fileNode["mesh"].IsDefined())
@@ -803,6 +805,7 @@ bool afJoint::load(std::string file, std::string name, afBulletMultiBody* mB, st
         return false;
     }
     m_name = fileNode["name"].as<std::string>();
+    m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     m_parent_name = fileNode["parent"].as<std::string>();
     m_child_name = fileNode["child"].as<std::string>();
 
