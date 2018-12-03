@@ -51,43 +51,44 @@
 
 namespace chai3d {
 
-class afBulletGripper;
-class afBulletGripperLink;
+class afGripper;
+class afGripperLink;
 
-typedef std::shared_ptr<afBulletGripper> afBulletGripperPtr;
-typedef std::map<std::string, afBulletGripperLink*> afGripperBodyMap;
+typedef afGripper* afGripperPtr;
+typedef afGripperLink* afGripperLinkPtr;
+typedef std::map<std::string, afGripperLinkPtr> afGripperBodyMap;
 
 ///
 /// \brief The cBulletGripperBody class
 ///
-class afBulletGripperLink : public afRigidBody{
-    friend class afBulletGripper;
+class afGripperLink : public afRigidBody{
+    friend class afGripper;
 public:
 
-    afBulletGripperLink(cBulletWorld* a_chaiWorld): afRigidBody(a_chaiWorld){
+    afGripperLink(cBulletWorld* a_chaiWorld): afRigidBody(a_chaiWorld){
         m_surfaceProps.m_linear_damping = 0.5;
         m_surfaceProps.m_angular_damping = 1.0;
         m_surfaceProps.m_static_friction = 0.5;
         m_surfaceProps.m_rolling_friction = 0.5;
     }
-    ~afBulletGripperLink(){}
+    ~afGripperLink(){}
 
 };
 
 ///
 /// \brief The cBulletGripper class
 ///
-class afBulletGripper: public afBulletMultiBody
+class afGripper: public afMultiBody
 {
 
-    friend class afBulletGripperLink;
+    friend class afGripperLink;
 
 public:
 
-    afBulletGripper(cBulletWorld *a_chaiWorld) : afBulletMultiBody(a_chaiWorld){}
-    ~afBulletGripper();
+    afGripper(cBulletWorld *a_chaiWorld) : afMultiBody(a_chaiWorld){}
+    ~afGripper();
     void setGripperAngle(const double &angle,double dt=0.001);
-    virtual afBulletGripperLink* loadMultiBody(std::string a_file,
+    virtual afGripperLinkPtr loadMultiBody(std::string a_file,
                                                std::string a_gripper_name,
                                                std::string a_suffix_name);
 

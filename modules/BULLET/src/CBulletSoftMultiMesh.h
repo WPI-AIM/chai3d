@@ -162,6 +162,9 @@ public:
     //! This method set the Bullet SoftBody Ptr
     inline void setSoftBody(btSoftBody* a_softBody){m_bulletSoftBody = a_softBody;}
 
+    //! Override the setMaterial method
+    virtual void setMaterial(cMaterial& a_material, const bool a_affectChildren = false){m_gelMesh.setMaterial(a_material);}
+
     //! This method scales this object by a_scaleFactor (uniform scale).
     virtual void scale(const double& a_scaleFactor, const bool a_affectChildren = true);
 

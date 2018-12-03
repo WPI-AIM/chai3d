@@ -56,7 +56,7 @@ namespace chai3d {
 /// \param angle
 /// \param dt
 ///
-void afBulletGripper::setGripperAngle(const double &angle, double dt){
+void afGripper::setGripperAngle(const double &angle, double dt){
 }
 
 ///
@@ -64,7 +64,7 @@ void afBulletGripper::setGripperAngle(const double &angle, double dt){
 /// \param file
 /// \return
 ///
-afBulletGripperLink* afBulletGripper::loadMultiBody(std::string a_file,
+afGripperLinkPtr afGripper::loadMultiBody(std::string a_file,
                                                    std::string a_gripper_name,
                                                    std::string a_suffix_name){
     m_gripper_name = a_gripper_name;
@@ -79,7 +79,7 @@ afBulletGripperLink* afBulletGripper::loadMultiBody(std::string a_file,
     if (multiBodyNode["color config"].IsDefined())
         m_colorsNode = YAML::LoadFile(multiBodyNode["color config"].as<std::string>().c_str());
 
-    afBulletGripperLink *tmpBody;
+    afGripperLinkPtr tmpBody;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
         high_res_path = multiBodyNode["high_res_path"].as<std::string>();
         low_res_path = multiBodyNode["low_res_path"].as<std::string>();
@@ -95,11 +95,11 @@ afBulletGripperLink* afBulletGripper::loadMultiBody(std::string a_file,
     size_t totalBodys = multiBodyNode["bodies"].size();
     std::vector<std::string> temp_body_names;
     for (size_t i = 0; i < totalBodys; ++i) {
-        tmpBody = new afBulletGripperLink(m_chaiWorld);
+        tmpBody = new afGripperLink(m_chaiWorld);
         std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
 //        printf("Loading body: %s \n", body_name .c_str());
         if (tmpBody->load(a_file.c_str(), body_name, this)){
-            m_rigidBodyMap[body_name.c_str()] = tmpBody;
+            m_afRigidBodyMap[body_name.c_str()] = tmpBody;
             temp_body_names.push_back(body_name.c_str());
         }
     }
@@ -110,17 +110,17 @@ afBulletGripperLink* afBulletGripper::loadMultiBody(std::string a_file,
         std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
 //        printf("Loading body: %s \n", jnt_name.c_str());
         if (tmpJoint->load(a_file.c_str(), jnt_name, this)){
-            m_jointMap[jnt_name] = tmpJoint;
+            m_afJointMap[jnt_name] = tmpJoint;
         }
     }
-    afBulletGripperLink* rootParentBody = NULL;
+    afGripperLink* rootParentBody = NULL;
     size_t rootParents = 0;
     std::vector<std::string>::const_iterator nIt;
-    cRigidBodyMap::const_iterator mIt;
+    afRigidBodyMap::const_iterator mIt;
     for(nIt = temp_body_names.begin() ; nIt != temp_body_names.end() ; ++nIt){
-        mIt = m_rigidBodyMap.find(*nIt);
+        mIt = m_afRigidBodyMap.find(*nIt);
         if((*mIt).second->m_parentBodies.size() == 0){
-            rootParentBody = static_cast<afBulletGripperLink*>((*mIt).second);
+            rootParentBody = static_cast<afGripperLink*>((*mIt).second);
             rootParents++;
         }
     }
@@ -135,13 +135,13 @@ afBulletGripperLink* afBulletGripper::loadMultiBody(std::string a_file,
     return rootParentBody;
 }
 
-afBulletGripper::~afBulletGripper(){
-    cRigidBodyMap::const_iterator lIt = m_rigidBodyMap.begin();
-    for ( ; lIt != m_rigidBodyMap.end() ; ++lIt){
+afGripper::~afGripper(){
+    afRigidBodyMap::const_iterator lIt = m_afRigidBodyMap.begin();
+    for ( ; lIt != m_afRigidBodyMap.end() ; ++lIt){
         delete lIt->second;
     }
-    cJointMap::const_iterator jIt = m_jointMap.begin();
-    for (; jIt != m_jointMap.end() ; ++jIt){
+    afJointMap::const_iterator jIt = m_afJointMap.begin();
+    for (; jIt != m_afJointMap.end() ; ++jIt){
         delete jIt->second;
     }
     }

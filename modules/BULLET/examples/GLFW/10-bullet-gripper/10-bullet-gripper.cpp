@@ -82,7 +82,7 @@ cBulletWorld* g_bulletWorld;
 // bullet objects
 cBulletBox* bulletBox1;
 cBulletBox* bulletBox2;
-afBulletGripperLink* bulletTool;
+afGripperLink* bulletTool;
 
 // bullet static walls and ground
 cBulletStaticPlane* bulletInvisibleWall1;
@@ -463,7 +463,7 @@ int main(int argc, char* argv[])
     // TOOL
     //////////////////////////////////////////////////////////////////////////
     std::string config = "../resources/config/gripper_type1.yaml";
-    afBulletGripper gripperObj(g_bulletWorld);
+    afGripper gripperObj(g_bulletWorld);
     bulletTool = gripperObj.loadMultiBody(config, "Gripper", "Demo");
     cMatrix3d rotMat;
     rotMat.setAxisAngleRotationDeg(0.0,0.0,1.0,180);

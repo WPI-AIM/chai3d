@@ -95,7 +95,7 @@ cBulletGenericObject::~cBulletGenericObject()
     {
         delete m_bulletRigidBody;
     }
-    if (m_bulletRigidBody)
+    if (m_bulletSoftBody)
     {
         delete m_bulletSoftBody;
     }

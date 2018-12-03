@@ -88,7 +88,7 @@ cBulletStaticPlane* g_bulletBoxWallX[2];
 cBulletStaticPlane* g_bulletBoxWallY[2];
 cBulletStaticPlane* g_bulletBoxWallZ[1];
 
-afBulletMultiBody *g_multiBodyHandle;
+afMultiBody *g_afMultiBody;
 cBulletSoftMultiMesh* g_softBody;
 afWorld *g_afWorld;
 
@@ -537,7 +537,7 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
 /// \brief This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
 ///        for interface with the haptics device
 ///
-class ToolGripper: public Sim, public DataExchange, public afBulletGripper{
+class ToolGripper: public Sim, public DataExchange, public afGripper{
 public:
     ToolGripper(cBulletWorld *a_chaiWorld, std::string a_gripper_name, std::string a_device_name);
     ~ToolGripper(){}
@@ -550,7 +550,7 @@ public:
     void clear_wrench();
     void offset_gripper_angle(double offset);
     void setGripperAngle(double angle, double dt=0.001);
-    afBulletGripperLink* m_gripperRoot;
+    afGripperLink* m_gripperRoot;
     cVector3d m_pos;
     cMatrix3d m_rot;
     double m_gripper_angle;
@@ -566,7 +566,7 @@ public:
 ///
 ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
                          std::string a_gripper_name,
-                         std::string a_device_name): afBulletGripper (a_chaiWorld){
+                         std::string a_device_name): afGripper (a_chaiWorld){
     m_gripper_angle = 3.0;
     std::string config = getGripperConfig(a_device_name);
     m_gripperRoot = loadMultiBody(config, a_gripper_name, a_device_name);
@@ -662,7 +662,6 @@ public:
     ~Coordination();
     bool retrieve_device_handle(uint dev_num);
     void create_bullet_gripper(uint dev_num);
-    void open_devices();
     void close_devices();
 
     double increment_K_lh(double a_offset);
@@ -718,10 +717,9 @@ Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
     m_bulletWorld = NULL;
     m_bulletWorld = a_bullet_world;
     m_deviceHandler = new cHapticDeviceHandler();
-    m_num_devices = m_deviceHandler->getNumDevices();
+    int numDevs = m_deviceHandler->getNumDevices();
+    m_num_devices = a_max_load_devs < numDevs ? a_max_load_devs : numDevs;
     std::cerr << "Num of devices " << m_num_devices << std::endl;
-    if (a_max_load_devs < m_num_devices)
-        m_num_devices = a_max_load_devs;
     for (uint i = 0; i < m_num_devices; i++){
         retrieve_device_handle(i);
         create_bullet_gripper(i);
@@ -768,7 +766,14 @@ void Coordination::prev_mode(){
 ///
 bool Coordination::retrieve_device_handle(uint dev_num){
     m_deviceHandler->getDeviceSpecifications(m_hapticDevices[dev_num].m_hInfo, dev_num);
-    return m_deviceHandler->getDevice(m_hapticDevices[dev_num].m_hDevice, dev_num);
+    bool result = m_deviceHandler->getDevice(m_hapticDevices[dev_num].m_hDevice, dev_num);
+    if (result){
+        m_hapticDevices[dev_num].m_hDevice->open();
+        std::string name = "Device" + std::to_string(dev_num+1);
+        //        m_hapticDevices[i].create_cursor(m_bulletWorld);
+        m_hapticDevices[dev_num].create_af_cursor(m_bulletWorld, name);
+    }
+    return result;
 }
 
 ///
@@ -791,18 +796,6 @@ void Coordination::create_bullet_gripper(uint dev_num){
         x /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
         y /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
         m_bulletGrippers[dev_num]->m_posRefOrigin.set(x, y, 0);
-    }
-}
-
-///
-/// \brief Coordination::open_devices
-///
-void Coordination::open_devices(){
-    for (int i = 0 ; i < m_num_devices ; i++){
-        m_hapticDevices[i].m_hDevice->open();
-        std::string name = "Device" + std::to_string(i+1);
-        //        m_hapticDevices[i].create_cursor(m_bulletWorld);
-        m_hapticDevices[i].create_af_cursor(m_bulletWorld, name);
     }
 }
 
@@ -1227,8 +1220,8 @@ int main(int argc, char* argv[])
     g_afWorld->loadYAML("../resources/config/coordination.yaml");
     g_afWorld->loadWorld();
 
-    g_multiBodyHandle = new afBulletMultiBody(g_bulletWorld);
-    g_multiBodyHandle->loadMultiBody();
+    g_afMultiBody = new afMultiBody(g_bulletWorld);
+    g_afMultiBody->loadMultiBody();
 
     // end puzzle meshes
     //////////////////////////////////////////////////////////////////////////
@@ -1302,7 +1295,6 @@ int main(int argc, char* argv[])
     // START SIMULATION
     //-----------------------------------------------------------------------
     g_coordApp = std::make_shared<Coordination>(g_bulletWorld, num_devices_to_load);
-    g_coordApp->open_devices();
 
     // create a thread which starts the main haptics rendering loop
     int dev_num[10] = {0,1,2,3,4,5,6,7,8,9};
@@ -1522,8 +1514,8 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         printf("Changing to next device mode:\n");
     }
     else if (a_key == GLFW_KEY_S){
-        auto sbMap = g_multiBodyHandle->getSoftBodyMap();
-        cSoftBodyMap::const_iterator sbIt;
+        auto sbMap = g_afMultiBody->getSoftBodyMap();
+        afSoftBodyMap::const_iterator sbIt;
         for (sbIt = sbMap->begin() ; sbIt != sbMap->end(); ++sbIt){
             sbIt->second->toggleSkeletalModelVisibility();
         }
@@ -1563,6 +1555,8 @@ void close(void)
     }
     delete g_bulletWorld;
     delete g_coordApp->m_deviceHandler;
+    delete g_afWorld;
+    delete g_afMultiBody;
 }
 
 //---------------------------------------------------------------------------
@@ -1580,7 +1574,7 @@ void updateMesh(){
     if (first_time == true){
         tClock.start(true);
         tClock.reset();
-        tBody = g_multiBodyHandle->getRidigBody("body2");
+        tBody = g_afMultiBody->getRidigBody("body2");
         tMesh = (*(tBody->m_meshes))[0];
         nElem = tElemCnt < tMesh->getNumVertices() ? tElemCnt : tMesh->getNumVertices();
         for(int i = 0 ; i < nElem ; i++){
