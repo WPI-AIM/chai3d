@@ -33,7 +33,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
+    POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
     \author    Francois Conti, Adnan Munawar
@@ -49,8 +49,14 @@
 //------------------------------------------------------------------------------
 #include "btBulletDynamicsCommon.h"
 #include "BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h"
+#include "BulletSoftBody/btSoftBody.h"
+#include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
+#include "BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h"
+#include "BulletSoftBody/btSoftBodyHelpers.h"
 //------------------------------------------------------------------------------
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
 #include "chai_env/World.h"
+#endif
 //------------------------------------------------------------------------------
 namespace chai3d {
 //------------------------------------------------------------------------------
@@ -74,7 +80,7 @@ namespace chai3d {
     This class implements an Bullet dynamic world.
 
     \details
-    cBulletWorld implements a virtual world to handle Bullet based objects 
+    cBulletWorld implements a virtual world to handle Bullet based objects
     (cBulletGenericBody).
 */
 //==============================================================================
@@ -116,13 +122,13 @@ public:
     void setIntegrationSettings(const double a_integrationTimeStep = 0.001, const int a_integrationMaxIterations = 1) { setIntegrationTimeStep(a_integrationTimeStep); setIntegrationMaxIterations(a_integrationMaxIterations); }
 
     //! This method sets the internal integration time step of the simulation.
-    void setIntegrationTimeStep(const double a_integrationTimeStep = 0.001) { m_integrationTimeStep = chai3d::cMax(a_integrationTimeStep, 0.000001); };
-    
+    void setIntegrationTimeStep(const double a_integrationTimeStep = 0.001) { m_integrationTimeStep = chai3d::cMax(a_integrationTimeStep, 0.000001); }
+
     //! The method returns the integration time step of the simulation.
     double getIntegrationTimeStep() { return (m_integrationTimeStep); }
-    
+
     //! This method sets the maximum number of iteration per integration time step.
-    void setIntegrationMaxIterations(const int a_integrationMaxIterations = 1) { m_integrationMaxIterations = chai3d::cMax(a_integrationMaxIterations, 1); };
+    void setIntegrationMaxIterations(const int a_integrationMaxIterations = 1) { m_integrationMaxIterations = chai3d::cMax(a_integrationMaxIterations, 1); }
 
     //! This method returns the maximum number of iteration per integration time step.
     int getIntegrationMaxIterations() { return (m_integrationMaxIterations); }
@@ -167,6 +173,12 @@ public:
     //! Bullet physics solver.
     btConstraintSolver* m_bulletSolver;
 
+    //! Bullet Softbody World Info
+    btSoftBodyWorldInfo* m_bulletSoftBodyWorldInfo;
+
+    //! Bullet Soft Body Solver
+    btSoftBodySolver* m_bulletSoftBodySolver;
+
 
     //--------------------------------------------------------------------------
     // PROTECTED MEMBERS:
@@ -186,8 +198,10 @@ protected:
     //! Maximum number of iterations.
     int m_integrationMaxIterations;
 
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     //! World ROS Object
     std::shared_ptr<chai_env::World> m_afWorldPtr;
+    #endif
 };
 
 //------------------------------------------------------------------------------

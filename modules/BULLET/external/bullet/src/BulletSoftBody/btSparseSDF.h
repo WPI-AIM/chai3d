@@ -191,7 +191,7 @@ struct	btSparseSdf
 				static int numResets=0;
 				numResets++;
 //				printf("numResets=%d\n",numResets);
-				Reset();
+                Reset();
 			}
 
 			c=new Cell();
@@ -243,7 +243,7 @@ struct	btSparseSdf
 		const btVector3	org=btVector3(	(btScalar)c.c[0],
 			(btScalar)c.c[1],
 			(btScalar)c.c[2])	*
-			CELLSIZE*voxelsz;
+            CELLSIZE*voxelsz;
 		for(int k=0;k<=CELLSIZE;++k)
 		{
 			const btScalar	z=voxelsz*k+org.z();

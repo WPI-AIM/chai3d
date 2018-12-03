@@ -144,7 +144,10 @@ cGELWorld* defWorld;
 cGELMesh* defObject;
 
 // dynamic nodes
-cGELSkeletonNode* nodes[10][10];
+const int nX = 10;
+const int nY = 10;
+const int nZ = 2;
+cGELSkeletonNode **** nodes;
 
 // haptic device model
 cShapeSphere* device;
@@ -463,24 +466,43 @@ int main(int argc, char* argv[])
 
     // use internal skeleton as deformable model
     defObject->m_useSkeletonModel = true;
+    // Initiate nodesPtr
+    nodes = new cGELSkeletonNode***[nX];
+    for (int x = 0 ; x < nX ; x++){
+        nodes[x] = new cGELSkeletonNode**[nY];
+        for (int y = 0 ; y < nY ; y++){
+            nodes[x][y] = new cGELSkeletonNode*[nZ];
+        }
+    }
 
     // create an array of nodes
-    for (int y=0; y<10; y++)
-    {
-        for (int x=0; x<10; x++)
+    double xLim[2] = {-0.45, 0.45};
+    double yLim[2] = {-0.45, 0.8};
+    double zLim[2] = {-0.1, 0.1};
+    double x_stride = (xLim[1] - xLim[0]) / (nX-1);
+    double y_stride = (yLim[1] - yLim[0]) / (nY-1);
+    double z_stride = (zLim[1] - zLim[0]) / (nZ-1);
+    for (int z=0 ; z<nZ ; z++){
+        for (int y=0; y<nY; y++)
         {
-            cGELSkeletonNode* newNode = new cGELSkeletonNode();
-            nodes[x][y] = newNode;
-            defObject->m_nodes.push_front(newNode);
-            newNode->m_pos.set( (-0.45 + 0.1*(double)x), (-0.43 + 0.1*(double)y), 0.0);
+            for (int x=0; x<nX; x++)
+            {
+                cGELSkeletonNode* newNode = new cGELSkeletonNode();
+                nodes[x][y][z] = newNode;
+                defObject->m_nodes.push_front(newNode);
+                newNode->m_pos.set( (xLim[0] + x_stride*(double)x),
+                                    (yLim[0] + y_stride*(double)y),
+                                    (zLim[0] + z_stride*(double)z));
+            }
         }
     }
 
     // set corner nodes as fixed
-    nodes[0][0]->m_fixed = true;
-    nodes[0][9]->m_fixed = true;
-    nodes[9][0]->m_fixed = true;
-    nodes[9][9]->m_fixed = true;
+    nodes[0][0][0]->m_fixed = true;
+    nodes[0][nY-1][0]->m_fixed = true;
+    nodes[nX-1][0][0]->m_fixed = true;
+//    nodes[nX-1][nY-1][0]->m_fixed = true;
+//    nodes[9][9]->m_fixed = true;
 
     // set default physical properties for links
     cGELSkeletonLink::s_default_kSpringElongation = 25.0;  // [N/m]
@@ -489,18 +511,38 @@ int main(int argc, char* argv[])
     cGELSkeletonLink::s_default_color.setBlueCornflower();
 
     // create links between nodes
-    for (int y=0; y<9; y++)
+    for (int z=0 ; z<nZ - 1; z++)
     {
-        for (int x=0; x<9; x++)
+        for (int y=0; y<nY - 1; y++)
         {
-            cGELSkeletonLink* newLinkX0 = new cGELSkeletonLink(nodes[x+0][y+0], nodes[x+1][y+0]);
-            cGELSkeletonLink* newLinkX1 = new cGELSkeletonLink(nodes[x+0][y+1], nodes[x+1][y+1]);
-            cGELSkeletonLink* newLinkY0 = new cGELSkeletonLink(nodes[x+0][y+0], nodes[x+0][y+1]);
-            cGELSkeletonLink* newLinkY1 = new cGELSkeletonLink(nodes[x+1][y+0], nodes[x+1][y+1]);
-            defObject->m_links.push_front(newLinkX0);
-            defObject->m_links.push_front(newLinkX1);
-            defObject->m_links.push_front(newLinkY0);
-            defObject->m_links.push_front(newLinkY1);
+            for (int x=0; x<nX - 1; x++)
+            {
+                cGELSkeletonLink* newLink00 = new cGELSkeletonLink(nodes[x+0][y+0][z+0], nodes[x+1][y+0][z+0]);
+                cGELSkeletonLink* newLink01 = new cGELSkeletonLink(nodes[x+0][y+1][z+0], nodes[x+1][y+1][z+0]);
+                cGELSkeletonLink* newLink02 = new cGELSkeletonLink(nodes[x+0][y+0][z+0], nodes[x+0][y+1][z+0]);
+                cGELSkeletonLink* newLink03 = new cGELSkeletonLink(nodes[x+1][y+0][z+0], nodes[x+1][y+1][z+0]);
+                cGELSkeletonLink* newLink04 = new cGELSkeletonLink(nodes[x+0][y+0][z+1], nodes[x+1][y+0][z+1]);
+                cGELSkeletonLink* newLink05 = new cGELSkeletonLink(nodes[x+0][y+1][z+1], nodes[x+1][y+1][z+1]);
+                cGELSkeletonLink* newLink06 = new cGELSkeletonLink(nodes[x+0][y+0][z+1], nodes[x+0][y+1][z+1]);
+                cGELSkeletonLink* newLink07 = new cGELSkeletonLink(nodes[x+1][y+0][z+1], nodes[x+1][y+1][z+1]);
+                cGELSkeletonLink* newLink08 = new cGELSkeletonLink(nodes[x+0][y+0][z+0], nodes[x+0][y+0][z+1]);
+                cGELSkeletonLink* newLink09 = new cGELSkeletonLink(nodes[x+0][y+1][z+0], nodes[x+0][y+1][z+1]);
+                cGELSkeletonLink* newLink10 = new cGELSkeletonLink(nodes[x+1][y+0][z+0], nodes[x+1][y+0][z+1]);
+                cGELSkeletonLink* newLink11 = new cGELSkeletonLink(nodes[x+1][y+1][z+0], nodes[x+1][y+1][z+1]);
+
+                defObject->m_links.push_front(newLink00);
+                defObject->m_links.push_front(newLink01);
+                defObject->m_links.push_front(newLink02);
+                defObject->m_links.push_front(newLink03);
+                defObject->m_links.push_front(newLink04);
+                defObject->m_links.push_front(newLink05);
+                defObject->m_links.push_front(newLink06);
+                defObject->m_links.push_front(newLink07);
+                defObject->m_links.push_front(newLink08);
+                defObject->m_links.push_front(newLink09);
+                defObject->m_links.push_front(newLink10);
+                defObject->m_links.push_front(newLink11);
+            }
         }
     }
 
@@ -509,6 +551,8 @@ int main(int argc, char* argv[])
 
     // show/hide underlying dynamic skeleton model
     defObject->m_showSkeletonModel = false;
+    // show/hide underlying dynamic skeleton model
+    defObject->m_showMassParticleModel = false;
 
 
     //--------------------------------------------------------------------------
@@ -578,6 +622,17 @@ int main(int argc, char* argv[])
     // terminate GLFW library
     glfwTerminate();
 
+    for (int x = 0 ; x < nX ; x++){
+        for (int y = 0 ; y < nY ; y++){
+            for (int z = 0 ; z < nZ ; z++){
+                delete nodes[x][y][z];
+            }
+            delete[] nodes[x][y];
+        }
+        delete[] nodes[x];
+    }
+    delete[] nodes;
+
     // exit
     return 0;
 }
@@ -618,6 +673,12 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     else if (a_key == GLFW_KEY_S)
     {
         defObject->m_showSkeletonModel = !defObject->m_showSkeletonModel;
+    }
+
+    // option - show/hide skeleton
+    else if (a_key == GLFW_KEY_L)
+    {
+        defObject->m_showMassParticleModel = !defObject->m_showMassParticleModel;
     }
 
     // option - toggle fullscreen
@@ -751,15 +812,18 @@ void updateHaptics(void)
 
         // compute reaction forces
         cVector3d force(0.0, 0.0, 0.0);
-        for (int y=0; y<10; y++)
+        for (int z=0 ; z<nZ ; z++)
         {
-            for (int x=0; x<10; x++)
+            for (int y=0; y<nY; y++)
             {
-               cVector3d nodePos = nodes[x][y]->m_pos;
-               cVector3d f = computeForce(pos, deviceRadius, nodePos, radius, stiffness);
-               cVector3d tmpfrc = -1.0 * f;
-               nodes[x][y]->setExternalForce(tmpfrc);
-               force.add(f);
+                for (int x=0; x<nX; x++)
+                {
+                    cVector3d nodePos = nodes[x][y][z]->m_pos;
+                    cVector3d f = computeForce(pos, deviceRadius, nodePos, radius, stiffness);
+                    cVector3d tmpfrc = -1.0 * f;
+                    nodes[x][y][z]->setExternalForce(tmpfrc);
+                    force.add(f);
+                }
             }
         }
 

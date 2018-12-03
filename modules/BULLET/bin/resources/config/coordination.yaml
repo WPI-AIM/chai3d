@@ -1,13 +1,13 @@
 # This is the base file for Coordination Application
 path: ../resources/config/
-world_config: world_config.yaml
-multibody_config: puzzle.yaml
-color_config: colors.yaml
-gripper_configs: ["Default", "MTMR", "MTML", "Novint Falcon", "Geomagic Touch", "PHANTOM Omni", "Razer Hydra"]
-"Default": "gripper_type1.yaml"
-"MTMR": "gripper_type2.yaml"
-"MTML": "gripper_type2.yaml"
-"Novint Falcon": "gripper_type1.yaml"
-"Geomagic Touch": "gripper_type1.yaml"
-"PHANTOM Omni": "tool_type3.yaml"
-"Razer Hydra": "gripper_type4.yaml"
+world config: worlds/world.yaml
+multibody config: puzzles/puzzle1.yaml
+color config: color/colors.yaml
+gripper configs: [Default, MTMR, MTML, Novint Falcon, Geomagic Touch, PHANTOM Omni, Razer Hydra]
+Default: "grippers/single joint1.yaml"
+MTMR: "grippers/multi joint1.yaml"
+MTML: "grippers/multi joint1.yaml"
+Novint Falcon: "grippers/single joint2.yaml"
+Geomagic Touch: "grippers/single joint1.yaml"
+PHANTOM Omni: "grippers/multi joint2.yaml"
+Razer Hydra: "grippers/multi joint2.yaml"

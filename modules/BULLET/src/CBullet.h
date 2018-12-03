@@ -79,6 +79,7 @@
 #include "CBulletCylinder.h"
 #include "CBulletMesh.h"
 #include "CBulletMultiMesh.h"
+#include "CBulletSoftMultiMesh.h"
 #include "CBulletSphere.h"
 #include "CBulletStaticPlane.h"
 #include "CBulletVehicle.h"

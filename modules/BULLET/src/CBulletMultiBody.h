@@ -46,21 +46,29 @@
 #define CBulletMultiBody_H
 
 #include "CBulletMultiMesh.h"
+#include "CBulletSoftMultiMesh.h"
 #include "CBulletWorld.h"
 #include "chai3d.h"
 #include <yaml-cpp/yaml.h>
 
 namespace chai3d {
 
-class afBulletMultiBody;
-class afLink;
+class afMultiBody;
+class afRigidBody;
+class afSoftBody;
 class afJoint;
+class afRigidBodySurfaceProperties;
+class afSoftBodyConfigProperties;
 
-typedef std::shared_ptr<afBulletMultiBody> cBulletMultiBodyPtr;
-typedef std::shared_ptr<afLink> cMultiBodyLinkPtr;
-typedef std::shared_ptr<afJoint> cMultiBodyJointPtr;
-typedef std::map<std::string, afLink*> cLinkMap;
-typedef std::map<std::string, afJoint*> cJointMap;
+typedef afMultiBody* afMultiBodyPtr;
+typedef afRigidBody* afRigidBodyPtr;
+typedef afSoftBody* afSoftBodyPtr;
+typedef afJoint* afJointPtr;
+typedef afRigidBodySurfaceProperties* afRigidBodySurfacePropertiesPtr;
+typedef afSoftBodyConfigProperties* afSoftBodyConfigPropertiesPtr;
+typedef std::map<std::string, afRigidBodyPtr> afRigidBodyMap;
+typedef std::map<std::string, afSoftBodyPtr> afSoftBodyMap;
+typedef std::map<std::string, afJointPtr> afJointMap;
 
 ///
 /// \brief The afConfigHandler class
@@ -70,13 +78,14 @@ class afConfigHandler{
 public:
 
     afConfigHandler();
-    std::string get_config_file(std::string a_config_name);
-    std::string get_puzzle_config();
-    std::string get_color_config();
-    std::string get_world_config();
-    std::vector<double> get_color_rgba(std::string a_color_name);
-    std::string get_gripper_config(std::string a_gripper_name);
-    bool load_yaml(std::string file);
+    virtual ~afConfigHandler(){}
+    std::string getConfigFile(std::string a_config_name);
+    std::string getPuzzleConfig();
+    std::string getColorConfig();
+    std::string getWorldConfig();
+    std::vector<double> getColorRGBA(std::string a_color_name);
+    std::string getGripperConfig(std::string a_gripper_name);
+    bool loadYAML(std::string file);
 
 private:
 
@@ -94,11 +103,11 @@ protected:
 };
 
 ///
-/// \brief The afLinkSurfaceProperties struct
+/// \brief The afBodySurfaceProperties struct
 ///
-struct afLinkSurfaceProperties{
+struct afRigidBodySurfaceProperties{
 public:
-    afLinkSurfaceProperties(){
+    afRigidBodySurfaceProperties(){
         m_linear_damping = 0.1;
         m_angular_damping = 0.01;
         m_static_friction = 0.5;
@@ -113,27 +122,35 @@ public:
 };
 
 ///
-/// \brief The afLink class
+/// \brief The afSoftBodySurfaceProperties struct
 ///
-class afLink : public cBulletMultiMesh{
+struct afSoftBodyConfigProperties: public btSoftBody::Config{
 
-    friend afBulletMultiBody;
-    friend afJoint;
+};
+
+///
+/// \brief The afBody class
+///
+class afRigidBody: public cBulletMultiMesh{
+
+    friend class afMultiBody;
+    friend class afJoint;
 
 public:
 
-    afLink(cBulletWorld* a_chaiWorld);
+    afRigidBody(cBulletWorld* a_chaiWorld);
+    virtual ~afRigidBody();
     virtual void updateCmdFromROS(double dt);
-    virtual bool load (std::string file, std::string name, afBulletMultiBody* mB);
-    virtual void add_child_link(afLink* childLink, afJoint* jnt);
+    virtual bool load(std::string file, std::string name, afMultiBodyPtr mB);
+    virtual void addChildBody(afRigidBodyPtr childBody, afJointPtr jnt);
 
-    std::vector<afJoint*> m_joints;
-    std::vector<afLink*> m_childrenLinks;
-    std::vector<afLink*> m_parentLinks;
+    std::vector<afJointPtr> m_joints;
+    std::vector<afRigidBodyPtr> m_childrenBodies;
+    std::vector<afRigidBodyPtr> m_parentBodies;
 
-    void set_angle(double &angle, double dt);
-    void set_angle(std::vector<double> &angle, double dt);
-    static void set_surface_properties(const afLink* a_link, const afLinkSurfaceProperties *a_surfaceProps);
+    void setAngle(double &angle, double dt);
+    void setAngle(std::vector<double> &angle, double dt);
+    static void setSurfaceProperties(const afRigidBodyPtr a_body, const afRigidBodySurfacePropertiesPtr a_surfaceProps);
 
 protected:
 
@@ -143,19 +160,19 @@ protected:
     cMultiMesh m_lowResMesh;
     cVector3d pos;
     cMatrix3d rot;
-    std::vector<afLink*>::const_iterator m_linkIt;
+    std::vector<afRigidBodyPtr>::const_iterator m_bodyIt;
     double K_lin, D_lin;
     double K_ang, D_ang;
     bool _lin_gains_computed = false;
     bool _ang_gains_computed = false;
-    void compute_gains();
-    void create_af_object(std::string a_object_name);
+    void computeGains();
+    void createAFObject(std::string a_object_name);
 
 protected:
 
-    void add_parent_link(afLink* a_link);
-    void populate_parents_tree(afLink* a_link, afJoint* a_jnt);
-    static afLinkSurfaceProperties m_surfaceProps;
+    void addParentBody(afRigidBodyPtr a_body);
+    void populateParentsTree(afRigidBodyPtr a_body, afJointPtr a_jnt);
+    static afRigidBodySurfaceProperties m_surfaceProps;
     static cMaterial m_mat;
 
 };
@@ -164,15 +181,15 @@ protected:
 /// \brief The afJoint class
 ///
 class afJoint{
-    friend afLink;
+    friend class afRigidBody;
 
 public:
 
     afJoint();
     virtual ~afJoint();
-    virtual bool load (std::string file, std::string name, afBulletMultiBody* mB, std::string name_remapping_idx = "");
-    void command_torque(double &cmd);
-    void command_position(double &cmd);
+    virtual bool load (std::string file, std::string name, afMultiBodyPtr mB, std::string name_remapping_idx = "");
+    void commandTorque(double &cmd);
+    void commandPosition(double &cmd);
 
 private:
 
@@ -184,8 +201,8 @@ private:
     bool enable_motor;
     double jnt_lim_low, jnt_lim_high, max_motor_impluse;
     btRigidBody *bodyA, *bodyB;
-    void assign_vec(std::string name, btVector3* v, YAML::Node* node);
-    void print_vec(std::string name, btVector3* v);
+    void assignVec(std::string name, btVector3* v, YAML::Node* node);
+    void printVec(std::string name, btVector3* v);
 
 protected:
 
@@ -194,20 +211,66 @@ protected:
 };
 
 ///
+/// \brief The afSoftBody class
+///
+class afSoftBody: public cBulletSoftMultiMesh{
+
+    friend class afMultiBody;
+
+public:
+
+    afSoftBody(cBulletWorld* a_chaiWorld);
+    virtual void updateCmdFromROS(double dt){}
+    virtual bool load(std::string file, std::string name, afMultiBodyPtr mB);
+    virtual void addChildBody(afSoftBodyPtr childBody, afJointPtr jnt){}
+
+    std::vector<afJointPtr> m_joints;
+    std::vector<afSoftBodyPtr> m_childrenBodies;
+    std::vector<afSoftBodyPtr> m_parentBodies;
+
+    void setAngle(double &angle, double dt);
+    void setAngle(std::vector<double> &angle, double dt);
+    static void setConfigProperties(const afSoftBodyPtr a_body, const afSoftBodyConfigPropertiesPtr a_configProps);
+
+protected:
+
+    double m_scale;
+    double m_total_mass;
+    std::string m_mesh_name;
+    cMultiMesh m_lowResMesh;
+    cVector3d pos;
+    cMatrix3d rot;
+    std::vector<afSoftBodyPtr>::const_iterator m_bodyIt;
+    double K_lin, D_lin;
+    double K_ang, D_ang;
+    bool _lin_gains_computed = false;
+    bool _ang_gains_computed = false;
+    void computeGains();
+    void createAFObject(std::string a_object_name);
+
+protected:
+
+    void addParentBody(afSoftBodyPtr a_body);
+    void populateParentsTree(afSoftBodyPtr a_body, afJointPtr a_jnt);
+    static afSoftBodyConfigProperties m_configProps;
+    static cMaterial m_mat;
+};
+
+///
 /// \brief The afWorld class
 ///
 class afWorld: public afConfigHandler{
 
-    friend afBulletMultiBody;
+    friend class afMultiBody;
 
 public:
     afWorld(cBulletWorld *bulletWorld);
     virtual ~afWorld(){}
-    virtual bool load_world(std::string a_world_config = "");
-    double get_enclosure_length();
-    double get_enclosure_width();
-    double get_enclosure_height();
-    void get_enclosure_extents(double &length, double &width, double &height);
+    virtual bool loadWorld(std::string a_world_config = "");
+    double getEnclosureLength();
+    double getEnclosureWidth();
+    double getEnclosureHeight();
+    void getEnclosureExtents(double &length, double &width, double &height);
     static cBulletWorld *m_chaiWorld;
 
 protected:
@@ -225,30 +288,39 @@ private:
 ///
 /// \brief The afBulletMultiBody class
 ///
-class afBulletMultiBody: public afWorld{
+class afMultiBody: public afWorld{
 
-    friend afLink;
-    friend afJoint;
+    friend class afRigidBody;
+    friend class afSoftBody;
+    friend class afJoint;
 
 public:
 
-    afBulletMultiBody();
-    afBulletMultiBody(cBulletWorld* a_chaiWorld){m_chaiWorld = a_chaiWorld;}
-    virtual ~afBulletMultiBody();
-    virtual afLink* load_multibody(std::string a_multibody_config = "");
+    afMultiBody();
+    afMultiBody(cBulletWorld* a_chaiWorld){m_chaiWorld = a_chaiWorld;}
+    virtual ~afMultiBody();
+    virtual afRigidBodyPtr loadMultiBody(std::string a_multibody_config = "");
+    afRigidBodyPtr getRidigBody(std::string a_name);
+    afSoftBodyPtr getSoftBody(std::string a_name);
+    inline std::string getHighResPath(){return high_res_path;}
+    inline std::string getLowResPath(){return low_res_path;}
+    inline const afSoftBodyMap* getSoftBodyMap(){return &m_afSoftBodyMap;}
+    inline const afRigidBodyMap* getRigidBodyMap(){return &m_afRigidBodyMap;}
 
 protected:
 
-    cLinkMap m_linkMap;
-    cJointMap m_jointMap;
+    afRigidBodyMap m_afRigidBodyMap;
+    afSoftBodyMap m_afSoftBodyMap;
+    afJointMap m_afJointMap;
     std::string high_res_path, low_res_path;
 
 protected:
 
     cMaterial mat;
-    std::string get_link_name_remapping(std::string a_link_name);
-    std::string get_joint_name_remapping(std::string a_joint_name);
-    void remap_name(std::string &name, std::string remap_idx_str);
+    template <typename T>
+    std::string remapBodyName(std::string a_body_name, const T* tMap);
+    std::string remapJointName(std::string a_joint_name);
+    void remapName(std::string &name, std::string remap_idx_str);
 };
 
 }

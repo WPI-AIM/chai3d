@@ -33,7 +33,7 @@
     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE. 
+    POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
     \author    Francois Conti, Adnan Munawar
@@ -48,8 +48,11 @@
 #include "chai3d.h"
 //------------------------------------------------------------------------------
 #include "btBulletDynamicsCommon.h"
+#include "BulletSoftBody/btSoftBody.h"
 //------------------------------------------------------------------------------
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
 #include "chai_env/Object.h"
+#endif
 
 //------------------------------------------------------------------------------
 namespace chai3d {
@@ -60,7 +63,7 @@ namespace chai3d {
     \file       CBulletGenericObject.h
 
     \brief
-    <b> Bullet Module </b> \n 
+    <b> Bullet Module </b> \n
     Bullet Generic Object.
 */
 //==============================================================================
@@ -101,9 +104,11 @@ public:
 
     //! Constructor of cBulletGenericBody.
     cBulletGenericObject(cBulletWorld* a_world, std::string a_objName="") {
+      #ifdef C_ENABLE_CHAI_ENV_SUPPORT
         if(!a_objName.empty()){
             m_afObjPtr.reset(new chai_env::Object(a_objName));
         }
+        #endif
         initialize(a_world); }
 
     //! Destructor of cBulletGenericBody.
@@ -148,7 +153,7 @@ public:
     virtual void setStatic(bool a_static);
 
     //! This method returns __true__ if the object is static, __false__ otherwise.
-    virtual bool getStatic() const { return (m_static); } 
+    virtual bool getStatic() const { return (m_static); }
 
     //! This method builds a dynamic representation of the object in the Bullet world.
     virtual void buildDynamicModel();
@@ -228,6 +233,9 @@ public:
     //! Bullet rigid body.
     btRigidBody* m_bulletRigidBody;
 
+    //! Bullet Soft Body
+    btSoftBody* m_bulletSoftBody;
+
     //! Bullet collision shape
     btCollisionShape* m_bulletCollisionShape;
 
@@ -235,7 +243,9 @@ public:
     btDefaultMotionState* m_bulletMotionState;
 
     //! ROS CHAI Env
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     std::shared_ptr<chai_env::Object> m_afObjPtr;
+    #endif
 
     //--------------------------------------------------------------------------
     // PROTECTED METHODS:

@@ -46,6 +46,7 @@
 //---------------------------------------------------------------------------
 #include <GLFW/glfw3.h>
 #include <boost/program_options.hpp>
+#include <mutex>
 //---------------------------------------------------------------------------
 using namespace chai3d;
 using namespace std;
@@ -87,13 +88,14 @@ cBulletStaticPlane* g_bulletBoxWallX[2];
 cBulletStaticPlane* g_bulletBoxWallY[2];
 cBulletStaticPlane* g_bulletBoxWallZ[1];
 
-afBulletMultiBody *g_afBody;
+afMultiBody *g_afMultiBody;
+cBulletSoftMultiMesh* g_softBody;
 afWorld *g_afWorld;
 
 cVector3d g_camPos(0,0,0);
 cVector3d g_dev_vel;
 cMatrix3d g_cam_rot_last[10], g_dev_rot_last[10], g_dev_rot_cur[10];
-bool _cam_pressed[10];;
+bool _cam_pressed[10];
 double g_dt_fixed = 0;
 bool g_force_enable = true;
 // Default switch index for clutches
@@ -242,7 +244,7 @@ public:
     cFrequencyCounter m_freq_ctr;
 
 private:
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
     void update_cursor_pose();
     bool m_dev_force_enabled = true;
 };
@@ -290,14 +292,14 @@ cBulletSphere* Device::create_af_cursor(cBulletWorld *a_world, string a_name){
 /// \return
 ///
 cVector3d Device::measured_pos(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getPosition(m_pos);
     update_cursor_pose();
     return m_pos;
 }
 
 cMatrix3d Device::measured_rot(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getRotation(m_rot);
     return m_rot;
 }
@@ -313,8 +315,10 @@ void Device::update_cursor_pose(){
     if(m_af_cursor){
         m_af_cursor->setLocalPos(m_pos * m_workspace_scale_factor);
         m_af_cursor->setLocalRot(m_rot);
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
         m_af_cursor->m_afObjPtr->set_userdata_desc("haptics frequency");
         m_af_cursor->m_afObjPtr->set_userdata(m_freq_ctr.getFrequency());
+#endif
     }
 }
 
@@ -323,7 +327,7 @@ void Device::update_cursor_pose(){
 /// \return
 ///
 cVector3d Device::measured_lin_vel(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getLinearVelocity(m_vel);
     return m_vel;
 }
@@ -333,7 +337,7 @@ cVector3d Device::measured_lin_vel(){
 /// \return
 ///
 cVector3d Device::mearured_ang_vel(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_hDevice->getAngularVelocity(m_avel);
     return m_avel;
 }
@@ -343,7 +347,7 @@ cVector3d Device::mearured_ang_vel(){
 /// \return
 ///
 double Device::measured_gripper_angle(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     double angle;
     m_hDevice->getGripperAngleRad(angle);
     return angle;
@@ -355,7 +359,7 @@ double Device::measured_gripper_angle(){
 /// \return
 ///
 bool Device::is_button_pressed(int button_index){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     bool status;
     m_hDevice->getUserSwitch(button_index, status);
     return status;
@@ -367,7 +371,7 @@ bool Device::is_button_pressed(int button_index){
 /// \return
 ///
 bool Device::is_button_press_rising_edge(int button_index){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     bool status;
     m_hDevice->getUserSwitch(button_index, status);
     if (m_btn_prev_state_rising[button_index] ^ status){
@@ -388,7 +392,7 @@ bool Device::is_button_press_rising_edge(int button_index){
 /// \return
 ///
 bool Device::is_button_press_falling_edge(int button_index){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     bool status;
     m_hDevice->getUserSwitch(button_index, status);
     if (m_btn_prev_state_falling[button_index] ^ status){
@@ -409,7 +413,7 @@ bool Device::is_button_press_falling_edge(int button_index){
 /// \param torque
 ///
 void Device::apply_wrench(cVector3d force, cVector3d torque){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     force = force * m_dev_force_enabled;
     torque = torque * m_dev_force_enabled;
     m_hDevice->setForceAndTorqueAndGripperForce(force, torque, 0.0);
@@ -533,7 +537,7 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
 /// \brief This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
 ///        for interface with the haptics device
 ///
-class ToolGripper: public Sim, public DataExchange, public afBulletGripper{
+class ToolGripper: public Sim, public DataExchange, public afGripper{
 public:
     ToolGripper(cBulletWorld *a_chaiWorld, std::string a_gripper_name, std::string a_device_name);
     ~ToolGripper(){}
@@ -545,13 +549,13 @@ public:
     bool is_wrench_set();
     void clear_wrench();
     void offset_gripper_angle(double offset);
-    void set_gripper_angle(double angle, double dt=0.001);
-    afBulletGripperLink* m_gripperRoot;
+    void setGripperAngle(double angle, double dt=0.001);
+    afGripperLink* m_gripperRoot;
     cVector3d m_pos;
     cMatrix3d m_rot;
     double m_gripper_angle;
 
-    boost::mutex m_mutex;
+    std::mutex m_mutex;
 };
 
 ///
@@ -562,10 +566,10 @@ public:
 ///
 ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
                          std::string a_gripper_name,
-                         std::string a_device_name): afBulletGripper (a_chaiWorld){
+                         std::string a_device_name): afGripper (a_chaiWorld){
     m_gripper_angle = 3.0;
-    std::string config = get_gripper_config(a_device_name);
-    m_gripperRoot = load_multibody(config, a_gripper_name, a_device_name);
+    std::string config = getGripperConfig(a_device_name);
+    m_gripperRoot = loadMultiBody(config, a_gripper_name, a_device_name);
 }
 
 ///
@@ -573,7 +577,7 @@ ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
 /// \return
 ///
 cVector3d ToolGripper::measured_pos(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_gripperRoot->getLocalPos();
 }
 
@@ -582,7 +586,7 @@ cVector3d ToolGripper::measured_pos(){
 /// \return
 ///
 cMatrix3d ToolGripper::measured_rot(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     return m_gripperRoot->getLocalRot();
 }
 
@@ -590,7 +594,7 @@ cMatrix3d ToolGripper::measured_rot(){
 /// \brief ToolGripper::update_measured_pose
 ///
 void ToolGripper::update_measured_pose(){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_pos  = m_gripperRoot->getLocalPos();
     m_rot = m_gripperRoot->getLocalRot();
 }
@@ -600,8 +604,8 @@ void ToolGripper::update_measured_pose(){
 /// \param angle
 /// \param dt
 ///
-void ToolGripper::set_gripper_angle(double angle, double dt){
-    m_gripperRoot->set_angle(angle, dt);
+void ToolGripper::setGripperAngle(double angle, double dt){
+    m_gripperRoot->setAngle(angle, dt);
 }
 
 ///
@@ -609,7 +613,7 @@ void ToolGripper::set_gripper_angle(double angle, double dt){
 /// \param offset
 ///
 void ToolGripper::offset_gripper_angle(double offset){
-    boost::lock_guard<boost::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_gripper_angle += offset;
     m_gripper_angle = cClamp(m_gripper_angle, 0.0, 1.0);
 }
@@ -658,7 +662,6 @@ public:
     ~Coordination();
     bool retrieve_device_handle(uint dev_num);
     void create_bullet_gripper(uint dev_num);
-    void open_devices();
     void close_devices();
 
     double increment_K_lh(double a_offset);
@@ -714,10 +717,9 @@ Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
     m_bulletWorld = NULL;
     m_bulletWorld = a_bullet_world;
     m_deviceHandler = new cHapticDeviceHandler();
-    m_num_devices = m_deviceHandler->getNumDevices();
+    int numDevs = m_deviceHandler->getNumDevices();
+    m_num_devices = a_max_load_devs < numDevs ? a_max_load_devs : numDevs;
     std::cerr << "Num of devices " << m_num_devices << std::endl;
-    if (a_max_load_devs < m_num_devices)
-        m_num_devices = a_max_load_devs;
     for (uint i = 0; i < m_num_devices; i++){
         retrieve_device_handle(i);
         create_bullet_gripper(i);
@@ -764,7 +766,14 @@ void Coordination::prev_mode(){
 ///
 bool Coordination::retrieve_device_handle(uint dev_num){
     m_deviceHandler->getDeviceSpecifications(m_hapticDevices[dev_num].m_hInfo, dev_num);
-    return m_deviceHandler->getDevice(m_hapticDevices[dev_num].m_hDevice, dev_num);
+    bool result = m_deviceHandler->getDevice(m_hapticDevices[dev_num].m_hDevice, dev_num);
+    if (result){
+        m_hapticDevices[dev_num].m_hDevice->open();
+        std::string name = "Device" + std::to_string(dev_num+1);
+        //        m_hapticDevices[i].create_cursor(m_bulletWorld);
+        m_hapticDevices[dev_num].create_af_cursor(m_bulletWorld, name);
+    }
+    return result;
 }
 
 ///
@@ -780,25 +789,13 @@ void Coordination::create_bullet_gripper(uint dev_num){
     m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
     cVector3d localGripperPos = m_bulletGrippers[dev_num]->m_gripperRoot->getLocalPos();
     double l,w,h;
-    m_bulletGrippers[dev_num]->get_enclosure_extents(l,w,h);
+    m_bulletGrippers[dev_num]->getEnclosureExtents(l,w,h);
     if (localGripperPos.length() == 0.0){
         double x = (int(dev_num / 2.0) * 0.8);
         double y = (dev_num % 2) ? +0.4 : -0.4;
         x /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
         y /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
         m_bulletGrippers[dev_num]->m_posRefOrigin.set(x, y, 0);
-    }
-}
-
-///
-/// \brief Coordination::open_devices
-///
-void Coordination::open_devices(){
-    for (int i = 0 ; i < m_num_devices ; i++){
-        m_hapticDevices[i].m_hDevice->open();
-        std::string name = "Device" + std::to_string(i+1);
-        //        m_hapticDevices[i].create_cursor(m_bulletWorld);
-        m_hapticDevices[i].create_af_cursor(m_bulletWorld, name);
     }
 }
 
@@ -1220,12 +1217,11 @@ int main(int argc, char* argv[])
     // AF MULTIBODY HANDLER
     //////////////////////////////////////////////////////////////////////////
     g_afWorld = new afWorld(g_bulletWorld);
-    g_afWorld->load_yaml("../resources/config/coordination.yaml");
-    g_afWorld->load_world();
+    g_afWorld->loadYAML("../resources/config/coordination.yaml");
+    g_afWorld->loadWorld();
 
-    g_afBody = new afBulletMultiBody(g_bulletWorld);
-    g_afBody->load_multibody();
-
+    g_afMultiBody = new afMultiBody(g_bulletWorld);
+    g_afMultiBody->loadMultiBody();
 
     // end puzzle meshes
     //////////////////////////////////////////////////////////////////////////
@@ -1233,9 +1229,9 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     // we create 5 static walls to contain the dynamic objects within a limited workspace
     double box_l, box_w, box_h;
-    box_l = g_afWorld->get_enclosure_length();
-    box_w = g_afWorld->get_enclosure_width();
-    box_h = g_afWorld->get_enclosure_height();
+    box_l = g_afWorld->getEnclosureLength();
+    box_w = g_afWorld->getEnclosureWidth();
+    box_h = g_afWorld->getEnclosureHeight();
     g_bulletBoxWallZ[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 0.0, -1.0), -0.5 * box_h);
     g_bulletBoxWallY[0] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, -1.0, 0.0), -0.5 * box_w);
     g_bulletBoxWallY[1] = new cBulletStaticPlane(g_bulletWorld, cVector3d(0.0, 1.0, 0.0), -0.5 * box_w);
@@ -1293,13 +1289,12 @@ int main(int argc, char* argv[])
     matGround.setGreenChartreuse();
     matGround.m_emission.setGrayLevel(0.3);
     g_bulletGround->setMaterial(matGround);
-    g_bulletGround->m_bulletRigidBody->setFriction(1);
+    g_bulletGround->m_bulletRigidBody->setFriction(1.0);
 
     //-----------------------------------------------------------------------
     // START SIMULATION
     //-----------------------------------------------------------------------
     g_coordApp = std::make_shared<Coordination>(g_bulletWorld, num_devices_to_load);
-    g_coordApp->open_devices();
 
     // create a thread which starts the main haptics rendering loop
     int dev_num[10] = {0,1,2,3,4,5,6,7,8,9};
@@ -1518,6 +1513,13 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
         g_coordApp->next_mode();
         printf("Changing to next device mode:\n");
     }
+    else if (a_key == GLFW_KEY_S){
+        auto sbMap = g_afMultiBody->getSoftBodyMap();
+        afSoftBodyMap::const_iterator sbIt;
+        for (sbIt = sbMap->begin() ; sbIt != sbMap->end(); ++sbIt){
+            sbIt->second->toggleSkeletalModelVisibility();
+        }
+    }
     //    // option - open gripper
     //    else if (a_key == GLFW_KEY_S)
     //    {
@@ -1553,6 +1555,101 @@ void close(void)
     }
     delete g_bulletWorld;
     delete g_coordApp->m_deviceHandler;
+    delete g_afWorld;
+    delete g_afMultiBody;
+}
+
+//---------------------------------------------------------------------------
+cPrecisionClock tClock;
+int cnt = 0;
+int first_time = true;
+const int tElemCnt = 400;
+cVector3d n[tElemCnt];
+cVector3d p[tElemCnt];
+int nElem = 0;
+afRigidBody * tBody;
+cMesh * tMesh;
+
+void updateMesh(){
+    if (first_time == true){
+        tClock.start(true);
+        tClock.reset();
+        tBody = g_afMultiBody->getRidigBody("body2");
+        tMesh = (*(tBody->m_meshes))[0];
+        nElem = tElemCnt < tMesh->getNumVertices() ? tElemCnt : tMesh->getNumVertices();
+        for(int i = 0 ; i < nElem ; i++){
+            p[i] = tMesh->m_vertices->getLocalPos(i);
+            n[i] = tMesh->m_vertices->getNormal(i);
+        }
+        first_time = false;
+    }
+    cnt ++;
+    cVector3d dp, dn;
+    double t = tClock.getCurrentTimeSeconds();
+    double tc = 4.0;
+    double scale = 3.0;
+    for(int i = 0 ; i < nElem ; i++){
+        dn = p[i] * (sin(tc*t)/scale);
+        dp = p[i] + dn;
+        tMesh->m_vertices->setLocalPos(i, dp);
+//        if ((i == 10) && (cnt % 10 == 0)){
+//            printf("p %f, %f, %f \n", p[i].x(), p[i].y(), p[i].z());
+//            printf("dp %f, %f, %f \n", dp.x(), dp.y(), dp.z());
+//            printf("n %f, %f, %f \n", n[i].x(), n[i].y(), n[i].z());
+//            printf("sin(t) %f\n", sin(tc*t)/scale);
+//            cVector3d tp;
+//            tp = tMesh->m_vertices->getLocalPos(i);
+//            printf("tp %f, %f, %f \n", tp.x(), tp.y(), tp.z());
+//        }
+        tMesh->markForUpdate(true);
+    }
+    tMesh->computeAllNormals();
+    if (cnt >= 2000){
+        cnt = 0;
+    }
+}
+
+void renderSb(){
+    cColorf col;
+    col.setPurpleAmethyst();
+    btSoftBody *softBody = g_softBody->getSoftBody();
+    col.render();
+//    glBegin(GL_POINTS);
+//    for (int i = 0 ; i < softBody->m_nodes.size() ; i++){
+//        cVector3d v(softBody->m_nodes[i].m_x.x(), softBody->m_nodes[i].m_x.y(), softBody->m_nodes[i].m_x.z());
+//        glVertex3dv( (const double *)&v);
+////        if (i %300 == 0)
+////            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+//    }
+//    glEnd();
+    glBegin(GL_LINES);
+    for (int i = 0 ; i < softBody->m_links.size() ; i++){
+        cVector3d v1(softBody->m_links[i].m_n[0]->m_x.x(), softBody->m_links[i].m_n[0]->m_x.y(), softBody->m_links[i].m_n[0]->m_x.z());
+        cVector3d v2(softBody->m_links[i].m_n[1]->m_x.x(), softBody->m_links[i].m_n[1]->m_x.y(), softBody->m_links[i].m_n[1]->m_x.z());
+        glColor4fv( (const float *)&col);
+
+            glVertex3dv( (const double *)&v1);
+            glVertex3dv( (const double *)&v2);
+//        if (i %300 == 0)
+//            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+    }
+//    glEnd();
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
+//    glBegin(GL_TRIANGLES);
+//    for (int i = 0 ; i < softBody->m_faces.size() ; i++){
+//        cVector3d v1(softBody->m_faces[i].m_n[0]->m_x.x(), softBody->m_faces[i].m_n[0]->m_x.y(), softBody->m_faces[i].m_n[0]->m_x.z());
+//        cVector3d v2(softBody->m_faces[i].m_n[1]->m_x.x(), softBody->m_faces[i].m_n[1]->m_x.y(), softBody->m_faces[i].m_n[1]->m_x.z());
+//        cVector3d v3(softBody->m_faces[i].m_n[2]->m_x.x(), softBody->m_faces[i].m_n[2]->m_x.y(), softBody->m_faces[i].m_n[2]->m_x.z());
+//        glColor4fv( (const float *)&col);
+//            glVertex3dv( (const double *)&v1);
+//            glVertex3dv( (const double *)&v2);
+//            glVertex3dv( (const double *)&v3);
+////        if (i %300 == 0)
+////            printf("%d node pos = %f, %f, %f \n", i, v.x(), v.y(), v.z());
+//    }
+    glEnd();
+
 }
 
 //---------------------------------------------------------------------------
@@ -1574,6 +1671,8 @@ void updateGraphics(void)
         g_labelDevRates[i]->setText(g_coordApp->m_hapticDevices[i].m_hInfo.m_modelName + ": " + cStr(g_coordApp->m_hapticDevices[i].m_freq_ctr.getFrequency(), 0) + " Hz");
         g_labelDevRates[i]->setLocalPos(10, (int)(g_height - (i+1)*20));
     }
+
+//    updateMesh();
 
     // update position of label
     g_labelTimes->setLocalPos((int)(0.5 * (g_width - g_labelTimes->getWidth())), 30);
@@ -1642,23 +1741,31 @@ void updateBulletSim(){
     // start haptic device
     g_clockWorld.start(true);
     // main Bullet simulation loop
-    int n = g_coordApp->m_num_devices;
-    cVector3d dpos[n], ddpos[n], dposPre[n];
-    cMatrix3d drot[n], ddrot[n], drotPre[n];
+    unsigned int n = g_coordApp->m_num_devices;
+    std::vector<cVector3d> dpos, ddpos, dposPre;
+    std::vector<cMatrix3d> drot, ddrot, drotPre;
 
-    for(int i = 0 ; i < n; i ++){
+    dpos.resize(n); ddpos.resize(n); dposPre.resize(n);
+    drot.resize(n); ddrot.resize(n); drotPre.resize(n);
+
+    for(unsigned int i = 0 ; i < n; i ++){
         dpos[i].set(0,0,0); ddpos[i].set(0,0,0); dposPre[i].set(0,0,0);
         drot[i].identity(); ddrot[i].identity(); drotPre[i].identity();
     }
-    RateSleep rateSleep(1000);
+    double sleepHz;
+    if (g_dt_fixed > 0.0)
+        sleepHz = (1.0/g_dt_fixed);
+    else
+        sleepHz= 1000;
 
+    RateSleep rateSleep(sleepHz);
     while(g_simulationRunning)
     {
         g_freqCounterHaptics.signal(1);
         double dt;
         if (g_dt_fixed > 0.0) dt = g_dt_fixed;
         else dt = compute_dt(true);
-        for (int i = 0 ; i<g_coordApp->m_num_devices ; i++){
+        for (unsigned int i = 0 ; i < g_coordApp->m_num_devices ; i++){
             // update position of tool
             ToolGripper * bGripper = g_coordApp->m_bulletGrippers[i];
             bGripper->update_measured_pose();
@@ -1684,7 +1791,7 @@ void updateBulletSim(){
 
             bGripper->apply_force(force);
             bGripper->apply_torque(torque);
-            bGripper->set_gripper_angle(bGripper->m_gripper_angle, dt);
+            bGripper->setGripperAngle(bGripper->m_gripper_angle, dt);
 
             if (bGripper->K_lc_ramp < 1.0)
             {
