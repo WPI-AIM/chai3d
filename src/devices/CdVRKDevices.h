@@ -132,7 +132,7 @@ public:
     static cDvrkDevicePtr create(unsigned int a_deviceNumber = 0) { return (std::make_shared<cDvrkDevice>(a_deviceNumber)); }
 
     //! DVRK MTM Object
-    typedef boost::shared_ptr<DVRK_Arm> DVRK_ArmPtr;
+    typedef std::shared_ptr<DVRK_Arm> DVRK_ArmPtr;
     DVRK_ArmPtr mtm_device;
 
 
@@ -197,8 +197,8 @@ protected:
 
 private:
     static std::vector<std::string> m_dev_names;
-    typedef boost::shared_ptr<DVRK_Arm> (*factory_create)(std::string);
-    typedef void (*factory_destroy)(boost::shared_ptr<DVRK_Arm>);
+    typedef std::shared_ptr<DVRK_Arm> (*factory_create)(std::string);
+    typedef void (*factory_destroy)(std::shared_ptr<DVRK_Arm>);
     static factory_create create_fcn;
     static factory_destroy destroy_fcn;
 };
