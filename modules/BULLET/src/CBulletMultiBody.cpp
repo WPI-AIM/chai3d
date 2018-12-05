@@ -60,12 +60,12 @@ afRigidBodySurfaceProperties afRigidBody::m_surfaceProps;
 
 cMaterial afSoftBody::m_mat;
 
-std::string afConfigHandler::m_path;
-std::string afConfigHandler::m_color_config;
-std::string afConfigHandler::m_puzzle_config;
-std::string afConfigHandler::m_world_config;
-YAML::Node afConfigHandler::m_colorsNode;
-std::map<std::string, std::string> afConfigHandler::m_gripperConfigFiles;
+std::string afConfigHandler::s_path;
+std::string afConfigHandler::s_color_config;
+std::vector<std::string> afConfigHandler::s_multiBody_configs;
+std::string afConfigHandler::s_world_config;
+YAML::Node afConfigHandler::s_colorsNode;
+std::map<std::string, std::string> afConfigHandler::s_gripperConfigFiles;
 
 cBulletWorld* afWorld::m_chaiWorld;
 double afWorld::m_encl_length;
@@ -93,19 +93,26 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
         std::cerr << "ERROR! FAILED TO LOAD CONFIG FILE \n";
     }
     // Check if a world config file or a plain multibody config file
-    if (configNode["path"].IsDefined() && configNode["multibody config"].IsDefined()){
-        m_path = configNode["path"].as<std::string>();
-        m_puzzle_config = m_path + configNode["multibody config"].as<std::string>();
-
+    if (configNode["path"].IsDefined() && configNode["multibody configs"].IsDefined()){
+        s_path = configNode["path"].as<std::string>();
+    }
+    else{
+        std::cerr << "PATH NOT DEFINED \n";
+        return 0;
+    }
+    if (configNode["multibody configs"].IsDefined()){
+        for (int i = 0 ; i < configNode["multibody configs"].size() ; i++){
+            s_multiBody_configs.push_back(s_path + configNode["multibody configs"][i].as<std::string>());
+        }
     }
     else{
         std::cerr << "PATH AND MULTIBODY CONFIG NOT DEFINED \n";
         return 0;
     }
     if(configNode["color config"].IsDefined()){
-        m_color_config = m_path + configNode["color config"].as<std::string>();
-        m_colorsNode = YAML::LoadFile(m_color_config.c_str());
-        if (!m_colorsNode){
+        s_color_config = s_path + configNode["color config"].as<std::string>();
+        s_colorsNode = YAML::LoadFile(s_color_config.c_str());
+        if (!s_colorsNode){
             std::cerr << "ERROR! COLOR CONFIG NOT FOUND \n";
         }
     }
@@ -116,7 +123,7 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
     if(configNode["gripper configs"].IsDefined()){
         for(size_t i=0 ; i < configNode["gripper configs"].size(); ++i){
             std::string gconf = configNode["gripper configs"][i].as<std::string>();
-            m_gripperConfigFiles[gconf] = m_path + configNode[gconf].as<std::string>();
+            s_gripperConfigFiles[gconf] = s_path + configNode[gconf].as<std::string>();
         }
     }
     else{
@@ -126,7 +133,7 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
 
     if(configNode["world config"].IsDefined()){
         std::string gconf = configNode["world config"].as<std::string>();
-        m_world_config = m_path + gconf;
+        s_world_config = s_path + gconf;
     }
     else{
         std::cerr << "ERROR! WORLD CONFIG NOT DEFINED \n";
@@ -141,15 +148,21 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
 /// \return
 ///
 std::string afConfigHandler::getWorldConfig(){
-    return m_world_config;
+    return s_world_config;
 }
 
 ///
 /// \brief afConfigHandler::get_puzzle_config
 /// \return
 ///
-std::string afConfigHandler::getPuzzleConfig(){
-    return m_puzzle_config;
+std::string afConfigHandler::getMultiBodyConfig(int i){
+    if (i <= numMultiBodyConfig()){
+        return s_multiBody_configs[i];
+    }
+    else{
+        printf("i = %d, Whereas only %d multi bodies specified", i, s_multiBody_configs.size());
+        return "";
+    }
 }
 
 ///
@@ -157,7 +170,7 @@ std::string afConfigHandler::getPuzzleConfig(){
 /// \return
 ///
 std::string afConfigHandler::getColorConfig(){
-    return m_color_config;
+    return s_color_config;
 }
 
 ///
@@ -166,13 +179,13 @@ std::string afConfigHandler::getColorConfig(){
 /// \return
 ///
 std::string afConfigHandler::getGripperConfig(std::string a_gripper_name){
-    if(m_gripperConfigFiles.find(a_gripper_name) != m_gripperConfigFiles.end()){
-        return m_gripperConfigFiles[a_gripper_name];
+    if(s_gripperConfigFiles.find(a_gripper_name) != s_gripperConfigFiles.end()){
+        return s_gripperConfigFiles[a_gripper_name];
     }
     else{
         std::cerr << "WARNING! GRIPPER CONFIG FOR \"" << a_gripper_name
                   << "\" NOT FOUND, RETURNING DEFAULT \n";
-        return m_gripperConfigFiles["Default"];
+        return s_gripperConfigFiles["Default"];
     }
 }
 
@@ -185,18 +198,18 @@ std::vector<double> afConfigHandler::getColorRGBA(std::string a_color_name){
     std::vector<double> color_rgba = {0.5, 0.5, 0.5, 0.5};
     // Help from https://stackoverflow.com/questions/15425442/retrieve-random-key-element-for-stdmap-in-c
     if(strcmp(a_color_name.c_str(), "random") == 0 || strcmp(a_color_name.c_str(), "RANDOM") == 0){
-        YAML::const_iterator it = m_colorsNode.begin();
-        std::advance(it, rand() % m_colorsNode.size());
+        YAML::const_iterator it = s_colorsNode.begin();
+        std::advance(it, rand() % s_colorsNode.size());
         color_rgba[0] = it->second["r"].as<int>() / 255.0;
         color_rgba[1] = it->second["g"].as<int>() / 255.0;
         color_rgba[2] = it->second["b"].as<int>() / 255.0;
         color_rgba[3] = it->second["a"].as<int>() / 255.0;
     }
-    else if(m_colorsNode[a_color_name].IsDefined()){
-        color_rgba[0] = m_colorsNode[a_color_name]["r"].as<int>() / 255.0;
-        color_rgba[1] = m_colorsNode[a_color_name]["g"].as<int>() / 255.0;
-        color_rgba[2] = m_colorsNode[a_color_name]["b"].as<int>() / 255.0;
-        color_rgba[3] = m_colorsNode[a_color_name]["a"].as<int>() / 255.0;
+    else if(s_colorsNode[a_color_name].IsDefined()){
+        color_rgba[0] = s_colorsNode[a_color_name]["r"].as<int>() / 255.0;
+        color_rgba[1] = s_colorsNode[a_color_name]["g"].as<int>() / 255.0;
+        color_rgba[2] = s_colorsNode[a_color_name]["b"].as<int>() / 255.0;
+        color_rgba[3] = s_colorsNode[a_color_name]["a"].as<int>() / 255.0;
     }
     else{
         std::cerr << "WARNING! COLOR NOT FOUND, RETURNING BALANCED COLOR\n";
@@ -359,16 +372,16 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
         double x = fileNode["position"]["x"].as<double>();
         double y = fileNode["position"]["y"].as<double>();
         double z = fileNode["position"]["z"].as<double>();
-        pos.set(x,y,z);
-        setLocalPos(pos);
+        m_initialPos.set(x,y,z);
+        setLocalPos(m_initialPos);
     }
 
     if(fileNode["rotation"].IsDefined()){
         double r = fileNode["rotation"]["r"].as<double>();
         double p = fileNode["rotation"]["p"].as<double>();
         double y = fileNode["rotation"]["y"].as<double>();
-        rot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
-        setLocalRot(rot);
+        m_initialRot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
+        setLocalRot(m_initialRot);
     }
 
     if(fileNode["color raw"].IsDefined()){
@@ -393,7 +406,7 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
         m_surfaceProps.m_rolling_friction = fileNode["friction"]["rolling"].as<double>();
 
     setMaterial(m_mat);
-    setSurfaceProperties(this, &m_surfaceProps);
+    setConfigProperties(this, &m_surfaceProps);
     mB->m_chaiWorld->addChild(this);
     return true;
 }
@@ -411,7 +424,7 @@ void afRigidBody::createAFObject(std::string a_obj_name){
 ///
 /// \brief afBody::compute_gains
 ///
-void afRigidBody::computeGains(){
+void afRigidBody::computeControllerGains(){
     if (_lin_gains_computed && _ang_gains_computed){
         return;
     }
@@ -439,7 +452,7 @@ void afRigidBody::computeGains(){
 /// \param a_body
 /// \param a_props
 ///
-void afRigidBody::setSurfaceProperties(const afRigidBodyPtr a_body, const afRigidBodySurfacePropertiesPtr a_props){
+void afRigidBody::setConfigProperties(const afRigidBodyPtr a_body, const afRigidBodySurfacePropertiesPtr a_props){
     a_body->m_bulletRigidBody->setFriction(a_props->m_static_friction);
     a_body->m_bulletRigidBody->setDamping(a_props->m_linear_damping, a_props->m_angular_damping);
     a_body->m_bulletRigidBody->setRollingFriction(a_props->m_rolling_friction);
@@ -456,7 +469,7 @@ void afRigidBody::updateCmdFromROS(double dt){
         cVector3d force, torque;
         m_af_pos_ctrl_active = m_afObjPtr->m_afCmd.pos_ctrl;
         if (m_afObjPtr->m_afCmd.pos_ctrl){
-            computeGains();
+            computeControllerGains();
             cVector3d cur_pos, cmd_pos, rot_axis, rot_axix_w_gain;
             cQuaternion cur_rot, cmd_rot;
             cMatrix3d cur_rot_mat, cmd_rot_mat;
@@ -972,7 +985,7 @@ bool afWorld::loadWorld(std::string a_world_config){
 }
 
 ///
-/// \brief afBulletMultiBody::afBulletMultiBody
+/// \brief afMultiBody::afMultiBody
 ///
 afMultiBody::afMultiBody(){
 
@@ -982,7 +995,8 @@ afMultiBody::afMultiBody(){
 /// Help from: https://stackoverflow.com/questions/1489830/efficient-way-to-determine-number-of-digits-in-an-integer
 /// and https://stackoverflow.com/questions/11151548/get-the-number-of-digits-in-an-int/11151594
 ///
-/// \brief afBulletMultiBody::remap_name
+///
+/// \brief afMultiBody::remapName
 /// \param name
 /// \param remap_idx_str
 ///
@@ -1007,8 +1021,9 @@ void afMultiBody::remapName(std::string &name, std::string remap_idx_str){
 
 template<typename T>
 ///
-/// \brief afBulletMultiBody::get_body_name_remapping
+/// \brief afMultiBody::remapBodyName
 /// \param a_body_name
+/// \param tMap
 /// \return
 ///
 std::string afMultiBody::remapBodyName(std::string a_body_name,const T* tMap){
@@ -1029,7 +1044,7 @@ std::string afMultiBody::remapBodyName(std::string a_body_name,const T* tMap){
 }
 
 ///
-/// \brief afBulletMultiBody::get_joint_name_remapping
+/// \brief afMultiBody::remapJointName
 /// \param a_joint_name
 /// \return
 ///
@@ -1052,13 +1067,40 @@ std::string afMultiBody::remapJointName(std::string a_joint_name){
 }
 
 ///
-/// \brief afBulletMultiBody::load_multibody
+/// \brief afMultiBody::loadMultiBody
+/// \return
+///
+bool afMultiBody::loadMultiBody(){
+    return loadMultiBody(0);
+}
+
+///
+/// \brief afMultiBody::loadMultiBody
+/// \param i
+/// \return
+///
+bool afMultiBody::loadMultiBody(int i){
+    std::string multibody_config = getMultiBodyConfig(i);
+    return loadMultiBody(multibody_config);
+}
+
+///
+/// \brief afMultiBody::loadAllMultiBodies
+///
+void afMultiBody::loadAllMultiBodies(){
+    for (int i = 0 ; i < numMultiBodyConfig(); i++){
+        loadMultiBody(i);
+    }
+}
+
+///
+/// \brief afMultiBody::loadMultiBody
 /// \param a_multibody_config
 /// \return
 ///
-afRigidBodyPtr afMultiBody::loadMultiBody(std::string a_multibody_config){
+bool afMultiBody::loadMultiBody(std::string a_multibody_config){
     if (a_multibody_config.empty()){
-        a_multibody_config = getPuzzleConfig();
+        a_multibody_config = getMultiBodyConfig();
     }
     YAML::Node multiBodyNode = YAML::LoadFile(a_multibody_config);
     if (!multiBodyNode){
@@ -1121,29 +1163,14 @@ afRigidBodyPtr afMultiBody::loadMultiBody(std::string a_multibody_config){
             m_afJointMap[jnt_name+remap_str] = tmpJoint;
         }
     }
-
-    /// Find Root Body
-    afRigidBodyPtr rootParentBody;
-    size_t rootParents = 0;
-    std::vector<std::string>::const_iterator nIt;
-    afRigidBodyMap::const_iterator mIt;
-    for(nIt = temp_body_names.begin() ; nIt != temp_body_names.end() ; ++nIt){
-        mIt = m_afRigidBodyMap.find(*nIt);
-        if((*mIt).second->m_parentBodies.size() == 0){
-            rootParentBody = (*mIt).second;
-            rootParents++;
-        }
-    }
-
-    if (rootParents > 1)
-        std::cerr << "WARNING! " << rootParents << " ROOT PARENTS FOUND, RETURNING LAST ONE\n";
-    else if (rootParents == 0)
-        std::cerr << "WARNING! " << rootParents << " ROOT PARENTS FOUND, RETURNING NULL\n";
-
-
-    return rootParentBody;
+    return true;
 }
 
+///
+/// \brief afMultiBody::getRidigBody
+/// \param a_name
+/// \return
+///
 afRigidBodyPtr afMultiBody::getRidigBody(std::string a_name){
     if (m_afRigidBodyMap.find(a_name) != m_afRigidBodyMap.end()){
         return m_afRigidBodyMap[a_name];
@@ -1155,7 +1182,63 @@ afRigidBodyPtr afMultiBody::getRidigBody(std::string a_name){
 }
 
 ///
-/// \brief afBulletMultiBody::~afBulletMultiBody
+/// \brief afMultiBody::getRootRigidBody
+/// \param a_bodyPtr
+/// \return
+///
+afRigidBodyPtr afMultiBody::getRootRigidBody(afRigidBodyPtr a_bodyPtr){
+    /// Find Root Body
+    afRigidBodyPtr rootParentBody;
+    std::vector<int> lineageSize;
+    size_t rootParents = 0;
+    if (a_bodyPtr){
+        if (a_bodyPtr->m_parentBodies.size() == 0){
+            rootParentBody = a_bodyPtr;
+            rootParents++;
+        }
+        else{
+            lineageSize.resize(a_bodyPtr->m_parentBodies.size());
+            std::vector<afRigidBodyPtr>::const_iterator rIt = a_bodyPtr->m_parentBodies.begin();
+            for (int parentNum=0; rIt != a_bodyPtr->m_parentBodies.end() ; parentNum++, ++rIt){
+                if ((*rIt)->m_parentBodies.size() == 0){
+                    rootParentBody = (*rIt);
+                    rootParents++;
+                }
+                lineageSize[parentNum] = (*rIt)->m_parentBodies.size();
+            }
+        }
+    }
+    else{
+        lineageSize.resize(m_afRigidBodyMap.size());
+        afRigidBodyMap::const_iterator mIt = m_afRigidBodyMap.begin();
+        for(int bodyNum=0; mIt != m_afRigidBodyMap.end() ; bodyNum++, ++mIt){
+            if ((*mIt).second->m_parentBodies.size() == 0){
+                rootParentBody = (*mIt).second;
+                ++rootParents;
+            }
+            lineageSize[bodyNum] = (*mIt).second->m_parentBodies.size();
+        }
+
+    }
+    // In case no root parent is found, it is understood that
+    // the multibody chain is cyclical, perhaps return
+    // the body with least number of parents
+    if (rootParents == 0){
+        auto minLineage = std::min_element(lineageSize.begin(), lineageSize.end());
+        int idx = std::distance(lineageSize.begin(), minLineage);
+        rootParentBody = a_bodyPtr->m_parentBodies[idx];
+        rootParents++;
+        std::cerr << "WARNING! CYCLICAL CHAIN OF BODIES FOUND WITH NO UNIQUE PARENT, RETURING THE BODY WITH LEAST PARENTS";
+    }
+
+    if (rootParents > 1)
+        std::cerr << "WARNING! " << rootParents << " ROOT PARENTS FOUND, RETURNING THE LAST ONE\n";
+
+    return rootParentBody;
+}
+
+///
+/// \brief afMultiBody::~afMultiBody
 ///
 afMultiBody::~afMultiBody(){
 //    afJointMap::const_iterator jIt = m_afJointMap.begin();

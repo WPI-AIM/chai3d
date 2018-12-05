@@ -464,7 +464,8 @@ int main(int argc, char* argv[])
     //////////////////////////////////////////////////////////////////////////
     std::string config = "../resources/config/gripper_type1.yaml";
     afGripper gripperObj(g_bulletWorld);
-    bulletTool = gripperObj.loadMultiBody(config, "Gripper", "Demo");
+    gripperObj.loadMultiBody(config, "Gripper", "Demo");
+    bulletTool = gripperObj.getRootRigidBody();
     cMatrix3d rotMat;
     rotMat.setAxisAngleRotationDeg(0.0,0.0,1.0,180);
     //bulletTool->setLocalRot(rotMat);

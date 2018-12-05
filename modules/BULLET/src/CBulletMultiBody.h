@@ -80,25 +80,26 @@ public:
     afConfigHandler();
     virtual ~afConfigHandler(){}
     std::string getConfigFile(std::string a_config_name);
-    std::string getPuzzleConfig();
+    std::string getMultiBodyConfig(int i=0);
     std::string getColorConfig();
     std::string getWorldConfig();
     std::vector<double> getColorRGBA(std::string a_color_name);
     std::string getGripperConfig(std::string a_gripper_name);
     bool loadYAML(std::string file);
+    inline int numMultiBodyConfig(){return s_multiBody_configs.size();}
 
 private:
 
-    static std::string m_path;
-    static std::string m_color_config;
-    static std::string m_puzzle_config;
-    static std::string m_world_config;
+    static std::string s_path;
+    static std::string s_color_config;
+    static std::vector<std::string> s_multiBody_configs;
+    static std::string s_world_config;
     YAML::Node configNode;
-    static std::map<std::string, std::string> m_gripperConfigFiles;
+    static std::map<std::string, std::string> s_gripperConfigFiles;
 
 protected:
 
-    static YAML::Node m_colorsNode;
+    static YAML::Node s_colorsNode;
 
 };
 
@@ -150,7 +151,7 @@ public:
 
     void setAngle(double &angle, double dt);
     void setAngle(std::vector<double> &angle, double dt);
-    static void setSurfaceProperties(const afRigidBodyPtr a_body, const afRigidBodySurfacePropertiesPtr a_surfaceProps);
+    static void setConfigProperties(const afRigidBodyPtr a_body, const afRigidBodySurfacePropertiesPtr a_surfaceProps);
 
 protected:
 
@@ -158,14 +159,14 @@ protected:
     double m_total_mass;
     std::string m_mesh_name;
     cMultiMesh m_lowResMesh;
-    cVector3d pos;
-    cMatrix3d rot;
+    cVector3d m_initialPos;
+    cMatrix3d m_initialRot;
     std::vector<afRigidBodyPtr>::const_iterator m_bodyIt;
     double K_lin, D_lin;
     double K_ang, D_ang;
     bool _lin_gains_computed = false;
     bool _ang_gains_computed = false;
-    void computeGains();
+    void computeControllerGains();
     void createAFObject(std::string a_object_name);
 
 protected:
@@ -285,8 +286,9 @@ private:
 
 };
 
+
 ///
-/// \brief The afBulletMultiBody class
+/// \brief The afMultiBody class
 ///
 class afMultiBody: public afWorld{
 
@@ -299,8 +301,12 @@ public:
     afMultiBody();
     afMultiBody(cBulletWorld* a_chaiWorld){m_chaiWorld = a_chaiWorld;}
     virtual ~afMultiBody();
-    virtual afRigidBodyPtr loadMultiBody(std::string a_multibody_config = "");
+    bool loadMultiBody();
+    bool loadMultiBody(int i);
+    virtual bool loadMultiBody(std::string a_multibody_config);
+    virtual void loadAllMultiBodies();
     afRigidBodyPtr getRidigBody(std::string a_name);
+    afRigidBodyPtr getRootRigidBody(afRigidBodyPtr a_bodyPtr = NULL);
     afSoftBodyPtr getSoftBody(std::string a_name);
     inline std::string getHighResPath(){return high_res_path;}
     inline std::string getLowResPath(){return low_res_path;}

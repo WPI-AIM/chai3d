@@ -569,7 +569,8 @@ ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
                          std::string a_device_name): afGripper (a_chaiWorld){
     m_gripper_angle = 3.0;
     std::string config = getGripperConfig(a_device_name);
-    m_gripperRoot = loadMultiBody(config, a_gripper_name, a_device_name);
+    loadMultiBody(config, a_gripper_name, a_device_name);
+    m_gripperRoot = getRootRigidBody();
 }
 
 ///
@@ -1221,7 +1222,8 @@ int main(int argc, char* argv[])
     g_afWorld->loadWorld();
 
     g_afMultiBody = new afMultiBody(g_bulletWorld);
-    g_afMultiBody->loadMultiBody();
+//    g_afMultiBody->loadMultiBody();
+    g_afMultiBody->loadAllMultiBodies();
 
     // end puzzle meshes
     //////////////////////////////////////////////////////////////////////////

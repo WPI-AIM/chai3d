@@ -52,7 +52,7 @@ std::string resourceRootGripper;
 namespace chai3d {
 
 ///
-/// \brief cBulletGripper::set_gripper_angle
+/// \brief afGripper::setGripperAngle
 /// \param angle
 /// \param dt
 ///
@@ -60,11 +60,13 @@ void afGripper::setGripperAngle(const double &angle, double dt){
 }
 
 ///
-/// \brief cBulletGripper::load_multibody
-/// \param file
+/// \brief afGripper::loadMultiBody
+/// \param a_file
+/// \param a_gripper_name
+/// \param a_suffix_name
 /// \return
 ///
-afGripperLinkPtr afGripper::loadMultiBody(std::string a_file,
+bool afGripper::loadMultiBody(std::string a_file,
                                                    std::string a_gripper_name,
                                                    std::string a_suffix_name){
     m_gripper_name = a_gripper_name;
@@ -77,7 +79,7 @@ afGripperLinkPtr afGripper::loadMultiBody(std::string a_file,
     }
     std::string color_config;
     if (multiBodyNode["color config"].IsDefined())
-        m_colorsNode = YAML::LoadFile(multiBodyNode["color config"].as<std::string>().c_str());
+        s_colorsNode = YAML::LoadFile(multiBodyNode["color config"].as<std::string>().c_str());
 
     afGripperLinkPtr tmpBody;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
@@ -93,14 +95,12 @@ afGripperLinkPtr afGripper::loadMultiBody(std::string a_file,
         low_res_path = "../resources/models/puzzle/low_res/";
     }
     size_t totalBodys = multiBodyNode["bodies"].size();
-    std::vector<std::string> temp_body_names;
     for (size_t i = 0; i < totalBodys; ++i) {
         tmpBody = new afGripperLink(m_chaiWorld);
         std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
 //        printf("Loading body: %s \n", body_name .c_str());
         if (tmpBody->load(a_file.c_str(), body_name, this)){
             m_afRigidBodyMap[body_name.c_str()] = tmpBody;
-            temp_body_names.push_back(body_name.c_str());
         }
     }
     afJoint *tmpJoint;
@@ -113,28 +113,34 @@ afGripperLinkPtr afGripper::loadMultiBody(std::string a_file,
             m_afJointMap[jnt_name] = tmpJoint;
         }
     }
-    afGripperLink* rootParentBody = NULL;
-    size_t rootParents = 0;
-    std::vector<std::string>::const_iterator nIt;
-    afRigidBodyMap::const_iterator mIt;
-    for(nIt = temp_body_names.begin() ; nIt != temp_body_names.end() ; ++nIt){
-        mIt = m_afRigidBodyMap.find(*nIt);
-        if((*mIt).second->m_parentBodies.size() == 0){
-            rootParentBody = static_cast<afGripperLink*>((*mIt).second);
-            rootParents++;
-        }
+
+    m_rootLink = static_cast<afGripperLinkPtr>(afMultiBody::getRootRigidBody());
+    if (m_rootLink == NULL){
+        std::cerr << "WARNING, NO ROOT PARENT EXISTS \n";
     }
-    if (rootParents > 1 || rootParents == 0)
-        std::cerr << "WARNING!: " << rootParents << " ROOT PARENTS FOUND, EXPECTED 1\n";
     else{
         std::string sfx = m_suffix_name;
         sfx.erase(remove_if(sfx.begin(), sfx.end(), isspace), sfx.end());
-        rootParentBody->createAFObject(m_gripper_name + sfx);
+        m_rootLink->createAFObject(m_gripper_name + sfx);
     }
 
-    return rootParentBody;
+    return true;
 }
 
+///
+/// \brief afGripper::getRootRigidBody
+/// \return
+///
+afGripperLinkPtr afGripper::getRootRigidBody(){
+    if (m_rootLink == NULL){
+        std::cerr << "WARNING, NO ROOT PARENT EXISTS \n";
+    }
+    return m_rootLink;
+}
+
+///
+/// \brief afGripper::~afGripper
+///
 afGripper::~afGripper(){
     afRigidBodyMap::const_iterator lIt = m_afRigidBodyMap.begin();
     for ( ; lIt != m_afRigidBodyMap.end() ; ++lIt){
