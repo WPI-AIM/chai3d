@@ -96,6 +96,8 @@ private:
 
 //    cGripperBodyMap m_gripperBodyMap;
     std::string m_gripper_name, m_suffix_name;
+
+public:
     afGripperLinkPtr m_rootLink;
 };
 

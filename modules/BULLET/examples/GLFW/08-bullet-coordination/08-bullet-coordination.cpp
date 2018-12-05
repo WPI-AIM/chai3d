@@ -195,28 +195,12 @@ void close(void);
 
 const int MAX_DEVICES = 10;
 
-///
-/// \brief The DataExchange class
-///
-class DataExchange{
-public:
-    virtual cVector3d measured_pos(){}
-    virtual cMatrix3d measured_rot(){}
-    virtual void update_measured_pose(){}
-    virtual cVector3d measured_lin_vel(){}
-    virtual bool is_button_pressed(int button_index){}
-    virtual double measured_gripper_angle(){}
-    virtual void apply_wrench(cVector3d force, cVector3d torque){}
-    virtual void apply_force(cVector3d force){}
-    virtual void apply_torque(cVector3d torque){}
-};
-
 
 ///
 /// \brief This class encapsulates each haptic device in isolation and provides methods to get/set device
 /// state/commands, button's state and grippers state if present
 ///
-class Device: public DataExchange{
+class Device{
 public:
     Device(){}
     virtual ~Device();
@@ -537,20 +521,19 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
 /// \brief This class encapsulates a single Gripper, simulated in Bullet and provides methods to get/set state/commands
 ///        for interface with the haptics device
 ///
-class ToolGripper: public Sim, public DataExchange, public afGripper{
+class ToolGripper: public Sim, public afGripper{
 public:
     ToolGripper(cBulletWorld *a_chaiWorld, std::string a_gripper_name, std::string a_device_name);
     ~ToolGripper(){}
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual void update_measured_pose();
-    virtual inline void apply_force(cVector3d force){if (!m_gripperRoot->m_af_pos_ctrl_active) m_gripperRoot->addExternalForce(force);}
-    virtual inline void apply_torque(cVector3d torque){if (!m_gripperRoot->m_af_pos_ctrl_active) m_gripperRoot->addExternalTorque(torque);}
+    virtual inline void apply_force(cVector3d force){if (!m_rootLink->m_af_pos_ctrl_active) m_rootLink->addExternalForce(force);}
+    virtual inline void apply_torque(cVector3d torque){if (!m_rootLink->m_af_pos_ctrl_active) m_rootLink->addExternalTorque(torque);}
     bool is_wrench_set();
     void clear_wrench();
     void offset_gripper_angle(double offset);
     void setGripperAngle(double angle, double dt=0.001);
-    afGripperLink* m_gripperRoot;
     cVector3d m_pos;
     cMatrix3d m_rot;
     double m_gripper_angle;
@@ -570,7 +553,7 @@ ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
     m_gripper_angle = 3.0;
     std::string config = getGripperConfig(a_device_name);
     loadMultiBody(config, a_gripper_name, a_device_name);
-    m_gripperRoot = getRootRigidBody();
+    m_rootLink = getRootRigidBody();
 }
 
 ///
@@ -579,7 +562,7 @@ ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
 ///
 cVector3d ToolGripper::measured_pos(){
     std::lock_guard<std::mutex> lock(m_mutex);
-    return m_gripperRoot->getLocalPos();
+    return m_rootLink->getLocalPos();
 }
 
 ///
@@ -588,7 +571,7 @@ cVector3d ToolGripper::measured_pos(){
 ///
 cMatrix3d ToolGripper::measured_rot(){
     std::lock_guard<std::mutex> lock(m_mutex);
-    return m_gripperRoot->getLocalRot();
+    return m_rootLink->getLocalRot();
 }
 
 ///
@@ -596,8 +579,8 @@ cMatrix3d ToolGripper::measured_rot(){
 ///
 void ToolGripper::update_measured_pose(){
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_pos  = m_gripperRoot->getLocalPos();
-    m_rot = m_gripperRoot->getLocalRot();
+    m_pos  = m_rootLink->getLocalPos();
+    m_rot = m_rootLink->getLocalRot();
 }
 
 ///
@@ -606,7 +589,7 @@ void ToolGripper::update_measured_pose(){
 /// \param dt
 ///
 void ToolGripper::setGripperAngle(double angle, double dt){
-    m_gripperRoot->setAngle(angle, dt);
+    m_rootLink->setAngle(angle, dt);
 }
 
 ///
@@ -624,8 +607,8 @@ void ToolGripper::offset_gripper_angle(double offset){
 /// \return
 ///
 bool ToolGripper::is_wrench_set(){
-    btVector3 f = m_gripperRoot->m_bulletRigidBody->getTotalForce();
-    btVector3 n = m_gripperRoot->m_bulletRigidBody->getTotalTorque();
+    btVector3 f = m_rootLink->m_bulletRigidBody->getTotalForce();
+    btVector3 n = m_rootLink->m_bulletRigidBody->getTotalTorque();
     if (f.isZero()) return false;
     else return true;
 }
@@ -634,7 +617,7 @@ bool ToolGripper::is_wrench_set(){
 /// \brief ToolGripper::clear_wrench
 ///
 void ToolGripper::clear_wrench(){
-    m_gripperRoot->m_bulletRigidBody->clearForces();
+    m_rootLink->m_bulletRigidBody->clearForces();
 }
 
 ///
@@ -788,7 +771,7 @@ void Coordination::create_bullet_gripper(uint dev_num){
     m_bulletGrippers[dev_num] = new ToolGripper(m_bulletWorld, gripper_name, m_hapticDevices[dev_num].m_hInfo.m_modelName);
     m_bulletGrippers[dev_num]->set_sim_params(m_hapticDevices[dev_num].m_hInfo, & m_hapticDevices[dev_num]);
     m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
-    cVector3d localGripperPos = m_bulletGrippers[dev_num]->m_gripperRoot->getLocalPos();
+    cVector3d localGripperPos = m_bulletGrippers[dev_num]->m_rootLink->getLocalPos();
     double l,w,h;
     m_bulletGrippers[dev_num]->getEnclosureExtents(l,w,h);
     if (localGripperPos.length() == 0.0){
