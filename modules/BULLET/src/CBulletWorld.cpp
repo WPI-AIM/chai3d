@@ -58,11 +58,9 @@ namespace chai3d {
 //==============================================================================
 cBulletWorld::cBulletWorld(std::string a_worldName)
 {
-    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if(!a_worldName.empty()){
-        m_afWorldPtr.reset(new chai_env::World(a_worldName));
+        createAFWorld(a_worldName);
     }
-    #endif
     // reset simulation time
     m_simulationTime = 0.0;
 
@@ -158,6 +156,34 @@ cVector3d cBulletWorld::getGravity()
     btVector3 gravity = m_bulletWorld->getGravity();
     cVector3d result(gravity[0], gravity[1], gravity[2]);
     return (result);
+}
+
+//==============================================================================
+/*!
+    This method creates an afCommunication World
+
+    \param  a_name  af World Name.
+*/
+//==============================================================================
+void cBulletWorld::createAFWorld(std::string a_name){
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    m_afWorldPtr.reset(new chai_env::World(a_name));
+#endif
+}
+
+
+//==============================================================================
+/*!
+    This method creates an afCommunication World with specified namespace
+
+    \param  a_name  af World Name.
+    \param  a_name  af Namespace.
+*/
+//==============================================================================
+void cBulletWorld::createAFWorld(std::string a_name, std::string a_namespace){
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    m_afWorldPtr.reset(new chai_env::World(a_name, a_namespace));
+#endif
 }
 
 

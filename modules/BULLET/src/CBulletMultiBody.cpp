@@ -337,6 +337,11 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     else
         rel_path_low_res = mB->getLowResPath() + m_mesh_name;
 
+    if (fileNode["name space"].IsDefined())
+        m_body_namespace = fileNode["name space"].as<std::string>();
+    else
+        m_body_namespace = mB->getNameSpace();
+
     loadFromFile(RESOURCE_PATH(rel_path_high_res));
     m_lowResMesh.loadFromFile(RESOURCE_PATH(rel_path_low_res));
     scale(m_scale);
@@ -409,16 +414,6 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     setConfigProperties(this, &m_surfaceProps);
     mB->m_chaiWorld->addChild(this);
     return true;
-}
-
-///
-/// \brief afBody::create_af_object
-/// \param a_obj_name
-///
-void afRigidBody::createAFObject(std::string a_obj_name){
-    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    m_afObjPtr.reset(new chai_env::Object(a_obj_name));
-    #endif
 }
 
 ///
@@ -578,14 +573,6 @@ afRigidBody::~afRigidBody(){
 /// \param a_chaiWorld
 ///
 afSoftBody::afSoftBody(cBulletWorld *a_chaiWorld): cBulletSoftMultiMesh(a_chaiWorld){
-
-}
-
-///
-/// \brief afSoftBody::createAFObject
-/// \param a_object_name
-///
-void afSoftBody::createAFObject(std::string a_object_name){
 
 }
 
@@ -1111,19 +1098,25 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
     /// Loading Rigid Bodies
     afRigidBodyPtr tmpRigidBody;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
-        high_res_path = multiBodyNode["high_res_path"].as<std::string>();
-        low_res_path = multiBodyNode["low_res_path"].as<std::string>();
+        m_multibody_high_res_path = multiBodyNode["high_res_path"].as<std::string>();
+        m_multibody_low_res_path = multiBodyNode["low_res_path"].as<std::string>();
     }
     else if(multiBodyNode["high resolution path"].IsDefined() && multiBodyNode["low resolution path"].IsDefined()){
-        high_res_path = multiBodyNode["high resolution path"].as<std::string>();
-        low_res_path = multiBodyNode["low resolution path"].as<std::string>();
+        m_multibody_high_res_path = multiBodyNode["high resolution path"].as<std::string>();
+        m_multibody_low_res_path = multiBodyNode["low resolution path"].as<std::string>();
     }
     else{
-        high_res_path = "../resources/models/puzzle/high_res/";
-        low_res_path = "../resources/models/puzzle/low_res/";
+        m_multibody_high_res_path = "../resources/models/puzzle/high_res/";
+        m_multibody_low_res_path = "../resources/models/puzzle/low_res/";
     }
+    if (multiBodyNode["name space"].IsDefined()){
+        m_multibody_namespace = multiBodyNode["name space"].as<std::string>();
+    }
+    else{
+        m_multibody_namespace = "/chai/env/";
+    }
+
     size_t totalRigidBodies = multiBodyNode["bodies"].size();
-    std::vector<std::string> temp_body_names;
     for (size_t i = 0; i < totalRigidBodies; ++i) {
         tmpRigidBody = new afRigidBody(m_chaiWorld);
         std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
@@ -1131,8 +1124,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
 //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
         if (tmpRigidBody->load(a_multibody_config.c_str(), body_name, this)){
             m_afRigidBodyMap[(body_name + remap_str).c_str()] = tmpRigidBody;
-            tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str);
-            temp_body_names.push_back((body_name + remap_str).c_str());
+            tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str, tmpRigidBody->m_body_namespace);
         }
     }
 
@@ -1147,7 +1139,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
 //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
         if (tmpSoftBody->load(a_multibody_config.c_str(), body_name, this)){
             m_afSoftBodyMap[(body_name + remap_str).c_str()] = tmpSoftBody;
-            tmpSoftBody->createAFObject(tmpSoftBody->m_name + remap_str);
+//            tmpSoftBody->createAFObject(tmpSoftBody->m_name + remap_str);
         }
     }
 

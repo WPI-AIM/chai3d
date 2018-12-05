@@ -5,9 +5,11 @@ bodies: [body1, body2]
 joints: []
 high resolution path: ../resources/models/puzzle2/high_res/
 low resolution path: ../resources/models/puzzle2/low_res/
+name space: /chai/env/test/
 
 body1:
  name: Cube
+ name space: /test/name_space/
  mass: 2.0
  mesh: Cube.STL
  scale: 0.4

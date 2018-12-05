@@ -104,11 +104,9 @@ public:
 
     //! Constructor of cBulletGenericBody.
     cBulletGenericObject(cBulletWorld* a_world, std::string a_objName="") {
-      #ifdef C_ENABLE_CHAI_ENV_SUPPORT
         if(!a_objName.empty()){
-            m_afObjPtr.reset(new chai_env::Object(a_objName));
+            createAFObject(a_objName);
         }
-        #endif
         initialize(a_world); }
 
     //! Destructor of cBulletGenericBody.
@@ -160,6 +158,12 @@ public:
 
     //! This method updates the CHAI3D position representation from the Bullet dynamics engine.
     virtual void updatePositionFromDynamics() {}
+
+    //! This method create as afCommunication Instance
+    virtual void createAFObject(std::string a_name);
+
+    //! This method create as afCommunication Instance with the specified namespace
+    virtual void createAFObject(std::string a_name, std::string a_namespace);
 
 
     //--------------------------------------------------------------------------
@@ -246,6 +250,9 @@ public:
     #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     std::shared_ptr<chai_env::Object> m_afObjPtr;
     #endif
+
+    //! AF Namespace
+    std::string m_af_namespace;
 
     //--------------------------------------------------------------------------
     // PROTECTED METHODS:

@@ -322,6 +322,35 @@ void cBulletGenericObject::addExternalTorque(const cVector3d& a_torque)
 
 //==============================================================================
 /*!
+    This method creates an afCommunication Object
+
+    \param  a_name  af Object Name.
+*/
+//==============================================================================
+void cBulletGenericObject::createAFObject(std::string a_name){
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    m_afObjPtr.reset(new chai_env::Object(a_name));
+#endif
+}
+
+
+//==============================================================================
+/*!
+    This method creates an afCommunication Object
+
+    \param  a_name  af Object Name.
+    \param  a_name  af Namespace.
+*/
+//==============================================================================
+void cBulletGenericObject::createAFObject(std::string a_name, std::string a_namespace){
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    m_afObjPtr.reset(new chai_env::Object(a_name, a_namespace));
+#endif
+}
+
+
+//==============================================================================
+/*!
     //! This method applies updates Wall and Sim Time for ROS Message.
 
     \param a_wall_time   Wall Time

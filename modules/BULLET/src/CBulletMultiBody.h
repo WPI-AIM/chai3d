@@ -152,6 +152,7 @@ public:
     void setAngle(double &angle, double dt);
     void setAngle(std::vector<double> &angle, double dt);
     static void setConfigProperties(const afRigidBodyPtr a_body, const afRigidBodySurfacePropertiesPtr a_surfaceProps);
+    std::string m_body_namespace;
 
 protected:
 
@@ -167,7 +168,6 @@ protected:
     bool _lin_gains_computed = false;
     bool _ang_gains_computed = false;
     void computeControllerGains();
-    void createAFObject(std::string a_object_name);
 
 protected:
 
@@ -247,7 +247,6 @@ protected:
     bool _lin_gains_computed = false;
     bool _ang_gains_computed = false;
     void computeGains();
-    void createAFObject(std::string a_object_name);
 
 protected:
 
@@ -308,8 +307,9 @@ public:
     afRigidBodyPtr getRidigBody(std::string a_name);
     afRigidBodyPtr getRootRigidBody(afRigidBodyPtr a_bodyPtr = NULL);
     afSoftBodyPtr getSoftBody(std::string a_name);
-    inline std::string getHighResPath(){return high_res_path;}
-    inline std::string getLowResPath(){return low_res_path;}
+    inline std::string getHighResPath(){return m_multibody_high_res_path;}
+    inline std::string getLowResPath(){return m_multibody_low_res_path;}
+    inline std::string getNameSpace(){return m_multibody_namespace;}
     inline const afSoftBodyMap* getSoftBodyMap(){return &m_afSoftBodyMap;}
     inline const afRigidBodyMap* getRigidBodyMap(){return &m_afRigidBodyMap;}
 
@@ -318,7 +318,8 @@ protected:
     afRigidBodyMap m_afRigidBodyMap;
     afSoftBodyMap m_afSoftBodyMap;
     afJointMap m_afJointMap;
-    std::string high_res_path, low_res_path;
+    std::string m_multibody_high_res_path, m_multibody_low_res_path;
+    std::string m_multibody_namespace;
 
 protected:
 

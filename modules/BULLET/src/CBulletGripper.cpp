@@ -83,17 +83,24 @@ bool afGripper::loadMultiBody(std::string a_file,
 
     afGripperLinkPtr tmpBody;
     if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
-        high_res_path = multiBodyNode["high_res_path"].as<std::string>();
-        low_res_path = multiBodyNode["low_res_path"].as<std::string>();
+        m_multibody_high_res_path = multiBodyNode["high_res_path"].as<std::string>();
+        m_multibody_low_res_path = multiBodyNode["low_res_path"].as<std::string>();
     }
     else if(multiBodyNode["high resolution path"].IsDefined() && multiBodyNode["low resolution path"].IsDefined()){
-        high_res_path = multiBodyNode["high resolution path"].as<std::string>();
-        low_res_path = multiBodyNode["low resolution path"].as<std::string>();
+        m_multibody_high_res_path = multiBodyNode["high resolution path"].as<std::string>();
+        m_multibody_low_res_path = multiBodyNode["low resolution path"].as<std::string>();
     }
     else{
-        high_res_path = "../resources/models/puzzle/high_res/";
-        low_res_path = "../resources/models/puzzle/low_res/";
+        m_multibody_high_res_path = "../resources/models/puzzle/high_res/";
+        m_multibody_low_res_path = "../resources/models/puzzle/low_res/";
     }
+    if (multiBodyNode["name space"].IsDefined()){
+        m_multibody_namespace = multiBodyNode["name space"].as<std::string>();
+    }
+    else{
+        m_multibody_namespace = "/chai/env/";
+    }
+
     size_t totalBodys = multiBodyNode["bodies"].size();
     for (size_t i = 0; i < totalBodys; ++i) {
         tmpBody = new afGripperLink(m_chaiWorld);
@@ -121,7 +128,7 @@ bool afGripper::loadMultiBody(std::string a_file,
     else{
         std::string sfx = m_suffix_name;
         sfx.erase(remove_if(sfx.begin(), sfx.end(), isspace), sfx.end());
-        m_rootLink->createAFObject(m_gripper_name + sfx);
+        m_rootLink->createAFObject(m_gripper_name + sfx, m_multibody_namespace);
     }
 
     return true;

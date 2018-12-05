@@ -151,6 +151,12 @@ public:
     //! This method returns the current simulation time
     double getSimulationTime(void);
 
+    //! This method create as afCommunication Instance
+    virtual void createAFWorld(std::string a_name);
+
+    //! This method create as afCommunication Instance with the specified namespace
+    virtual void createAFWorld(std::string a_name, std::string a_namespace);
+
 
     //--------------------------------------------------------------------------
     // PUBLIC MEMBERS:
