@@ -8,8 +8,9 @@ base:
  mass: 0.04
  mesh: BaseLink.STL
  scale: 1.0
- #position: {x: 0.0, y: 0.0, z: 0.0}
- #rotation: {r: 0.0, p: 0.0, y: 0.0}
+ #location: {
+   #position: {x: 0.0, y: 0.0, z: 0.0},
+   #orientation: {r: 0.0, p: 0.0, y: 0.0}}
  color: purple
 
 r1:

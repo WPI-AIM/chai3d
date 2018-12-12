@@ -286,86 +286,105 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
-    YAML::Node fileNode = baseNode[name];
-    if (fileNode.IsNull()) return false;
+    YAML::Node bodyNode = baseNode[name];
+    if (bodyNode.IsNull()) return false;
 
-    if(fileNode["name"].IsDefined()){
-        m_name = fileNode["name"].as<std::string>();
+    // Declare all the Nodes related to this body that we need to probe
+    YAML::Node bodyName = bodyNode["name"];
+    YAML::Node bodyMesh = bodyNode["mesh"];
+    YAML::Node bodyScale = bodyNode["scale"];
+    YAML::Node bodyInertialOffsetPos = bodyNode["inertial offset"]["position"];
+    YAML::Node bodyInertialOffsetRot = bodyNode["inertial offset"]["orientation"];
+    YAML::Node bodyMeshPathHR = bodyNode["high resolution path"];
+    YAML::Node bodyMeshPathLR = bodyNode["low resolution path"];
+    YAML::Node bodyNameSpace = bodyNode["namespace"];
+    YAML::Node bodyMass = bodyNode["mass"];
+    YAML::Node bodyLinGain = bodyNode["linear gain"];
+    YAML::Node bodyAngGain = bodyNode["angular gain"];
+    YAML::Node bodyInertia = bodyNode["inertia"];
+    YAML::Node bodyPos = bodyNode["location"]["position"];
+    YAML::Node bodyRot = bodyNode["location"]["orientation"];
+    YAML::Node bodyColorRaw = bodyNode["color raw"];
+    YAML::Node bodyColor = bodyNode["color"];
+    YAML::Node bodyLinDamping = bodyNode["damping"]["linear"];
+    YAML::Node bodyAngDamping = bodyNode["damping"]["angular"];
+    YAML::Node bodyStaticFriction = bodyNode["friction"]["static"];
+    YAML::Node bodyRollingFriction = bodyNode["friction"]["rolling"];
+
+
+    if(bodyName.IsDefined()){
+        m_name = bodyName.as<std::string>();
         m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     }
 
-    if(fileNode["mesh"].IsDefined())
-        m_mesh_name = fileNode["mesh"].as<std::string>();
+    if(bodyMesh.IsDefined())
+        m_mesh_name = bodyMesh.as<std::string>();
 
-    if(fileNode["scale"].IsDefined())
-        m_scale = fileNode["scale"].as<double>();
+    if(bodyScale.IsDefined())
+        m_scale = bodyScale.as<double>();
 
-    if(fileNode["inertial offset"]["position"].IsDefined()){
+    if(bodyInertialOffsetPos.IsDefined()){
         btTransform trans;
         btQuaternion quat;
         btVector3 pos;
         quat.setEuler(0,0,0);
         pos.setValue(0,0,0);
-        if(fileNode["inertial offset"]["rotation"].IsDefined()){
-            double r = fileNode["inertial offset"]["rotation"]["r"].as<double>();
-            double p = fileNode["inertial offset"]["rotation"]["p"].as<double>();
-            double y = fileNode["inertial offset"]["rotation"]["y"].as<double>();
+        if(bodyInertialOffsetRot.IsDefined()){
+            double r = bodyInertialOffsetRot["r"].as<double>();
+            double p = bodyInertialOffsetRot["p"].as<double>();
+            double y = bodyInertialOffsetRot["y"].as<double>();
             quat.setEulerZYX(y, p, r);
         }
-        double x = fileNode["inertial offset"]["position"]["x"].as<double>();
-        double y = fileNode["inertial offset"]["position"]["y"].as<double>();
-        double z = fileNode["inertial offset"]["position"]["z"].as<double>();
+        double x = bodyInertialOffsetPos["x"].as<double>();
+        double y = bodyInertialOffsetPos["y"].as<double>();
+        double z = bodyInertialOffsetPos["z"].as<double>();
         pos.setValue(x, y, z);
         trans.setRotation(quat);
         trans.setOrigin(pos);
         setInertialOffsetTransform(trans);
     }
 
-    std::string rel_path_high_res;
-    std::string rel_path_low_res;
-    if (fileNode["high_res_path"].IsDefined())
-        rel_path_high_res = fileNode["high_res_path"].as<std::string>() + m_mesh_name;
-    else if (fileNode["high resolution path"].IsDefined())
-        rel_path_high_res = fileNode["high resolution path"].as<std::string>() + m_mesh_name;
-    else
-        rel_path_high_res = mB->getHighResPath() + m_mesh_name;
+    std::string high_res_filepath;
+    std::string low_res_filepath;
 
-    if (fileNode["low_res_path"].IsDefined())
-        rel_path_low_res = fileNode["low_res_path"].as<std::string>() + m_mesh_name;
-    else if (fileNode["low resolution path"].IsDefined())
-        rel_path_high_res = fileNode["low resolution path"].as<std::string>() + m_mesh_name;
+    if (bodyMeshPathHR.IsDefined())
+        high_res_filepath = bodyMeshPathHR.as<std::string>() + m_mesh_name;
     else
-        rel_path_low_res = mB->getLowResPath() + m_mesh_name;
+        high_res_filepath = mB->getHighResPath() + m_mesh_name;
 
-    if (fileNode["name space"].IsDefined())
-        m_body_namespace = fileNode["name space"].as<std::string>();
+    if (bodyMeshPathLR.IsDefined())
+        high_res_filepath = bodyMeshPathLR.as<std::string>() + m_mesh_name;
+    else
+        low_res_filepath = mB->getLowResPath() + m_mesh_name;
+
+    if (bodyNameSpace.IsDefined())
+        m_body_namespace = bodyNameSpace.as<std::string>();
     else
         m_body_namespace = mB->getNameSpace();
 
-    loadFromFile(RESOURCE_PATH(rel_path_high_res));
-    m_lowResMesh.loadFromFile(RESOURCE_PATH(rel_path_low_res));
+    loadFromFile(RESOURCE_PATH(high_res_filepath));
+    m_lowResMesh.loadFromFile(RESOURCE_PATH(low_res_filepath));
     scale(m_scale);
     m_lowResMesh.scale(m_scale);
     buildContactTriangles(0.001, &m_lowResMesh);
 
-    if(fileNode["mass"].IsDefined()){
-        m_mass = fileNode["mass"].as<double>();
-        if(fileNode["linear gain"].IsDefined()){
-            K_lin = fileNode["linear gain"]["P"].as<double>();
-            D_lin = fileNode["linear gain"]["D"].as<double>();
+
+    if(bodyMass.IsDefined()){
+        m_mass = bodyMass.as<double>();
+        if(bodyLinGain.IsDefined()){
+            K_lin = bodyLinGain["P"].as<double>();
+            D_lin = bodyLinGain["D"].as<double>();
             _lin_gains_computed = true;
         }
-        if(fileNode["angular gain"].IsDefined()){
-            K_ang = fileNode["angular gain"]["P"].as<double>();
-            D_ang = fileNode["angular gain"]["D"].as<double>();
+        if(bodyAngGain.IsDefined()){
+            K_ang = bodyAngGain["P"].as<double>();
+            D_ang = bodyAngGain["D"].as<double>();
             _ang_gains_computed = true;
         }
     }
 
-    if(fileNode["inertia"].IsDefined()){
-        setInertia(cVector3d(fileNode["inertia"]["ix"].as<double>(),
-                fileNode["inertia"]["iy"].as<double>(),
-                fileNode["inertia"]["iz"].as<double>()));
+    if(bodyInertia.IsDefined()){
+        setInertia(cVector3d(bodyInertia["ix"].as<double>(), bodyInertia["iy"].as<double>(), bodyInertia["iz"].as<double>()));
     }
     else{
         estimateInertia();
@@ -373,42 +392,41 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
 
     buildDynamicModel();
 
-    if(fileNode["position"].IsDefined()){
-        double x = fileNode["position"]["x"].as<double>();
-        double y = fileNode["position"]["y"].as<double>();
-        double z = fileNode["position"]["z"].as<double>();
+    if(bodyPos.IsDefined()){
+        double x = bodyPos["x"].as<double>();
+        double y = bodyPos["y"].as<double>();
+        double z = bodyPos["z"].as<double>();
         m_initialPos.set(x,y,z);
         setLocalPos(m_initialPos);
     }
 
-    if(fileNode["rotation"].IsDefined()){
-        double r = fileNode["rotation"]["r"].as<double>();
-        double p = fileNode["rotation"]["p"].as<double>();
-        double y = fileNode["rotation"]["y"].as<double>();
+    if(bodyRot.IsDefined()){
+        double r = bodyRot["r"].as<double>();
+        double p = bodyRot["p"].as<double>();
+        double y = bodyRot["y"].as<double>();
         m_initialRot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
         setLocalRot(m_initialRot);
     }
 
-    if(fileNode["color raw"].IsDefined()){
-            m_mat.setColorf(fileNode["color raw"]["r"].as<float>(),
-                            fileNode["color raw"]["g"].as<float>(),
-                            fileNode["color raw"]["b"].as<float>(),
-                            fileNode["color raw"]["a"].as<float>());
+    if(bodyColorRaw.IsDefined()){
+            m_mat.setColorf(bodyColorRaw["r"].as<float>(),
+                            bodyColorRaw["g"].as<float>(),
+                            bodyColorRaw["b"].as<float>(),
+                            bodyColorRaw["a"].as<float>());
         }
-    else if(fileNode["color"].IsDefined()){
-        std::vector<double> rgba = mB->getColorRGBA(fileNode["color"].as<std::string>());
+    else if(bodyColor.IsDefined()){
+        std::vector<double> rgba = mB->getColorRGBA(bodyColor.as<std::string>());
         m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
-
     }
 
-    if (fileNode["damping"]["linear"].IsDefined())
-        m_surfaceProps.m_linear_damping = fileNode["damping"]["linear"].as<double>();
-    if (fileNode["damping"]["angular"].IsDefined())
-        m_surfaceProps.m_angular_damping = fileNode["damping"]["angular"].as<double>();
-    if (fileNode["friction"]["static"].IsDefined())
-        m_surfaceProps.m_static_friction = fileNode["friction"]["static"].as<double>();
-    if (fileNode["friction"]["rolling"].IsDefined())
-        m_surfaceProps.m_rolling_friction = fileNode["friction"]["rolling"].as<double>();
+    if (bodyLinDamping.IsDefined())
+        m_surfaceProps.m_linear_damping = bodyLinDamping.as<double>();
+    if (bodyAngDamping.IsDefined())
+        m_surfaceProps.m_angular_damping = bodyAngDamping.as<double>();
+    if (bodyStaticFriction.IsDefined())
+        m_surfaceProps.m_static_friction = bodyStaticFriction.as<double>();
+    if (bodyRollingFriction.IsDefined())
+        m_surfaceProps.m_rolling_friction = bodyRollingFriction.as<double>();
 
     setMaterial(m_mat);
     setConfigProperties(this, &m_surfaceProps);
@@ -587,35 +605,79 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
-    YAML::Node fileNode = baseNode[name];
-    if (fileNode.IsNull()) return false;
+    YAML::Node softBodyNode = baseNode[name];
+    if (softBodyNode.IsNull()) return false;
 
-    if(fileNode["name"].IsDefined()){
-        m_name = fileNode["name"].as<std::string>();
+    // Declare all the Nodes related to this body that we need to probe
+    YAML::Node softBodyName = softBodyNode["name"];
+    YAML::Node softBodyMesh = softBodyNode["mesh"];
+    YAML::Node softBodyScale = softBodyNode["scale"];
+    YAML::Node softBodyInertialOffsetPos = softBodyNode["inertial offset"]["position"];
+    YAML::Node softBodyInertialOffsetRot = softBodyNode["inertial offset"]["orientation"];
+    YAML::Node softBodyMeshPathHR = softBodyNode["high resolution path"];
+    YAML::Node softBodyMeshPathLR = softBodyNode["low resolution path"];
+    YAML::Node softBodyNameSpace = softBodyNode["namespace"];
+    YAML::Node softBodyMass = softBodyNode["mass"];
+    YAML::Node softBodyLinGain = softBodyNode["linear gain"];
+    YAML::Node softBodyAngGain = softBodyNode["angular gain"];
+    YAML::Node softBodyPos = softBodyNode["location"]["position"];
+    YAML::Node softBodyRot = softBodyNode["location"]["orientation"];
+    YAML::Node softBodyColorRaw = softBodyNode["color raw"];
+    YAML::Node softBodyColor = softBodyNode["color"];
+    YAML::Node softBodyConfigData = softBodyNode["config"];
+
+    YAML::Node cfg_kVCF = softBodyConfigData["kVCF"];
+    YAML::Node cfg_kDP = softBodyConfigData["kDP"];
+    YAML::Node cfg_kDG = softBodyConfigData["kDG"];
+    YAML::Node cfg_kLF = softBodyConfigData["kLF"];
+    YAML::Node cfg_kPR = softBodyConfigData["kPR"];
+    YAML::Node cfg_kVC = softBodyConfigData["kVC"];
+    YAML::Node cfg_kDF = softBodyConfigData["kDF"];
+    YAML::Node cfg_kMT = softBodyConfigData["kMT"];
+    YAML::Node cfg_kCHR = softBodyConfigData["kCHR"];
+    YAML::Node cfg_kKHR = softBodyConfigData["kKHR"];
+    YAML::Node cfg_kSHR = softBodyConfigData["kSHR"];
+    YAML::Node cfg_kAHR = softBodyConfigData["kAHR"];
+    YAML::Node cfg_kSRHR_CL = softBodyConfigData["kSRHR_CL"];
+    YAML::Node cfg_kSKHR_CL = softBodyConfigData["kSKHR_CL"];
+    YAML::Node cfg_kSSHR_CL = softBodyConfigData["kSSHR_CL"];
+    YAML::Node cfg_kSR_SPLT_CL = softBodyConfigData["kSR_SPLT_CL"];
+    YAML::Node cfg_kSK_SPLT_CL = softBodyConfigData["kSK_SPLT_CL"];
+    YAML::Node cfg_kSS_SPLT_CL = softBodyConfigData["kSS_SPLT_CL"];
+    YAML::Node cfg_maxvolume = softBodyConfigData["maxvolume"];
+    YAML::Node cfg_timescale = softBodyConfigData["timescale"];
+    YAML::Node cfg_viterations = softBodyConfigData["viterations"];
+    YAML::Node cfg_piterations = softBodyConfigData["piterations"];
+    YAML::Node cfg_diterations = softBodyConfigData["diterations"];
+    YAML::Node cfg_citerations = softBodyConfigData["citerations"];
+    YAML::Node cfg_collisions = softBodyConfigData["collisions"];
+
+    if(softBodyName.IsDefined()){
+        m_name = softBodyName.as<std::string>();
         m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     }
 
-    if(fileNode["mesh"].IsDefined())
-        m_mesh_name = fileNode["mesh"].as<std::string>();
+    if(softBodyMesh.IsDefined())
+        m_mesh_name = softBodyMesh.as<std::string>();
 
-    if(fileNode["scale"].IsDefined())
-        m_scale = fileNode["scale"].as<double>();
+    if(softBodyScale.IsDefined())
+        m_scale = softBodyScale.as<double>();
 
-    if(fileNode["inertial offset"]["position"].IsDefined()){
+    if(softBodyInertialOffsetPos.IsDefined()){
         btTransform trans;
         btQuaternion quat;
         btVector3 pos;
         quat.setEuler(0,0,0);
         pos.setValue(0,0,0);
-        if(fileNode["inertial offset"]["rotation"].IsDefined()){
-            double r = fileNode["inertial offset"]["rotation"]["r"].as<double>();
-            double p = fileNode["inertial offset"]["rotation"]["p"].as<double>();
-            double y = fileNode["inertial offset"]["rotation"]["y"].as<double>();
+        if(softBodyInertialOffsetRot.IsDefined()){
+            double r = softBodyInertialOffsetRot["r"].as<double>();
+            double p = softBodyInertialOffsetRot["p"].as<double>();
+            double y = softBodyInertialOffsetRot["y"].as<double>();
             quat.setEulerZYX(y, p, r);
         }
-        double x = fileNode["inertial offset"]["position"]["x"].as<double>();
-        double y = fileNode["inertial offset"]["position"]["y"].as<double>();
-        double z = fileNode["inertial offset"]["position"]["z"].as<double>();
+        double x = softBodyInertialOffsetPos["x"].as<double>();
+        double y = softBodyInertialOffsetPos["y"].as<double>();
+        double z = softBodyInertialOffsetPos["z"].as<double>();
         pos.setValue(x, y, z);
         trans.setRotation(quat);
         trans.setOrigin(pos);
@@ -624,17 +686,13 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
 
     std::string rel_path_high_res;
     std::string rel_path_low_res;
-    if (fileNode["high_res_path"].IsDefined())
-        rel_path_high_res = fileNode["high_res_path"].as<std::string>() + m_mesh_name;
-    else if (fileNode["high resolution path"].IsDefined())
-        rel_path_high_res = fileNode["high resolution path"].as<std::string>() + m_mesh_name;
+    if (softBodyMeshPathHR.IsDefined())
+        rel_path_high_res = softBodyMeshPathHR.as<std::string>() + m_mesh_name;
     else
         rel_path_high_res = mB->getHighResPath() + m_mesh_name;
 
-    if (fileNode["low_res_path"].IsDefined())
-        rel_path_low_res = fileNode["low_res_path"].as<std::string>() + m_mesh_name;
-    else if (fileNode["low resolution path"].IsDefined())
-        rel_path_high_res = fileNode["low resolution path"].as<std::string>() + m_mesh_name;
+    if (softBodyMeshPathLR.IsDefined())
+        rel_path_high_res = softBodyMeshPathLR.as<std::string>() + m_mesh_name;
     else
         rel_path_low_res = mB->getLowResPath() + m_mesh_name;
 
@@ -644,109 +702,83 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     m_lowResMesh.scale(m_scale);
     buildContactTriangles(0.001, &m_lowResMesh);
 
-    if(fileNode["mass"].IsDefined()){
-        m_mass = fileNode["mass"].as<double>();
-        if(fileNode["linear gain"].IsDefined()){
-            K_lin = fileNode["linear gain"]["P"].as<double>();
-            D_lin = fileNode["linear gain"]["D"].as<double>();
+    if(softBodyMass.IsDefined()){
+        m_mass = softBodyMass.as<double>();
+        if(softBodyLinGain.IsDefined()){
+            K_lin = softBodyLinGain["P"].as<double>();
+            D_lin = softBodyLinGain["D"].as<double>();
             _lin_gains_computed = true;
         }
-        if(fileNode["angular gain"].IsDefined()){
-            K_ang = fileNode["angular gain"]["P"].as<double>();
-            D_ang = fileNode["angular gain"]["D"].as<double>();
+        if(softBodyAngGain.IsDefined()){
+            K_ang = softBodyAngGain["P"].as<double>();
+            D_ang = softBodyAngGain["D"].as<double>();
             _ang_gains_computed = true;
         }
     }
 
     buildDynamicModel();
 
-    if(fileNode["position"].IsDefined()){
-        double x = fileNode["position"]["x"].as<double>();
-        double y = fileNode["position"]["y"].as<double>();
-        double z = fileNode["position"]["z"].as<double>();
+    if(softBodyPos.IsDefined()){
+        double x = softBodyPos["x"].as<double>();
+        double y = softBodyPos["y"].as<double>();
+        double z = softBodyPos["z"].as<double>();
         pos.set(x,y,z);
         setLocalPos(pos);
     }
 
-    if(fileNode["rotation"].IsDefined()){
-        double r = fileNode["rotation"]["r"].as<double>();
-        double p = fileNode["rotation"]["p"].as<double>();
-        double y = fileNode["rotation"]["y"].as<double>();
+    if(softBodyRot.IsDefined()){
+        double r = softBodyRot["r"].as<double>();
+        double p = softBodyRot["p"].as<double>();
+        double y = softBodyRot["y"].as<double>();
         rot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
         setLocalRot(rot);
     }
 
-    if(fileNode["color raw"].IsDefined()){
-            m_mat.setColorf(fileNode["color raw"]["r"].as<float>(),
-                            fileNode["color raw"]["g"].as<float>(),
-                            fileNode["color raw"]["b"].as<float>(),
-                            fileNode["color raw"]["a"].as<float>());
+    if(softBodyColorRaw.IsDefined()){
+            m_mat.setColorf(softBodyColorRaw["r"].as<float>(),
+                            softBodyColorRaw["g"].as<float>(),
+                            softBodyColorRaw["b"].as<float>(),
+                            softBodyColorRaw["a"].as<float>());
         }
-    else if(fileNode["color"].IsDefined()){
-        std::vector<double> rgba = mB->getColorRGBA(fileNode["color"].as<std::string>());
+    else if(softBodyColor.IsDefined()){
+        std::vector<double> rgba = mB->getColorRGBA(softBodyColor.as<std::string>());
         m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
 
     }
 
-    YAML::Node configNode = fileNode["config"];
-    if (configNode.IsNull()){
+    if (softBodyConfigData.IsNull()){
         printf("Warning, no soft body config properties defined");
     }
     else{
-        if (configNode["kVCF"].IsDefined())
-            m_bulletSoftBody->m_cfg.kVCF = configNode["kVCF"].as<double>();
-        if (configNode["kDP"].IsDefined())
-            m_bulletSoftBody->m_cfg.kDP = configNode["kDP"].as<double>();
-        if (configNode["kDG"].IsDefined())
-            m_bulletSoftBody->m_cfg.kDG = configNode["kDG"].as<double>();
-        if (configNode["kLF"].IsDefined())
-            m_bulletSoftBody->m_cfg.kLF = configNode["kLF"].as<double>();
-        if (configNode["kPR"].IsDefined())
-            m_bulletSoftBody->m_cfg.kPR = configNode["kPR"].as<double>();
-        if (configNode["kVC"].IsDefined())
-            m_bulletSoftBody->m_cfg.kVC = configNode["kVC"].as<double>();
-        if (configNode["kDF"].IsDefined())
-            m_bulletSoftBody->m_cfg.kDF = configNode["kDF"].as<double>();
-        if (configNode["kMT"].IsDefined())
-            m_bulletSoftBody->m_cfg.kMT = configNode["kMT"].as<double>();
-        if (configNode["kCHR"].IsDefined())
-            m_bulletSoftBody->m_cfg.kCHR = configNode["kCHR"].as<double>();
-        if (configNode["kKHR"].IsDefined())
-            m_bulletSoftBody->m_cfg.kKHR = configNode["kKHR"].as<double>();
-        if (configNode["kSHR"].IsDefined())
-            m_bulletSoftBody->m_cfg.kSHR = configNode["kSHR"].as<double>();
-        if (configNode["kAHR"].IsDefined())
-            m_bulletSoftBody->m_cfg.kAHR = configNode["kAHR"].as<double>();
-        if (configNode["kSRHR_CL"].IsDefined())
-            m_bulletSoftBody->m_cfg.kSRHR_CL = configNode["kSRHR_CL"].as<double>();
-        if (configNode["kSKHR_CL"].IsDefined())
-            m_bulletSoftBody->m_cfg.kSKHR_CL = configNode["kSKHR_CL"].as<double>();
-        if (configNode["kSSHR_CL"].IsDefined())
-            m_bulletSoftBody->m_cfg.kSSHR_CL = configNode["kSSHR_CL"].as<double>();
-        if (configNode["kSR_SPLT_CL"].IsDefined())
-            m_bulletSoftBody->m_cfg.kSR_SPLT_CL = configNode["kSR_SPLT_CL"].as<double>();
-        if (configNode["kSK_SPLT_CL"].IsDefined())
-            m_bulletSoftBody->m_cfg.kSK_SPLT_CL = configNode["kSK_SPLT_CL"].as<double>();
-        if (configNode["kSS_SPLT_CL"].IsDefined())
-            m_bulletSoftBody->m_cfg.kSS_SPLT_CL = configNode["kSS_SPLT_CL"].as<double>();
-        if (configNode["maxvolume"].IsDefined())
-            m_bulletSoftBody->m_cfg.maxvolume = configNode["maxvolume"].as<double>();
-        if (configNode["timescale"].IsDefined())
-            m_bulletSoftBody->m_cfg.maxvolume = configNode["timescale"].as<double>();
-        if (configNode["viterations"].IsDefined())
-            m_bulletSoftBody->m_cfg.viterations = configNode["viterations"].as<double>();
-        if (configNode["piterations"].IsDefined())
-            m_bulletSoftBody->m_cfg.piterations = configNode["piterations"].as<double>();
-        if (configNode["diterations"].IsDefined())
-            m_bulletSoftBody->m_cfg.diterations = configNode["diterations"].as<double>();
-        if (configNode["citerations"].IsDefined())
-            m_bulletSoftBody->m_cfg.citerations = configNode["citerations"].as<double>();
-        if (configNode["collisions"].IsDefined())
-            m_bulletSoftBody->m_cfg.collisions = configNode["collisions"].as<double>();
+        if (cfg_kVCF.IsDefined()) m_bulletSoftBody->m_cfg.kVCF = cfg_kVCF.as<double>();
+        if (cfg_kDP.IsDefined()) m_bulletSoftBody->m_cfg.kDP = cfg_kDP.as<double>();
+        if (cfg_kDG.IsDefined()) m_bulletSoftBody->m_cfg.kDG = cfg_kDG.as<double>();
+        if (cfg_kLF.IsDefined()) m_bulletSoftBody->m_cfg.kLF = cfg_kLF.as<double>();
+        if (cfg_kPR.IsDefined()) m_bulletSoftBody->m_cfg.kPR = cfg_kPR.as<double>();
+        if (cfg_kVC.IsDefined()) m_bulletSoftBody->m_cfg.kVC = cfg_kVC.as<double>();
+        if (cfg_kDF.IsDefined()) m_bulletSoftBody->m_cfg.kDF = cfg_kDF.as<double>();
+        if (cfg_kMT.IsDefined()) m_bulletSoftBody->m_cfg.kMT = cfg_kMT.as<double>();
+        if (cfg_kCHR.IsDefined()) m_bulletSoftBody->m_cfg.kCHR = cfg_kCHR.as<double>();
+        if (cfg_kKHR.IsDefined()) m_bulletSoftBody->m_cfg.kKHR = cfg_kKHR.as<double>();
+        if (cfg_kSHR.IsDefined()) m_bulletSoftBody->m_cfg.kSHR = cfg_kSHR.as<double>();
+        if (cfg_kAHR.IsDefined()) m_bulletSoftBody->m_cfg.kAHR = cfg_kAHR.as<double>();
+        if (cfg_kSRHR_CL.IsDefined()) m_bulletSoftBody->m_cfg.kSRHR_CL = cfg_kSRHR_CL.as<double>();
+        if (cfg_kSKHR_CL.IsDefined()) m_bulletSoftBody->m_cfg.kSKHR_CL = cfg_kSKHR_CL.as<double>();
+        if (cfg_kSSHR_CL.IsDefined()) m_bulletSoftBody->m_cfg.kSSHR_CL = cfg_kSSHR_CL.as<double>();
+        if (cfg_kSR_SPLT_CL.IsDefined()) m_bulletSoftBody->m_cfg.kSR_SPLT_CL = cfg_kSR_SPLT_CL.as<double>();
+        if (cfg_kSK_SPLT_CL.IsDefined()) m_bulletSoftBody->m_cfg.kSK_SPLT_CL = cfg_kSK_SPLT_CL.as<double>();
+        if (cfg_kSS_SPLT_CL.IsDefined()) m_bulletSoftBody->m_cfg.kSS_SPLT_CL = cfg_kSS_SPLT_CL.as<double>();
+        if (cfg_maxvolume.IsDefined()) m_bulletSoftBody->m_cfg.maxvolume = cfg_maxvolume.as<double>();
+        if (cfg_timescale.IsDefined()) m_bulletSoftBody->m_cfg.maxvolume = cfg_timescale.as<double>();
+        if (cfg_viterations.IsDefined()) m_bulletSoftBody->m_cfg.viterations = cfg_viterations.as<double>();
+        if (cfg_piterations.IsDefined()) m_bulletSoftBody->m_cfg.piterations = cfg_piterations.as<double>();
+        if (cfg_diterations.IsDefined()) m_bulletSoftBody->m_cfg.diterations = cfg_diterations.as<double>();
+        if (cfg_citerations.IsDefined()) m_bulletSoftBody->m_cfg.citerations = cfg_citerations.as<double>();
+        if (cfg_collisions.IsDefined()) m_bulletSoftBody->m_cfg.collisions = cfg_collisions.as<double>();
     }
 
-    if (fileNode["randomize constraints"].IsDefined())
-        if (fileNode["randomize constraints"].as<bool>() == true)
+    if (softBodyNode["randomize constraints"].IsDefined())
+        if (softBodyNode["randomize constraints"].as<bool>() == true)
             m_bulletSoftBody->randomizeConstraints();
 
 
@@ -1095,31 +1127,34 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
         return NULL;
     }
 
+    YAML::Node multiBodyMeshPathHR = multiBodyNode["high resolution path"];
+    YAML::Node multiBodyMeshPathLR = multiBodyNode["low resolution path"];
+    YAML::Node multiBodyNameSpace = multiBodyNode["namespace"];
+    YAML::Node multiBodyRidigBodies = multiBodyNode["bodies"];
+    YAML::Node multiBodySoftBodies = multiBodyNode["soft bodies"];
+    YAML::Node multiBodyJoints = multiBodyNode["joints"];
+
     /// Loading Rigid Bodies
     afRigidBodyPtr tmpRigidBody;
-    if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
-        m_multibody_high_res_path = multiBodyNode["high_res_path"].as<std::string>();
-        m_multibody_low_res_path = multiBodyNode["low_res_path"].as<std::string>();
-    }
-    else if(multiBodyNode["high resolution path"].IsDefined() && multiBodyNode["low resolution path"].IsDefined()){
-        m_multibody_high_res_path = multiBodyNode["high resolution path"].as<std::string>();
-        m_multibody_low_res_path = multiBodyNode["low resolution path"].as<std::string>();
+    if(multiBodyMeshPathHR.IsDefined() && multiBodyMeshPathLR.IsDefined()){
+        m_multibody_high_res_path = multiBodyMeshPathHR.as<std::string>();
+        m_multibody_low_res_path = multiBodyMeshPathLR.as<std::string>();
     }
     else{
         m_multibody_high_res_path = "../resources/models/puzzle/high_res/";
         m_multibody_low_res_path = "../resources/models/puzzle/low_res/";
     }
-    if (multiBodyNode["name space"].IsDefined()){
-        m_multibody_namespace = multiBodyNode["name space"].as<std::string>();
+    if (multiBodyNameSpace.IsDefined()){
+        m_multibody_namespace = multiBodyNameSpace.as<std::string>();
     }
     else{
         m_multibody_namespace = "/chai/env/";
     }
 
-    size_t totalRigidBodies = multiBodyNode["bodies"].size();
+    size_t totalRigidBodies = multiBodyRidigBodies.size();
     for (size_t i = 0; i < totalRigidBodies; ++i) {
         tmpRigidBody = new afRigidBody(m_chaiWorld);
-        std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
+        std::string body_name = multiBodyRidigBodies[i].as<std::string>();
         std::string remap_str = remapBodyName(body_name, &m_afRigidBodyMap);
 //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
         if (tmpRigidBody->load(a_multibody_config.c_str(), body_name, this)){
@@ -1131,10 +1166,10 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
 
     /// Loading Soft Bodies
     afSoftBodyPtr tmpSoftBody;
-    size_t totalSoftBodies = multiBodyNode["soft bodies"].size();
+    size_t totalSoftBodies = multiBodySoftBodies.size();
     for (size_t i = 0; i < totalSoftBodies; ++i) {
         tmpSoftBody = new afSoftBody(m_chaiWorld);
-        std::string body_name = multiBodyNode["soft bodies"][i].as<std::string>();
+        std::string body_name = multiBodySoftBodies[i].as<std::string>();
         std::string remap_str = remapBodyName(body_name, &m_afSoftBodyMap);
 //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
         if (tmpSoftBody->load(a_multibody_config.c_str(), body_name, this)){
@@ -1145,10 +1180,10 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
 
     /// Loading Joints
     afJointPtr tmpJoint;
-    size_t totalJoints = multiBodyNode["joints"].size();
+    size_t totalJoints = multiBodyJoints.size();
     for (size_t i = 0; i < totalJoints; ++i) {
         tmpJoint = new afJoint();
-        std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
+        std::string jnt_name = multiBodyJoints[i].as<std::string>();
         std::string remap_str = remapJointName(jnt_name);
 //        printf("Loading body: %s \n", (jnt_name + remap_str).c_str());
         if (tmpJoint->load(a_multibody_config.c_str(), jnt_name, this, remap_str)){

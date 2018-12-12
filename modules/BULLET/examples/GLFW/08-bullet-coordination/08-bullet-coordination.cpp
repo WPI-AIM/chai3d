@@ -1156,7 +1156,7 @@ int main(int argc, char* argv[])
     g_light->setDir(0, 0, -1.0);
 
     // set uniform concentration level of light
-    g_light->setSpotExponent(0.0);
+    g_light->setSpotExponent(0.3);
 
     // enable this light source to generate shadows
     g_light->setShadowMapEnabled(true);

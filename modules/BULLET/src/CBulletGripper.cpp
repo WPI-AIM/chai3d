@@ -77,44 +77,48 @@ bool afGripper::loadMultiBody(std::string a_file,
         std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
         return NULL;
     }
+
+    YAML::Node multiBodyMeshPathHR = multiBodyNode["high resolution path"];
+    YAML::Node multiBodyMeshPathLR = multiBodyNode["low resolution path"];
+    YAML::Node multiBodyNameSpace = multiBodyNode["namespace"];
+    YAML::Node multiBodyRidigBodies = multiBodyNode["bodies"];
+    YAML::Node multiBodyJoints = multiBodyNode["joints"];
+
+
     std::string color_config;
     if (multiBodyNode["color config"].IsDefined())
         s_colorsNode = YAML::LoadFile(multiBodyNode["color config"].as<std::string>().c_str());
 
     afGripperLinkPtr tmpBody;
-    if (multiBodyNode["high_res_path"].IsDefined() && multiBodyNode["low_res_path"].IsDefined()){
-        m_multibody_high_res_path = multiBodyNode["high_res_path"].as<std::string>();
-        m_multibody_low_res_path = multiBodyNode["low_res_path"].as<std::string>();
-    }
-    else if(multiBodyNode["high resolution path"].IsDefined() && multiBodyNode["low resolution path"].IsDefined()){
-        m_multibody_high_res_path = multiBodyNode["high resolution path"].as<std::string>();
-        m_multibody_low_res_path = multiBodyNode["low resolution path"].as<std::string>();
+    if(multiBodyMeshPathHR.IsDefined() && multiBodyMeshPathLR.IsDefined()){
+        m_multibody_high_res_path = multiBodyMeshPathHR.as<std::string>();
+        m_multibody_low_res_path = multiBodyMeshPathLR.as<std::string>();
     }
     else{
         m_multibody_high_res_path = "../resources/models/puzzle/high_res/";
         m_multibody_low_res_path = "../resources/models/puzzle/low_res/";
     }
-    if (multiBodyNode["name space"].IsDefined()){
-        m_multibody_namespace = multiBodyNode["name space"].as<std::string>();
+    if (multiBodyNameSpace.IsDefined()){
+        m_multibody_namespace = multiBodyNameSpace.as<std::string>();
     }
     else{
         m_multibody_namespace = "/chai/env/";
     }
 
-    size_t totalBodys = multiBodyNode["bodies"].size();
+    size_t totalBodys = multiBodyRidigBodies.size();
     for (size_t i = 0; i < totalBodys; ++i) {
         tmpBody = new afGripperLink(m_chaiWorld);
-        std::string body_name = multiBodyNode["bodies"][i].as<std::string>();
+        std::string body_name = multiBodyRidigBodies[i].as<std::string>();
 //        printf("Loading body: %s \n", body_name .c_str());
         if (tmpBody->load(a_file.c_str(), body_name, this)){
             m_afRigidBodyMap[body_name.c_str()] = tmpBody;
         }
     }
     afJoint *tmpJoint;
-    size_t totalJoints = multiBodyNode["joints"].size();
+    size_t totalJoints = multiBodyJoints.size();
     for (size_t i = 0; i < totalJoints; ++i) {
         tmpJoint = new afJoint();
-        std::string jnt_name = multiBodyNode["joints"][i].as<std::string>();
+        std::string jnt_name = multiBodyJoints[i].as<std::string>();
 //        printf("Loading body: %s \n", jnt_name.c_str());
         if (tmpJoint->load(a_file.c_str(), jnt_name, this)){
             m_afJointMap[jnt_name] = tmpJoint;

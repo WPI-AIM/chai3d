@@ -1,0 +1,215 @@
+BASE:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.001, y: -0.0, z: 0.06}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.035, y: -0.019, z: -0.004}
+  mass: 100.0
+  mesh: BASE.STL
+  name: BASE
+  scale: 1.0
+BASE-LINK1:
+  child: LINK1
+  child axis: {x: 0.0, y: 0.0, z: 1.0}
+  child pivot: {x: 0.0, y: 0.0, z: 0.0}
+  enable motor: 0
+  joint limits: {high: 0.785, low: -0.785}
+  max motor impulse: 0
+  name: BASE-LINK1
+  parent: BASE
+  parent axis: {x: 0.0, y: 0.0, z: 1.0}
+  parent pivot: {x: 0.0, y: -0.0, z: 0.103}
+Cylinder:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.0, y: 0.0, z: 0.0}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.011, y: -0.418, z: 0.103}
+  mass: 4.0
+  mesh: Cylinder.STL
+  name: Cylinder
+  scale: 1.0
+LINK1:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.0, y: -0.017, z: 0.134}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.035, y: -0.019, z: 0.093}
+  mass: 1.0
+  mesh: LINK1.STL
+  name: LINK1
+  scale: 1.0
+LINK1-LINK2:
+  child: LINK2
+  child axis: {x: 0.0, y: 0.0, z: 1.0}
+  child pivot: {x: 0.0, y: 0.0, z: 0.0}
+  enable motor: 0
+  joint limits: {high: 0.785, low: -0.785}
+  max motor impulse: 0
+  name: LINK1-LINK2
+  parent: LINK1
+  parent axis: {x: 0.0, y: 1.0, z: -0.0}
+  parent pivot: {x: 0.0, y: 0.013, z: 0.209}
+LINK2:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.0, y: -0.074, z: 0.009}
+  location:
+    orientation: {p: -0.0, r: -1.571, y: 0.0}
+    position: {x: -0.035, y: -0.007, z: 0.289}
+  mass: 1.0
+  mesh: LINK2.STL
+  name: LINK2
+  scale: 1.0
+LINK2-LINK3:
+  child: LINK3
+  child axis: {x: 0.0, y: 0.0, z: 1.0}
+  child pivot: {x: 0.0, y: 0.0, z: 0.0}
+  enable motor: 0
+  joint limits: {high: 0.785, low: -0.785}
+  max motor impulse: 0
+  name: LINK2-LINK3
+  parent: LINK2
+  parent axis: {x: 0.0, y: -1.0, z: -0.0}
+  parent pivot: {x: -0.0, y: -0.194, z: -0.009}
+LINK3:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.0, y: 0.017, z: 0.134}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.035, y: -0.015, z: 0.47}
+  mass: 1.0
+  mesh: LINK3.STL
+  name: LINK3
+  scale: 1.0
+LINK3-LINK4:
+  child: LINK4
+  child axis: {x: 0.0, y: 0.0, z: 1.0}
+  child pivot: {x: 0.0, y: 0.0, z: 0.0}
+  enable motor: 0
+  joint limits: {high: 0.785, low: -0.785}
+  max motor impulse: 0
+  name: LINK3-LINK4
+  parent: LINK3
+  parent axis: {x: 0.0, y: -1.0, z: -0.0}
+  parent pivot: {x: 0.0, y: -0.013, z: 0.202}
+LINK4:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: -0.001, y: 0.081, z: 0.008}
+  location:
+    orientation: {p: -0.0, r: 1.571, y: 0.0}
+    position: {x: -0.035, y: -0.027, z: 0.66}
+  mass: 1.0
+  mesh: LINK4.STL
+  name: LINK4
+  scale: 1.0
+LINK4-LINK5:
+  child: LINK5
+  child axis: {x: 0.0, y: 0.0, z: 1.0}
+  child pivot: {x: 0.0, y: 0.0, z: 0.0}
+  enable motor: 0
+  joint limits: {high: 0.785, low: -0.785}
+  max motor impulse: 0
+  name: LINK4-LINK5
+  parent: LINK4
+  parent axis: {x: 0.0, y: 1.0, z: -0.0}
+  parent pivot: {x: -0.002, y: 0.202, z: -0.008}
+LINK5:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.0, y: -0.017, z: 0.129}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.037, y: -0.02, z: 0.849}
+  mass: 1.0
+  mesh: LINK5.STL
+  name: LINK5
+  scale: 1.0
+LINK5-LINK6:
+  child: LINK6
+  child axis: {x: 0.0, y: 0.0, z: 1.0}
+  child pivot: {x: 0.0, y: 0.0, z: 0.0}
+  enable motor: 0
+  joint limits: {high: 0.785, low: -0.785}
+  max motor impulse: 0
+  name: LINK5-LINK6
+  parent: LINK5
+  parent axis: {x: 0.0, y: 1.0, z: -0.0}
+  parent pivot: {x: 0.002, y: -0.052, z: 0.204}
+LINK6:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: -0.0, y: 0.007, z: 0.068}
+  location:
+    orientation: {p: -0.0, r: -1.571, y: 0.0}
+    position: {x: -0.035, y: -0.069, z: 1.04}
+  mass: 1.0
+  mesh: LINK6.STL
+  name: LINK6
+  scale: 1.0
+LINK6-LINK7:
+  child: LINK7
+  child axis: {x: 0.0, y: 0.0, z: 1.0}
+  child pivot: {x: 0.0, y: 0.0, z: 0.0}
+  enable motor: 0
+  joint limits: {high: 0.785, low: -0.785}
+  max motor impulse: 0
+  name: LINK6-LINK7
+  parent: LINK6
+  parent axis: {x: 0.0, y: -1.0, z: -0.0}
+  parent pivot: {x: -0.003, y: -0.05, z: 0.053}
+LINK7:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.006, y: 0.0, z: 0.015}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.038, y: -0.019, z: 1.086}
+  mass: 1.0
+  mesh: LINK7.STL
+  name: LINK7
+  scale: 1.0
+Sphere:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.0, y: -0.0, z: 0.0}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.377, y: -0.021, z: 0.416}
+  mass: 1.0
+  mesh: Sphere.STL
+  name: Sphere
+  scale: 1.0
+Torus2:
+  color: blue_corn_flower
+  inertial offset:
+    orientation: {p: 0, r: 0, y: 0}
+    position: {x: 0.0, y: 0.0, z: 0.0}
+  location:
+    orientation: {p: -0.0, r: 0.0, y: 0.0}
+    position: {x: -0.381, y: -0.022, z: 0.127}
+  mass: 3.0
+  mesh: Torus2.STL
+  name: Torus2
+  scale: 1.0
+bodies: [BASE, Cylinder, LINK1, LINK2, LINK3, LINK4, LINK5, LINK6, LINK7, Sphere,
+  Torus2]
+high resolution path: /home/adnan/chai3d/modules/BULLET/bin/resources/models/LWR-AF/high_res/
+joints: [BASE-LINK1, LINK1-LINK2, LINK2-LINK3, LINK3-LINK4, LINK4-LINK5, LINK5-LINK6,
+  LINK6-LINK7]
+low resolution path: /home/adnan/chai3d/modules/BULLET/bin/resources/models/LWR-AF/low_res/

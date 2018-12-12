@@ -1,7 +1,7 @@
 # This is the base file for Coordination Application
 path: ../resources/config/
 world config: worlds/world.yaml
-multibody configs: [puzzles/puzzle1.yaml, puzzles/puzzle2.yaml]
+multibody configs: [puzzles/blender-lwr-config.yaml]
 color config: color/colors.yaml
 gripper configs: [Default, MTMR, MTML, Novint Falcon, Geomagic Touch, PHANTOM Omni, Razer Hydra]
 Default: "grippers/single joint1.yaml"

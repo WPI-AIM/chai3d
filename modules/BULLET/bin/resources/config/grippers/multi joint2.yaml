@@ -8,48 +8,53 @@ base:
  mass: 0.02
  mesh: BaseLink.STL
  scale: 1.0
- #position: {x: 0.0, y: 0.0, z: 0.0}
- #rotation: {r: 0.0, p: 0.0, y: 0.0}
+ #location:{
+   #position: {x: 0.0, y: 0.0, z: 0.0};
+   #orientation: {r: 0.0, p: 0.0, y: 0.0}}
  color: red
 
 r1:
  name: gripperR1
  mass: 0.02
  mesh: MultiLinkR1.STL
- inertial offset: {position: {x: -0.133, y: 0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: 0.262}}
+ inertial offset: {position: {x: -0.133, y: 0.035, z: -0.0016}, orientation: {r: 0.0, p: 0.0, y: 0.262}}
  scale: 1.0
- position: {x: 0.0, y: 0.085, z: 0.0}
- #rotation: {r: 0.0, p: 0.0, y: 0.0}
+ location: {
+   position: {x: 0.0, y: 0.085, z: 0.0}}
+   #orientation: {r: 0.0, p: 0.0, y: 0.0}}
  color: red
 
 l1:
  name: gripperL1
  mass: 0.02
  mesh: MultiLinkL1.STL
- inertial offset: {position: {x: -0.133, y: -0.035, z: -0.0016}, rotation: {r: 0.0, p: 0.0, y: -0.262}}
+ inertial offset: {position: {x: -0.133, y: -0.035, z: -0.0016}, orientation: {r: 0.0, p: 0.0, y: -0.262}}
  scale: 1.0
- position: {x: 0.0, y: -0.085, z: 0.0}
- #rotation: {r: 0.0, p: 0.0, y: 0.0}
+ location: {
+  position: {x: 0.0, y: -0.085, z: 0.0}}
+  #orientation: {r: 0.0, p: 0.0, y: 0.0}}
  color: white
 
 r2:
  name: gripperR2
  mass: 0.02
  mesh: MultiLinkR2.STL
- inertial offset: {position: {x: -0.091, y: -0.052, z: -0.004}, rotation: {r: 0.0, p: 0.0, y: 0.523}}
+ inertial offset: {position: {x: -0.091, y: -0.052, z: -0.004}, orientation: {r: 0.0, p: 0.0, y: 0.523}}
  scale: 1.0
- position: {x: -0.26, y: 0.069, z: 0.0}
- #rotation: {r: 0.0, p: 0.0, y: 0.0}
+ location: {
+   position: {x: -0.26, y: 0.069, z: 0.0}}
+   #orientation: {r: 0.0, p: 0.0, y: 0.0}}
  color: red
 
 l2:
  name: gripperL2
  mass: 0.02
  mesh: MultiLinkL2.STL
- inertial offset: {position: {x: -0.091, y: 0.052, z: -0.004}, rotation: {r: 0.0, p: 0.0, y: -0.523}}
+ inertial offset: {position: {x: -0.091, y: 0.052, z: -0.004}, orientation: {r: 0.0, p: 0.0, y: -0.523}}
  scale: 1.0
- position: {x: -0.26, y: -0.069, z: 0.0}
- #rotation: {r: 0.0, p: 0.0, y: 0.0}
+ location: {
+  position: {x: -0.26, y: -0.069, z: 0.0}}
+  #orientation: {r: 0.0, p: 0.0, y: 0.0}}
  color: red
 
 joint_template: &anchor
