@@ -8,5 +8,5 @@ cylinder:
  mass: 0.08
  mesh: Cylinder.STL
  scale: 1.0
- friction: {static: 0.8}
- color: green
+ friction: {static: 0.2}
+ color: random
