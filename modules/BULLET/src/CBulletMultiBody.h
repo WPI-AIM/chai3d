@@ -149,16 +149,17 @@ public:
     std::vector<afRigidBodyPtr> m_childrenBodies;
     std::vector<afRigidBodyPtr> m_parentBodies;
 
-    void setAngle(double &angle, double dt);
-    void setAngle(std::vector<double> &angle, double dt);
+    virtual void setAngle(double &angle, double dt);
+    virtual void setAngle(std::vector<double> &angle, double dt);
     static void setConfigProperties(const afRigidBodyPtr a_body, const afRigidBodySurfacePropertiesPtr a_surfaceProps);
     std::string m_body_namespace;
+    btVector3 computeInertialOffset(cMesh* mesh);
 
 protected:
 
     double m_scale;
     double m_total_mass;
-    std::string m_mesh_name;
+    std::string m_mesh_name, m_collision_mesh_name;
     cMultiMesh m_lowResMesh;
     cVector3d m_initialPos;
     cMatrix3d m_initialRot;
@@ -183,6 +184,8 @@ protected:
 ///
 class afJoint{
     friend class afRigidBody;
+    friend class afGripperLink;
+    friend class afMultiBody;
 
 public:
 
@@ -192,22 +195,25 @@ public:
     void commandTorque(double &cmd);
     void commandPosition(double &cmd);
 
-private:
+protected:
 
     std::string m_name;
     std::string m_parent_name, m_child_name;
     std::string m_joint_name;
     btVector3 m_axisA, m_axisB;
     btVector3 m_pvtA, m_pvtB;
-    bool enable_motor;
-    double jnt_lim_low, jnt_lim_high, max_motor_impluse;
+    double m_joint_damping;
+    double m_max_effort;
+    bool m_enable_motor;
+    bool m_max_motor_impulse;
+    double m_lower_limit, m_higher_limit;
     btRigidBody *bodyA, *bodyB;
-    void assignVec(std::string name, btVector3* v, YAML::Node* node);
     void printVec(std::string name, btVector3* v);
 
 protected:
 
     btHingeConstraint* m_hinge;
+    btSliderConstraint *m_slider;
 
 };
 
@@ -312,6 +318,10 @@ public:
     inline std::string getNameSpace(){return m_multibody_namespace;}
     inline const afSoftBodyMap* getSoftBodyMap(){return &m_afSoftBodyMap;}
     inline const afRigidBodyMap* getRigidBodyMap(){return &m_afRigidBodyMap;}
+    // We can have multiple bodies connected to a single body.
+    // There isn't a direct way in bullet to disable collision
+    // between all these bodies connected in a tree
+    void removeOverlappingCollisionChecking();
 
 protected:
 

@@ -72,7 +72,8 @@ public:
         m_surfaceProps.m_rolling_friction = 0.5;
     }
     ~afGripperLink(){}
-
+    virtual void setAngle(double &angle, double dt);
+    virtual void setAngle(std::vector<double> &angle, double dt);
 };
 
 ///
@@ -87,7 +88,6 @@ public:
 
     afGripper(cBulletWorld *a_chaiWorld) : afMultiBody(a_chaiWorld){}
     ~afGripper();
-    void setGripperAngle(const double &angle,double dt=0.001);
     virtual bool loadMultiBody(std::string a_file,
                                                std::string a_gripper_name,
                                                std::string a_suffix_name);

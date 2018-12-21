@@ -699,14 +699,20 @@ public:
 ///
 Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
     m_bulletWorld = NULL;
+    m_deviceHandler = NULL;
     m_bulletWorld = a_bullet_world;
-    m_deviceHandler = new cHapticDeviceHandler();
-    int numDevs = m_deviceHandler->getNumDevices();
-    m_num_devices = a_max_load_devs < numDevs ? a_max_load_devs : numDevs;
-    std::cerr << "Num of devices " << m_num_devices << std::endl;
-    for (uint i = 0; i < m_num_devices; i++){
-        retrieve_device_handle(i);
-        create_bullet_gripper(i);
+    if (a_max_load_devs > 0){
+        m_deviceHandler = new cHapticDeviceHandler();
+        int numDevs = m_deviceHandler->getNumDevices();
+        m_num_devices = a_max_load_devs < numDevs ? a_max_load_devs : numDevs;
+        std::cerr << "Num of devices " << m_num_devices << std::endl;
+        for (uint i = 0; i < m_num_devices; i++){
+            retrieve_device_handle(i);
+            create_bullet_gripper(i);
+        }
+    }
+    else{
+        m_num_devices = 0;
     }
     m_use_cam_frame_rot = true;
     m_simModes = CAM_CLUTCH_CONTROL;
@@ -715,6 +721,9 @@ Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
 }
 
 Coordination::~Coordination(){
+    if (m_deviceHandler){
+        delete m_deviceHandler;
+    }
 }
 
 ///
@@ -1539,7 +1548,6 @@ void close(void)
         delete g_hapticsThreads[i];
     }
     delete g_bulletWorld;
-    delete g_coordApp->m_deviceHandler;
     delete g_afWorld;
     delete g_afMultiBody;
 }

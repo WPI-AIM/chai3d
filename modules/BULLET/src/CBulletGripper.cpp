@@ -52,11 +52,42 @@ std::string resourceRootGripper;
 namespace chai3d {
 
 ///
-/// \brief afGripper::setGripperAngle
+/// \brief afBody::set_angle
 /// \param angle
 /// \param dt
 ///
-void afGripper::setGripperAngle(const double &angle, double dt){
+void afGripperLink::setAngle(double &angle, double dt){
+    // Since it's not desireable to control the exact angle of multiple joints in the gripper.
+    // We override the set angle method for grippers to simplify the angle bound. 0 for closed
+    // and 1 for open and everything in between is scaled.
+    if (m_parentBodies.size() == 0){
+        double clipped_angle = cClamp(angle, 0.0, 1.0);
+        for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
+            double ang;
+            ang = m_joints[jnt]->m_lower_limit + clipped_angle * (m_joints[jnt]->m_higher_limit - m_joints[jnt]->m_lower_limit);
+            m_joints[jnt]->m_hinge->setMotorTarget(ang, dt);
+        }
+
+    }
+}
+
+///
+/// \brief afBody::set_angle
+/// \param angles
+/// \param dt
+///
+void afGripperLink::setAngle(std::vector<double> &angles, double dt){
+    // Since it's not desireable to control the exact angle of multiple joints in the gripper.
+    // We override the set angle method for grippers to simplify the angle bound. 0 for closed
+    // and 1 for open and everything in between is scaled.
+    if (m_parentBodies.size() == 0){
+        double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
+        for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
+            double clipped_angle = cClamp(angles[jnt], 0.0, 1.0);
+            m_joints[jnt]->m_hinge->setMotorTarget(clipped_angle, dt);
+        }
+
+    }
 }
 
 ///
@@ -66,9 +97,7 @@ void afGripper::setGripperAngle(const double &angle, double dt){
 /// \param a_suffix_name
 /// \return
 ///
-bool afGripper::loadMultiBody(std::string a_file,
-                                                   std::string a_gripper_name,
-                                                   std::string a_suffix_name){
+bool afGripper::loadMultiBody(std::string a_file, std::string a_gripper_name, std::string a_suffix_name){
     m_gripper_name = a_gripper_name;
     m_suffix_name = a_suffix_name;
 
@@ -78,16 +107,16 @@ bool afGripper::loadMultiBody(std::string a_file,
         return NULL;
     }
 
+    // Declare all the yaml parameters that we want to look for
     YAML::Node multiBodyMeshPathHR = multiBodyNode["high resolution path"];
     YAML::Node multiBodyMeshPathLR = multiBodyNode["low resolution path"];
     YAML::Node multiBodyNameSpace = multiBodyNode["namespace"];
     YAML::Node multiBodyRidigBodies = multiBodyNode["bodies"];
     YAML::Node multiBodyJoints = multiBodyNode["joints"];
+    YAML::Node multiBodyColorConfig = multiBodyNode["color config"];
 
-
-    std::string color_config;
-    if (multiBodyNode["color config"].IsDefined())
-        s_colorsNode = YAML::LoadFile(multiBodyNode["color config"].as<std::string>().c_str());
+    if (multiBodyColorConfig.IsDefined())
+        s_colorsNode = YAML::LoadFile(multiBodyColorConfig.as<std::string>().c_str());
 
     afGripperLinkPtr tmpBody;
     if(multiBodyMeshPathHR.IsDefined() && multiBodyMeshPathLR.IsDefined()){

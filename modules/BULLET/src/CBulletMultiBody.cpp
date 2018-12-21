@@ -74,6 +74,43 @@ double afWorld::m_encl_height;
 
 /// End declare static variables
 
+/// Utility Functions
+
+///
+/// \brief assignXYZ
+/// \param v
+///
+void assignXYZ(YAML::Node* node, btVector3 *v){
+    v->setX((*node)["x"].as<double>());
+    v->setY((*node)["y"].as<double>());
+    v->setZ((*node)["z"].as<double>());
+}
+
+///
+/// \brief assignXYZ
+/// \param node
+/// \param v
+///
+void assignXYZ(YAML::Node* node, cVector3d *v){
+    v->x((*node)["x"].as<double>());
+    v->y((*node)["y"].as<double>());
+    v->z((*node)["z"].as<double>());
+}
+
+
+///
+/// \brief assignRPY
+/// \param v
+/// \param node
+///
+void assignRPY(YAML::Node* node, btVector3 *v){
+    v->setX((*node)["r"].as<double>());
+    v->setY((*node)["p"].as<double>());
+    v->setZ((*node)["y"].as<double>());
+}
+
+
+///////////////////////////////////////////////
 
 ///
 /// \brief afConfigHandler::afConfigHandler
@@ -92,25 +129,33 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
     if(!configNode){
         std::cerr << "ERROR! FAILED TO LOAD CONFIG FILE \n";
     }
+
+    //Declare all the YAML Params that we want to look for
+    YAML::Node cfgPath = configNode["path"];
+    YAML::Node cfgMultiBodyFiles = configNode["multibody configs"];
+    YAML::Node cfgColorFile = configNode["color config"];
+    YAML::Node cfgGripperFiles = configNode["gripper configs"];
+    YAML::Node cfgWorldFiles = configNode["world config"];
+
     // Check if a world config file or a plain multibody config file
-    if (configNode["path"].IsDefined() && configNode["multibody configs"].IsDefined()){
-        s_path = configNode["path"].as<std::string>();
+    if (cfgPath.IsDefined() && cfgMultiBodyFiles.IsDefined()){
+        s_path = cfgPath.as<std::string>();
     }
     else{
         std::cerr << "PATH NOT DEFINED \n";
         return 0;
     }
-    if (configNode["multibody configs"].IsDefined()){
-        for (int i = 0 ; i < configNode["multibody configs"].size() ; i++){
-            s_multiBody_configs.push_back(s_path + configNode["multibody configs"][i].as<std::string>());
+    if (cfgMultiBodyFiles.IsDefined()){
+        for (int i = 0 ; i < cfgMultiBodyFiles.size() ; i++){
+            s_multiBody_configs.push_back(s_path + cfgMultiBodyFiles[i].as<std::string>());
         }
     }
     else{
         std::cerr << "PATH AND MULTIBODY CONFIG NOT DEFINED \n";
         return 0;
     }
-    if(configNode["color config"].IsDefined()){
-        s_color_config = s_path + configNode["color config"].as<std::string>();
+    if(cfgColorFile.IsDefined()){
+        s_color_config = s_path + cfgColorFile.as<std::string>();
         s_colorsNode = YAML::LoadFile(s_color_config.c_str());
         if (!s_colorsNode){
             std::cerr << "ERROR! COLOR CONFIG NOT FOUND \n";
@@ -120,9 +165,9 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
         return 0;
     }
 
-    if(configNode["gripper configs"].IsDefined()){
-        for(size_t i=0 ; i < configNode["gripper configs"].size(); ++i){
-            std::string gconf = configNode["gripper configs"][i].as<std::string>();
+    if(cfgGripperFiles.IsDefined()){
+        for(size_t i=0 ; i < cfgGripperFiles.size(); ++i){
+            std::string gconf = cfgGripperFiles[i].as<std::string>();
             s_gripperConfigFiles[gconf] = s_path + configNode[gconf].as<std::string>();
         }
     }
@@ -131,8 +176,8 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
         return 0;
     }
 
-    if(configNode["world config"].IsDefined()){
-        std::string gconf = configNode["world config"].as<std::string>();
+    if(cfgWorldFiles.IsDefined()){
+        std::string gconf = cfgWorldFiles.as<std::string>();
         s_world_config = s_path + gconf;
     }
     else{
@@ -289,9 +334,10 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     YAML::Node bodyNode = baseNode[name];
     if (bodyNode.IsNull()) return false;
 
-    // Declare all the Nodes related to this body that we need to probe
+    // Declare all the yaml parameters that we want to look for
     YAML::Node bodyName = bodyNode["name"];
     YAML::Node bodyMesh = bodyNode["mesh"];
+    YAML::Node bodyCollisionMesh = bodyNode["collision mesh"];
     YAML::Node bodyScale = bodyNode["scale"];
     YAML::Node bodyInertialOffsetPos = bodyNode["inertial offset"]["position"];
     YAML::Node bodyInertialOffsetRot = bodyNode["inertial offset"]["orientation"];
@@ -320,52 +366,72 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     if(bodyMesh.IsDefined())
         m_mesh_name = bodyMesh.as<std::string>();
 
+    if(bodyCollisionMesh.IsDefined())
+        m_collision_mesh_name = bodyCollisionMesh.as<std::string>();
+    else
+        m_collision_mesh_name = m_mesh_name;
+
     if(bodyScale.IsDefined())
         m_scale = bodyScale.as<double>();
-
-    if(bodyInertialOffsetPos.IsDefined()){
-        btTransform trans;
-        btQuaternion quat;
-        btVector3 pos;
-        quat.setEuler(0,0,0);
-        pos.setValue(0,0,0);
-        if(bodyInertialOffsetRot.IsDefined()){
-            double r = bodyInertialOffsetRot["r"].as<double>();
-            double p = bodyInertialOffsetRot["p"].as<double>();
-            double y = bodyInertialOffsetRot["y"].as<double>();
-            quat.setEulerZYX(y, p, r);
-        }
-        double x = bodyInertialOffsetPos["x"].as<double>();
-        double y = bodyInertialOffsetPos["y"].as<double>();
-        double z = bodyInertialOffsetPos["z"].as<double>();
-        pos.setValue(x, y, z);
-        trans.setRotation(quat);
-        trans.setOrigin(pos);
-        setInertialOffsetTransform(trans);
-    }
 
     std::string high_res_filepath;
     std::string low_res_filepath;
 
-    if (bodyMeshPathHR.IsDefined())
+    // Each ridig body can have a seperate path for its low and high res meshes
+    // Incase they are defined, we use those paths and if they are not, we use
+    // the paths for the whole file
+    if (bodyMeshPathHR.IsDefined()){
         high_res_filepath = bodyMeshPathHR.as<std::string>() + m_mesh_name;
-    else
+    }
+    else{
         high_res_filepath = mB->getHighResPath() + m_mesh_name;
+    }
 
-    if (bodyMeshPathLR.IsDefined())
-        high_res_filepath = bodyMeshPathLR.as<std::string>() + m_mesh_name;
-    else
-        low_res_filepath = mB->getLowResPath() + m_mesh_name;
+    if (bodyMeshPathLR.IsDefined()){
+        low_res_filepath = bodyMeshPathLR.as<std::string>() + m_collision_mesh_name;
+    }
+    else{
+        // If low res path is not defined, use the high res path to load the high-res mesh for collision
+        low_res_filepath = mB->getLowResPath() + m_collision_mesh_name;
+    }
 
-    if (bodyNameSpace.IsDefined())
+    if (bodyNameSpace.IsDefined()){
         m_body_namespace = bodyNameSpace.as<std::string>();
-    else
+    }
+    else{
         m_body_namespace = mB->getNameSpace();
+    }
 
     loadFromFile(RESOURCE_PATH(high_res_filepath));
     m_lowResMesh.loadFromFile(RESOURCE_PATH(low_res_filepath));
     scale(m_scale);
     m_lowResMesh.scale(m_scale);
+
+    btTransform iOffTrans;
+    btQuaternion iOffQuat;
+    btVector3 iOffPos;
+    iOffQuat.setEuler(0,0,0);
+    iOffPos.setValue(0,0,0);
+    if(bodyInertialOffsetPos.IsDefined()){
+        if(bodyInertialOffsetRot.IsDefined()){
+            double r = bodyInertialOffsetRot["r"].as<double>();
+            double p = bodyInertialOffsetRot["p"].as<double>();
+            double y = bodyInertialOffsetRot["y"].as<double>();
+            iOffQuat.setEulerZYX(y, p, r);
+        }
+        assignXYZ( &bodyInertialOffsetPos, &iOffPos);
+    }
+    else{
+        // Call the compute inertial offset before the build contact triangle method
+        // as this method clears the low res mesh.
+        iOffPos = computeInertialOffset(m_lowResMesh.m_meshes[0][0]);
+    }
+
+    iOffTrans.setOrigin(iOffPos);
+    iOffTrans.setRotation(iOffQuat);
+    setInertialOffsetTransform(iOffTrans);
+
+    // Build contact triangles
     buildContactTriangles(0.001, &m_lowResMesh);
 
 
@@ -393,10 +459,7 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     buildDynamicModel();
 
     if(bodyPos.IsDefined()){
-        double x = bodyPos["x"].as<double>();
-        double y = bodyPos["y"].as<double>();
-        double z = bodyPos["z"].as<double>();
-        m_initialPos.set(x,y,z);
+        assignXYZ( &bodyPos, &m_initialPos);
         setLocalPos(m_initialPos);
     }
 
@@ -432,6 +495,25 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     setConfigProperties(this, &m_surfaceProps);
     mB->m_chaiWorld->addChild(this);
     return true;
+}
+
+///
+/// \brief afRigidBody::computeInertialOffset
+/// \param mesh
+/// \return
+///
+btVector3 afRigidBody::computeInertialOffset(cMesh* mesh){
+    cVector3d intertialOffset(0,0,0);
+    cVector3d vPos;
+
+    int nvertices = mesh->getNumVertices();
+    int i;
+    double idx;
+    for (i = 0, idx = 0 ; i < nvertices ; i++, idx++){
+        vPos = mesh->m_vertices->getLocalPos(i);
+        intertialOffset = ((( idx ) / ( idx + 1.0 )) * intertialOffset) + (( 1.0 / ( idx + 1.0 )) * vPos);
+    }
+    return btVector3(intertialOffset.x(), intertialOffset.y(), intertialOffset.z());
 }
 
 ///
@@ -552,11 +634,8 @@ void afRigidBody::updateCmdFromROS(double dt){
 ///
 void afRigidBody::setAngle(double &angle, double dt){
     if (m_parentBodies.size() == 0){
-        double clipped_angle = cClamp(angle, 0.0, 1.0);
         for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
-            double ang;
-            ang = m_joints[jnt]->jnt_lim_low + clipped_angle * (m_joints[jnt]->jnt_lim_high - m_joints[jnt]->jnt_lim_low);
-            m_joints[jnt]->m_hinge->setMotorTarget(ang, dt);
+            m_joints[jnt]->m_hinge->setMotorTarget(angle, dt);
         }
 
     }
@@ -571,8 +650,7 @@ void afRigidBody::setAngle(std::vector<double> &angles, double dt){
     if (m_parentBodies.size() == 0){
         double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
         for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
-            double clipped_angle = cClamp(angles[jnt], 0.0, 1.0);
-            m_joints[jnt]->m_hinge->setMotorTarget(clipped_angle, dt);
+            m_joints[jnt]->m_hinge->setMotorTarget(angles[jnt], dt);
         }
 
     }
@@ -608,7 +686,7 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     YAML::Node softBodyNode = baseNode[name];
     if (softBodyNode.IsNull()) return false;
 
-    // Declare all the Nodes related to this body that we need to probe
+    // Declare all the yaml parameters that we want to look for
     YAML::Node softBodyName = softBodyNode["name"];
     YAML::Node softBodyMesh = softBodyNode["mesh"];
     YAML::Node softBodyScale = softBodyNode["scale"];
@@ -625,6 +703,7 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     YAML::Node softBodyColorRaw = softBodyNode["color raw"];
     YAML::Node softBodyColor = softBodyNode["color"];
     YAML::Node softBodyConfigData = softBodyNode["config"];
+    YAML::Node softBodyRandomizeConstraints = softBodyNode["randomize constraints"];
 
     YAML::Node cfg_kVCF = softBodyConfigData["kVCF"];
     YAML::Node cfg_kDP = softBodyConfigData["kDP"];
@@ -675,10 +754,7 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
             double y = softBodyInertialOffsetRot["y"].as<double>();
             quat.setEulerZYX(y, p, r);
         }
-        double x = softBodyInertialOffsetPos["x"].as<double>();
-        double y = softBodyInertialOffsetPos["y"].as<double>();
-        double z = softBodyInertialOffsetPos["z"].as<double>();
-        pos.setValue(x, y, z);
+        assignXYZ( &softBodyInertialOffsetPos, &pos);
         trans.setRotation(quat);
         trans.setOrigin(pos);
         setInertialOffsetTransform(trans);
@@ -719,10 +795,7 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     buildDynamicModel();
 
     if(softBodyPos.IsDefined()){
-        double x = softBodyPos["x"].as<double>();
-        double y = softBodyPos["y"].as<double>();
-        double z = softBodyPos["z"].as<double>();
-        pos.set(x,y,z);
+        assignXYZ( &softBodyPos, &pos);
         setLocalPos(pos);
     }
 
@@ -777,8 +850,8 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
         if (cfg_collisions.IsDefined()) m_bulletSoftBody->m_cfg.collisions = cfg_collisions.as<double>();
     }
 
-    if (softBodyNode["randomize constraints"].IsDefined())
-        if (softBodyNode["randomize constraints"].as<bool>() == true)
+    if (softBodyRandomizeConstraints.IsDefined())
+        if (softBodyRandomizeConstraints.as<bool>() == true)
             m_bulletSoftBody->randomizeConstraints();
 
 
@@ -797,19 +870,6 @@ void afSoftBody::setConfigProperties(const afSoftBodyPtr a_body, const afSoftBod
 ///
 afJoint::afJoint(){
 
-}
-
-///
-/// \brief afJoint::assign_vec
-/// \param name
-/// \param v
-/// \param node
-///
-void afJoint::assignVec(std::string name, btVector3* v, YAML::Node* node){
-    v->setX((*node)[name.c_str()]["x"].as<double>());
-    v->setY((*node)[name.c_str()]["y"].as<double>());
-    v->setZ((*node)[name.c_str()]["z"].as<double>());
-//    print_vec(name, v);
 }
 
 ///
@@ -837,30 +897,42 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     YAML::Node baseNode = YAML::LoadFile(file);
     if (baseNode.IsNull()) return false;
 
-    YAML::Node fileNode = baseNode[name];
-    if (fileNode.IsNull()) return false;
+    YAML::Node baseJointNode = baseNode[name];
+    if (baseJointNode.IsNull()) return false;
 
-    if (!fileNode["parent"].IsDefined() || !fileNode["child"].IsDefined()){
+    // Declare all the yaml parameters that we want to look for
+    YAML::Node jointParentName = baseJointNode["parent"];
+    YAML::Node jointChildName = baseJointNode["child"];
+    YAML::Node jointName = baseJointNode["name"];
+    YAML::Node jointParentPivot = baseJointNode["parent pivot"];
+    YAML::Node jointChildPivot = baseJointNode["child pivot"];
+    YAML::Node jointParentAxis = baseJointNode["parent axis"];
+    YAML::Node jointChildAxis = baseJointNode["child axis"];
+    YAML::Node jointEnableMotor = baseJointNode["enable motor"];
+    YAML::Node jointMaxMotorImpulse = baseJointNode["max motor impulse"];
+    YAML::Node jointLimits = baseJointNode["joint limits"];
+    YAML::Node jointDamping = baseJointNode["joint damping"];
+
+    if (!jointParentName.IsDefined() || !jointChildName.IsDefined()){
         std::cerr << "ERROR: PARENT/CHILD FOR: " << name << " NOT DEFINED \n";
         return false;
     }
-    m_name = fileNode["name"].as<std::string>();
+    m_name = jointName.as<std::string>();
     m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
-    m_parent_name = fileNode["parent"].as<std::string>();
-    m_child_name = fileNode["child"].as<std::string>();
+    m_parent_name = jointParentName.as<std::string>();
+    m_child_name = jointChildName.as<std::string>();
 
-    if (!fileNode["parent pivot"].IsDefined() ||
-            !fileNode["parent axis"].IsDefined() ||
-            !fileNode["child pivot"].IsDefined() ||
-            !fileNode["child axis"].IsDefined()){
-        std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << name << " NOT DEFINED \n";
+    if (!jointParentPivot.IsDefined() ||
+            !jointParentAxis.IsDefined() ||
+            !jointChildPivot.IsDefined() ||
+            !jointChildAxis.IsDefined()){        std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << name << " NOT DEFINED \n";
         return false;
     }
 
-    assignVec("parent pivot", &m_pvtA,  &fileNode);
-    assignVec("parent axis", &m_axisA, &fileNode);
-    assignVec("child pivot", &m_pvtB,  &fileNode);
-    assignVec("child axis", &m_axisB,  &fileNode);
+    assignXYZ( &jointParentPivot, &m_pvtA);
+    assignXYZ( &jointParentAxis, &m_axisA);
+    assignXYZ( &jointChildPivot, &m_pvtB);
+    assignXYZ( &jointChildAxis, &m_axisB);
 
     btRigidBody * bodyA, * bodyB;
     afRigidBodyPtr afBodyA, afBodyB;
@@ -883,24 +955,25 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         return -1;
     }
     m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
-    if (fileNode["enable motor"].IsDefined()){
-        enable_motor = fileNode["enable motor"].as<int>();
-        m_hinge->enableMotor(enable_motor);
-        if(fileNode["max motor impluse"].IsDefined()){
-            max_motor_impluse = fileNode["max motor impluse"].as<double>();
-            m_hinge->setMaxMotorImpulse(max_motor_impluse);
+    if (jointEnableMotor.IsDefined()){
+        m_enable_motor = jointEnableMotor.as<int>();
+        m_hinge->enableMotor(m_enable_motor);
+        if(jointMaxMotorImpulse.IsDefined()){
+            m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
+            m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
         }
         else{
-            max_motor_impluse = 0.05;
-            m_hinge->setMaxMotorImpulse(max_motor_impluse);
+            m_max_motor_impulse = 0.05;
+            m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
         }
     }
 
-    if(fileNode["joint limits"].IsDefined()){
-        jnt_lim_low = fileNode["joint limits"]["low"].as<double>();
-        jnt_lim_high = fileNode["joint limits"]["high"].as<double>();
-        m_hinge->setLimit(jnt_lim_low, jnt_lim_high);
+    if(jointLimits.IsDefined()){
+        m_lower_limit = jointLimits["low"].as<double>();
+        m_higher_limit = jointLimits["high"].as<double>();
+        m_hinge->setLimit(m_lower_limit, m_higher_limit);
     }
+
     mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
     return true;
 }
@@ -910,7 +983,18 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
 /// \param cmd
 ///
 void afJoint::commandPosition(double &cmd){
-   m_hinge->setMotorTarget(cmd, 0.001);
+    // The torque commands disable the motor, so double check and re-enable the motor
+    // if it was set to be enabled in the first place
+    if (m_enable_motor){
+        if (!m_hinge->getEnableAngularMotor()){
+            m_hinge->enableMotor(m_enable_motor);
+            m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
+        }
+        m_hinge->setMotorTarget(cmd, 0.001);
+    }
+    else{
+        std::cerr << "WARNING, MOTOR NOT ENABLED FOR JOINT: " << m_name << std::endl;
+    }
 }
 
 ///
@@ -918,10 +1002,14 @@ void afJoint::commandPosition(double &cmd){
 /// \param cmd
 ///
 void afJoint::commandTorque(double &cmd){
-    btTransform trA = bodyA->getWorldTransform();
+    // If the motor was enabled, disable it before setting joint torques
+    if (m_hinge->getEnableAngularMotor())
+        m_hinge->enableMotor(false);{
+    }
+    btTransform trA = m_hinge->getRigidBodyA().getWorldTransform();
     btVector3 hingeAxisInWorld = trA.getBasis()*m_axisA;
-    bodyA->applyTorque(-hingeAxisInWorld * cmd);
-    bodyB->applyTorque(hingeAxisInWorld * cmd);
+    m_hinge->getRigidBodyA().applyTorque(-hingeAxisInWorld * cmd);
+    m_hinge->getRigidBodyB().applyTorque(hingeAxisInWorld * cmd);
 }
 
 ///
@@ -1127,6 +1215,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
         return NULL;
     }
 
+    // Declare all the yaml parameters that we want to look for
     YAML::Node multiBodyMeshPathHR = multiBodyNode["high resolution path"];
     YAML::Node multiBodyMeshPathLR = multiBodyNode["low resolution path"];
     YAML::Node multiBodyNameSpace = multiBodyNode["namespace"];
@@ -1190,8 +1279,117 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
             m_afJointMap[jnt_name+remap_str] = tmpJoint;
         }
     }
+
+    removeOverlappingCollisionChecking();
     return true;
 }
+
+///
+/// \brief afMultiBody::removeOverlappingCollisionChecking
+///
+void afMultiBody::removeOverlappingCollisionChecking(){
+    // This function checks all the constraints of each ridig body
+    // if there are more than 1, it means that multiple bodies share each other
+    // In this case, iteratively go over all the shared bodies and ignore their
+    // collision if their common body has the same pivot
+    afRigidBodyMap::iterator rBodyIt = m_afRigidBodyMap.begin();
+    std::vector<btRigidBody*> bodyFamily;
+    std::pair<btVector3, btRigidBody*> pvtAandConnectedBody;
+    std::vector< std::pair<btVector3, btRigidBody*> > pvtAandConnectedBodyVec;
+    for ( ; rBodyIt != m_afRigidBodyMap.end() ; ++rBodyIt){
+        afRigidBodyPtr afBody = rBodyIt->second;
+        btRigidBody* rBody = afBody->m_bulletRigidBody;
+        bodyFamily.clear();
+        for(int cIdx = 0 ; cIdx < rBody->getNumConstraintRefs() ; cIdx++){
+            if (rBody->getConstraintRef(cIdx)->getConstraintType() == btTypedConstraintType::HINGE_CONSTRAINT_TYPE){
+                btHingeConstraint* joint = (btHingeConstraint*) rBody->getConstraintRef(cIdx);
+                if (&joint->getRigidBodyA() == rBody){
+                    pvtAandConnectedBody.first = joint->getAFrame().getOrigin();
+                    pvtAandConnectedBody.second = &joint->getRigidBodyB();
+                    pvtAandConnectedBodyVec.push_back(pvtAandConnectedBody);
+                }
+                else if (&joint->getRigidBodyB() == rBody){
+                    pvtAandConnectedBody.first = joint->getBFrame().getOrigin();
+                    pvtAandConnectedBody.second = &joint->getRigidBodyA();
+                    pvtAandConnectedBodyVec.push_back(pvtAandConnectedBody);
+                }
+            }
+        }
+        if (pvtAandConnectedBodyVec.size() > 1){
+            for (int pvtIdx1 = 0 ; pvtIdx1 < pvtAandConnectedBodyVec.size() - 1 ; pvtIdx1++ ){
+                btVector3 pvtA1 = pvtAandConnectedBodyVec[pvtIdx1].first;
+                btRigidBody* connectedBodyA1 = pvtAandConnectedBodyVec[pvtIdx1].second;
+                for (int pvtIdx2 = pvtIdx1 + 1 ; pvtIdx2 < pvtAandConnectedBodyVec.size() ; pvtIdx2++ ){
+                    btVector3 pvtA2 = pvtAandConnectedBodyVec[pvtIdx2].first;
+                    btRigidBody* connectedBodyA2 = pvtAandConnectedBodyVec[pvtIdx2].second;
+                    btVector3 diff = pvtA1 - pvtA2;
+                    if (diff.length() < 0.1){
+                        connectedBodyA1->setIgnoreCollisionCheck(connectedBodyA2, true);
+                    }
+                }
+
+            }
+        }
+    }
+}
+
+/////
+///// \brief afMultiBody::removeOverlappingCollisionChecking
+/////
+//void afMultiBody::removeOverlappingCollisionChecking(){
+//    // This function checks all the constraints of each ridig body
+//    // if there are more than 1, it means that multiple bodies share each other
+//    // In this case, iteratively go over all the shared bodies and ignore their
+//    // collision
+
+//    std::vector<btRigidBody*> rigidBodiesA, rigidBodiesB;
+//    std::vector<afJointPtr> afJoints;
+//    int num_joints = m_afJointMap.size();
+//    rigidBodiesA.resize(num_joints);
+//    rigidBodiesB.resize(num_joints);
+//    afJoints.resize(num_joints);
+//    std::vector<bool> aBodiesChecked(num_joints, false);
+//    std::vector<bool> bBodiesChecked(num_joints, false);
+
+//    afJointMap::iterator jIt = m_afJointMap.begin();
+//    for (int jIdx = 0; jIt != m_afJointMap.end() ; ++ jIt, jIdx++){
+//        afJointPtr afJoint = jIt->second;
+//        rigidBodiesA[jIdx] = &afJoint->m_hinge->getRigidBodyA();
+//        rigidBodiesB[jIdx] = &afJoint->m_hinge->getRigidBodyB();
+//        afJoints[jIdx] = afJoint;
+//    }
+//    std::pair<btVector3, btRigidBody*> pvtConnectedBodyPair;
+//    std::vector< std::pair<btVector3, btRigidBody*> > pvtConnectedBodyPairs;
+//    std::vector < std::vector< std::pair<btVector3, btRigidBody*> > > bodyPvtConnectedBodyPairs;
+
+//    for (int a1 = 0 ; a1 < rigidBodiesA.size() ; a1 ++){
+//        if (aBodiesChecked[a1] == false){
+//            btRigidBody* rBodyA = rigidBodiesA[a1];
+//            for (int a2 = a1 ; a2 < rigidBodiesA.size() ; a2 ++){
+//                btRigidBody* rBodyB = rigidBodiesA[a2];
+//                if (rBodyA == rBodyB){
+//                    pvtConnectedBodyPair.first = afJoints[a1]->m_pvtA;
+//                    pvtConnectedBodyPair.second = rigidBodiesB[a2];
+//                    pvtConnectedBodyPairs.push_back(pvtConnectedBodyPair);
+//                    aBodiesChecked[a2] = true;
+//                }
+//            }
+//            for (int b1 = 0 ; b1 < rigidBodiesB.size() ; b1 ++){
+//                if (bBodiesChecked[b1] == false){
+//                    btRigidBody* rBodyB = rigidBodiesB[b1];
+//                    if (rBodyA == rBodyB){
+//                        pvtConnectedBodyPair.first = afJoints[b1]->m_pvtB;
+//                        pvtConnectedBodyPair.second = rigidBodiesA[b1];
+//                        pvtConnectedBodyPairs.push_back(pvtConnectedBodyPair);
+//                        bBodiesChecked[b1] = true;
+//                    }
+//                }
+//            }
+//            bodyPvtConnectedBodyPairs.push_back(pvtConnectedBodyPairs);
+//        }
+//    }
+
+//}
 
 ///
 /// \brief afMultiBody::getRidigBody
