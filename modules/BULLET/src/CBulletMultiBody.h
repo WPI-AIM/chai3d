@@ -205,8 +205,9 @@ protected:
     double m_joint_damping;
     double m_max_effort;
     bool m_enable_motor;
-    bool m_max_motor_impulse;
+    double m_max_motor_impulse;
     double m_lower_limit, m_higher_limit;
+    double m_joint_offset;
     btRigidBody *bodyA, *bodyB;
     void printVec(std::string name, btVector3* v);
 

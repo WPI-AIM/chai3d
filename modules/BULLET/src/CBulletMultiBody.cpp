@@ -365,6 +365,10 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
 
     if(bodyMesh.IsDefined())
         m_mesh_name = bodyMesh.as<std::string>();
+    if (m_mesh_name.empty()){
+        std::cerr << "WARNING: Body " << m_name << "'s mesh field is empty, ignoring\n";
+        return 0;
+    }
 
     if(bodyCollisionMesh.IsDefined())
         m_collision_mesh_name = bodyCollisionMesh.as<std::string>();
@@ -467,7 +471,7 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
         double r = bodyRot["r"].as<double>();
         double p = bodyRot["p"].as<double>();
         double y = bodyRot["y"].as<double>();
-        m_initialRot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
+        m_initialRot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZYX);
         setLocalRot(m_initialRot);
     }
 
@@ -911,6 +915,7 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     YAML::Node jointEnableMotor = baseJointNode["enable motor"];
     YAML::Node jointMaxMotorImpulse = baseJointNode["max motor impulse"];
     YAML::Node jointLimits = baseJointNode["joint limits"];
+    YAML::Node jointOffset = baseJointNode["offset"];
     YAML::Node jointDamping = baseJointNode["joint damping"];
 
     if (!jointParentName.IsDefined() || !jointChildName.IsDefined()){
@@ -955,22 +960,25 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         return -1;
     }
     m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
+    m_enable_motor = false;
+    m_max_motor_impulse = 0.05;
     if (jointEnableMotor.IsDefined()){
         m_enable_motor = jointEnableMotor.as<int>();
-        m_hinge->enableMotor(m_enable_motor);
+        // Don't enable motor yet, only enable when set position is called
         if(jointMaxMotorImpulse.IsDefined()){
             m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
             m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
         }
-        else{
-            m_max_motor_impulse = 0.05;
-            m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
-        }
+    }
+
+    m_joint_offset = 0.0;
+    if(jointOffset.IsDefined()){
+        m_joint_offset = jointOffset.as<double>();
     }
 
     if(jointLimits.IsDefined()){
-        m_lower_limit = jointLimits["low"].as<double>();
-        m_higher_limit = jointLimits["high"].as<double>();
+        m_lower_limit = jointLimits["low"].as<double>() + m_joint_offset;
+        m_higher_limit = jointLimits["high"].as<double>() + m_joint_offset;
         m_hinge->setLimit(m_lower_limit, m_higher_limit);
     }
 
@@ -990,7 +998,7 @@ void afJoint::commandPosition(double &cmd){
             m_hinge->enableMotor(m_enable_motor);
             m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
         }
-        m_hinge->setMotorTarget(cmd, 0.001);
+        m_hinge->setMotorTarget(cmd + m_joint_offset, 0.001);
     }
     else{
         std::cerr << "WARNING, MOTOR NOT ENABLED FOR JOINT: " << m_name << std::endl;
