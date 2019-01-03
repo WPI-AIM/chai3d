@@ -912,11 +912,14 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     YAML::Node jointChildPivot = baseJointNode["child pivot"];
     YAML::Node jointParentAxis = baseJointNode["parent axis"];
     YAML::Node jointChildAxis = baseJointNode["child axis"];
+    YAML::Node jointOrigin = baseJointNode["origin"];
+    YAML::Node jointAxis = baseJointNode["axis"];
     YAML::Node jointEnableMotor = baseJointNode["enable motor"];
     YAML::Node jointMaxMotorImpulse = baseJointNode["max motor impulse"];
     YAML::Node jointLimits = baseJointNode["joint limits"];
     YAML::Node jointOffset = baseJointNode["offset"];
     YAML::Node jointDamping = baseJointNode["joint damping"];
+    YAML::Node jointType = baseJointNode["type"];
 
     if (!jointParentName.IsDefined() || !jointChildName.IsDefined()){
         std::cerr << "ERROR: PARENT/CHILD FOR: " << name << " NOT DEFINED \n";
@@ -926,63 +929,197 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     m_parent_name = jointParentName.as<std::string>();
     m_child_name = jointChildName.as<std::string>();
-
-    if (!jointParentPivot.IsDefined() ||
-            !jointParentAxis.IsDefined() ||
-            !jointChildPivot.IsDefined() ||
-            !jointChildAxis.IsDefined()){        std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << name << " NOT DEFINED \n";
-        return false;
-    }
-
-    assignXYZ( &jointParentPivot, &m_pvtA);
-    assignXYZ( &jointParentAxis, &m_axisA);
-    assignXYZ( &jointChildPivot, &m_pvtB);
-    assignXYZ( &jointChildAxis, &m_axisB);
+    // Joint Transform in Parent
+    btTransform T_j_p;
+    // Joint Axis
+    btVector3 joint_axis(0,0,1);
+    m_enable_motor = false;
+    m_max_motor_impulse = 0.05;
+    m_joint_offset = 0.0;
+    m_lower_limit = -100;
+    m_higher_limit = 100;
+    //Default joint type is revolute if not type is specified
+    m_jointType = JointType::revolute;
 
     btRigidBody * bodyA, * bodyB;
     afRigidBodyPtr afBodyA, afBodyB;
+
     if (mB->m_afRigidBodyMap.find((m_parent_name + name_remapping).c_str()) != mB->m_afRigidBodyMap.end()
             || mB->m_afRigidBodyMap.find((m_child_name + name_remapping).c_str()) != mB->m_afRigidBodyMap.end()){
         afBodyA =  mB->m_afRigidBodyMap[(m_parent_name + name_remapping).c_str()];
         afBodyB = mB->m_afRigidBodyMap[(m_child_name + name_remapping).c_str()];
         bodyA = afBodyA->m_bulletRigidBody;
         bodyB = afBodyB->m_bulletRigidBody;
+    }
+    else{
+        std::cerr <<"ERROR:COULDN'T FIND RIGID BODIES FOR: " << m_name+name_remapping << std::endl;
+        return -1;
+    }
+
+    if (jointParentPivot.IsDefined() & jointParentAxis.IsDefined() & jointChildPivot.IsDefined() & jointChildAxis.IsDefined()){
+        assignXYZ( &jointParentPivot, &m_pvtA);
+        assignXYZ( &jointParentAxis, &m_axisA);
+        assignXYZ( &jointChildPivot, &m_pvtB);
+        assignXYZ( &jointChildAxis, &m_axisB);
+
         // Scale the pivot before transforming as the default scale methods don't move this pivot
         m_pvtA *= afBodyA->m_scale;
         m_pvtA = afBodyA->getInertialOffsetTransform().inverse() * m_pvtA;
         m_pvtB = afBodyB->getInertialOffsetTransform().inverse() * m_pvtB;
         m_axisA = afBodyA->getInertialOffsetTransform().getBasis().inverse() * m_axisA;
         m_axisB = afBodyB->getInertialOffsetTransform().getBasis().inverse() * m_axisB;
-        afBodyA->addChildBody(afBodyB, this);
     }
-    else{
-        std::cerr <<"ERROR:COULDN'T FIND RIGID BODIES FOR: " << m_name+name_remapping << std::endl;
-        return -1;
-    }
-    m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
-    m_enable_motor = false;
-    m_max_motor_impulse = 0.05;
-    if (jointEnableMotor.IsDefined()){
-        m_enable_motor = jointEnableMotor.as<int>();
-        // Don't enable motor yet, only enable when set position is called
-        if(jointMaxMotorImpulse.IsDefined()){
-            m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
-            m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
+    else if(jointOrigin.IsDefined()){
+        btQuaternion quat;
+        btVector3 pos;
+        YAML::Node jointXYZ = jointOrigin['position'];
+        YAML::Node jointRPY = jointOrigin['orientation'];
+        if (jointXYZ.IsDefined()){
+            assignXYZ(&jointXYZ, &pos);
+            T_j_p.setOrigin(pos);
+        }
+        if (jointRPY.IsDefined()){
+            quat.setEulerZYX(jointRPY['y'].as<double>(),
+                    jointRPY['p'].as<double>(),
+                    jointRPY['r'].as<double>());
+            T_j_p.setRotation(quat);
+        }
+
+        if (jointAxis.IsDefined()){
+            assignXYZ(&jointAxis, &joint_axis);
         }
     }
+    else{
+        std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << name << " NOT DEFINED \n";
+        return false;
+    }
 
-    m_joint_offset = 0.0;
+    // For Testing Joints
+//    if (strcmp(m_name.c_str(), "test") == 0){
+//        btTransform tA, tB;
+//        btQuaternion quat;
+
+//        quat.setEulerZYX(m_axisA.getZ(), m_axisA.getY(), m_axisA.getX());
+
+//        tA.setOrigin(m_pvtA);
+//        tA.setRotation(quat);
+
+//        quat.setEulerZYX(m_axisB.getZ(), m_axisB.getY(), m_axisB.getX());
+
+//        tB.setOrigin(m_pvtB);
+//        tB.setRotation(quat);
+
+//        m_hinge = new btHingeConstraint(*bodyA, *bodyB, tA, tB, true);
+//        if(jointLimits.IsDefined()){
+//            m_lower_limit = jointLimits["low"].as<double>() + m_joint_offset;
+//            m_higher_limit = jointLimits["high"].as<double>() + m_joint_offset;
+//            m_hinge->setLimit(m_lower_limit, m_higher_limit);
+//        }
+//        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
+//        afBodyA->addChildBody(afBodyB, this);
+//        return true;
+//    }
+
     if(jointOffset.IsDefined()){
         m_joint_offset = jointOffset.as<double>();
     }
 
     if(jointLimits.IsDefined()){
-        m_lower_limit = jointLimits["low"].as<double>() + m_joint_offset;
-        m_higher_limit = jointLimits["high"].as<double>() + m_joint_offset;
-        m_hinge->setLimit(m_lower_limit, m_higher_limit);
+        m_lower_limit = jointLimits["low"].as<double>();
+        m_higher_limit = jointLimits["high"].as<double>();
     }
 
-    mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
+    if (jointType.IsDefined()){
+        if ((strcmp(jointType.as<std::string>().c_str(), "hinge") == 0)
+                || (strcmp(jointType.as<std::string>().c_str(), "revolute") == 0)
+                || (strcmp(jointType.as<std::string>().c_str(), "continuous") == 0)){
+            m_jointType = JointType::revolute;
+        }
+        else if ((strcmp(jointType.as<std::string>().c_str(), "slider") == 0)
+                || (strcmp(jointType.as<std::string>().c_str(), "prismatic") == 0)){
+            m_jointType = JointType::prismatic;
+        }
+        else if ((strcmp(jointType.as<std::string>().c_str(), "fixed") == 0)){
+            m_jointType = JointType::fixed;
+        }
+
+    }
+    if (m_jointType == JointType::revolute){
+        m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
+        if (jointEnableMotor.IsDefined()){
+            m_enable_motor = jointEnableMotor.as<int>();
+            // Don't enable motor yet, only enable when set position is called
+            if(jointMaxMotorImpulse.IsDefined()){
+                m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
+                m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
+            }
+        }
+
+        if(jointLimits.IsDefined()){
+            m_hinge->setLimit(m_lower_limit + m_joint_offset, m_higher_limit + m_joint_offset);
+        }
+
+        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
+    }
+    if (m_jointType == JointType::prismatic){
+        btTransform frameA, frameB;
+        btQuaternion quat;
+        frameA.setIdentity();
+        frameB.setIdentity();
+
+        // Bullet takes the x axis as the default for prismatic joints
+        btVector3 nx(1,0,0);
+
+        double rot_anglA = nx.angle(m_axisA);
+        if (rot_anglA < 0.01){
+            quat.setEulerZYX(0,0,0);
+        }
+        else if (abs( 3.14 - rot_anglA) < 0.01 ){
+            quat.setEulerZYX(0, 3.14, 0);
+        }
+        else{
+            btVector3 rot_axisA = nx.cross(m_axisA);
+            quat.setRotation(rot_axisA, rot_anglA);
+        }
+        frameA.setRotation(quat);
+        frameA.setOrigin(m_pvtA);
+
+        nx.setValue(1,0,0);
+        double rot_anglB = nx.angle(m_axisB);
+        if (rot_anglB < 0.01){
+            quat.setEulerZYX(0,0,0);
+        }
+        else if (abs( 3.14 - rot_anglB) < 0.01 ){
+            quat.setEulerZYX(0, 3.14, 0);
+        }
+        else{
+            btVector3 rot_axisB = nx.cross(m_axisB);
+            quat.setRotation(rot_axisB, rot_anglB);
+        }
+        btQuaternion offset_quat;
+        offset_quat.setRotation(m_axisB, m_joint_offset);
+        frameB.setRotation(offset_quat * quat);
+        frameB.setOrigin(m_pvtB);
+
+        m_slider = new btSliderConstraint(*bodyA, *bodyB, frameA, frameB, true);
+
+        if (jointEnableMotor.IsDefined()){
+            m_enable_motor = jointEnableMotor.as<int>();
+            // Don't enable motor yet, only enable when set position is called
+            if(jointMaxMotorImpulse.IsDefined()){
+                m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
+                m_slider->setMaxLinMotorForce(m_max_motor_impulse);
+            }
+        }
+
+        if(jointLimits.IsDefined()){
+            m_slider->setLowerLinLimit(m_lower_limit);
+            m_slider->setUpperLinLimit(m_higher_limit);
+        }
+
+        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_slider, true);
+        afBodyA->addChildBody(afBodyB, this);
+    }
     return true;
 }
 

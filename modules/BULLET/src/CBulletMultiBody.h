@@ -179,6 +179,12 @@ protected:
 
 };
 
+enum JointType{
+    revolute = 0,
+    prismatic = 1,
+    fixed = 2
+};
+
 ///
 /// \brief The afJoint class
 ///
@@ -215,6 +221,7 @@ protected:
 
     btHingeConstraint* m_hinge;
     btSliderConstraint *m_slider;
+    JointType m_jointType;
 
 };
 
