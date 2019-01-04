@@ -639,7 +639,7 @@ void afRigidBody::updateCmdFromROS(double dt){
 void afRigidBody::setAngle(double &angle, double dt){
     if (m_parentBodies.size() == 0){
         for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
-            m_joints[jnt]->m_hinge->setMotorTarget(angle, dt);
+            ((btHingeConstraint*) m_joints[jnt]->m_btConstraint)->setMotorTarget(angle, dt);
         }
 
     }
@@ -654,7 +654,7 @@ void afRigidBody::setAngle(std::vector<double> &angles, double dt){
     if (m_parentBodies.size() == 0){
         double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
         for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
-            m_joints[jnt]->m_hinge->setMotorTarget(angles[jnt], dt);
+            ((btHingeConstraint*) m_joints[jnt]->m_btConstraint)->setMotorTarget(angles[jnt], dt);
         }
 
     }
@@ -933,7 +933,7 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     btTransform T_j_p;
     // Joint Axis
     btVector3 joint_axis(0,0,1);
-    m_enable_motor = false;
+    m_enable_actuator = false;
     m_max_motor_impulse = 0.05;
     m_joint_offset = 0.0;
     m_lower_limit = -100;
@@ -941,15 +941,14 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     //Default joint type is revolute if not type is specified
     m_jointType = JointType::revolute;
 
-    btRigidBody * bodyA, * bodyB;
     afRigidBodyPtr afBodyA, afBodyB;
 
     if (mB->m_afRigidBodyMap.find((m_parent_name + name_remapping).c_str()) != mB->m_afRigidBodyMap.end()
-            || mB->m_afRigidBodyMap.find((m_child_name + name_remapping).c_str()) != mB->m_afRigidBodyMap.end()){
+            & mB->m_afRigidBodyMap.find((m_child_name + name_remapping).c_str()) != mB->m_afRigidBodyMap.end()){
         afBodyA =  mB->m_afRigidBodyMap[(m_parent_name + name_remapping).c_str()];
         afBodyB = mB->m_afRigidBodyMap[(m_child_name + name_remapping).c_str()];
-        bodyA = afBodyA->m_bulletRigidBody;
-        bodyB = afBodyB->m_bulletRigidBody;
+        m_rbodyA = afBodyA->m_bulletRigidBody;
+        m_rbodyB = afBodyB->m_bulletRigidBody;
     }
     else{
         std::cerr <<"ERROR:COULDN'T FIND RIGID BODIES FOR: " << m_name+name_remapping << std::endl;
@@ -1009,7 +1008,7 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
 //        tB.setOrigin(m_pvtB);
 //        tB.setRotation(quat);
 
-//        m_hinge = new btHingeConstraint(*bodyA, *bodyB, tA, tB, true);
+//        m_hinge = new btHingeConstraint(*m_rbodyA, *m_rbodyB, tA, tB, true);
 //        if(jointLimits.IsDefined()){
 //            m_lower_limit = jointLimits["low"].as<double>() + m_joint_offset;
 //            m_higher_limit = jointLimits["high"].as<double>() + m_joint_offset;
@@ -1045,21 +1044,22 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
 
     }
     if (m_jointType == JointType::revolute){
-        m_hinge = new btHingeConstraint(*bodyA, *bodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
+        m_btConstraint = new btHingeConstraint(*m_rbodyA, *m_rbodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
         if (jointEnableMotor.IsDefined()){
-            m_enable_motor = jointEnableMotor.as<int>();
+            m_enable_actuator = jointEnableMotor.as<int>();
             // Don't enable motor yet, only enable when set position is called
             if(jointMaxMotorImpulse.IsDefined()){
                 m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
-                m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
+                ((btHingeConstraint*)m_btConstraint)->setMaxMotorImpulse(m_max_motor_impulse);
             }
         }
 
         if(jointLimits.IsDefined()){
-            m_hinge->setLimit(m_lower_limit + m_joint_offset, m_higher_limit + m_joint_offset);
+           ((btHingeConstraint*)m_btConstraint)->setLimit(m_lower_limit + m_joint_offset, m_higher_limit + m_joint_offset);
         }
 
-        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
+        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_btConstraint, true);
+        afBodyA->addChildBody(afBodyB, this);
     }
     if (m_jointType == JointType::prismatic){
         btTransform frameA, frameB;
@@ -1098,26 +1098,29 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         }
         btQuaternion offset_quat;
         offset_quat.setRotation(m_axisB, m_joint_offset);
-        frameB.setRotation(offset_quat * quat);
+        // We need to pre-multiply frameA's rot to cancel out the shift in axis, then
+        // the offset along joint axis and finally the frameB's axis alignment
+        frameB.setRotation(frameA.getRotation() * offset_quat * quat);
+//        frameB.setRotation(offset_quat * quat);
         frameB.setOrigin(m_pvtB);
 
-        m_slider = new btSliderConstraint(*bodyA, *bodyB, frameA, frameB, true);
+        m_btConstraint = new btSliderConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
 
         if (jointEnableMotor.IsDefined()){
-            m_enable_motor = jointEnableMotor.as<int>();
+            m_enable_actuator = jointEnableMotor.as<int>();
             // Don't enable motor yet, only enable when set position is called
             if(jointMaxMotorImpulse.IsDefined()){
                 m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
-                m_slider->setMaxLinMotorForce(m_max_motor_impulse);
+                ((btSliderConstraint*) m_btConstraint)->setMaxLinMotorForce(m_max_motor_impulse);
             }
         }
 
         if(jointLimits.IsDefined()){
-            m_slider->setLowerLinLimit(m_lower_limit);
-            m_slider->setUpperLinLimit(m_higher_limit);
+           ((btSliderConstraint*) m_btConstraint)->setLowerLinLimit(m_lower_limit);
+           ((btSliderConstraint*) m_btConstraint)->setUpperLinLimit(m_higher_limit);
         }
 
-        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_slider, true);
+        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_btConstraint, true);
         afBodyA->addChildBody(afBodyB, this);
     }
     return true;
@@ -1130,12 +1133,20 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
 void afJoint::commandPosition(double &cmd){
     // The torque commands disable the motor, so double check and re-enable the motor
     // if it was set to be enabled in the first place
-    if (m_enable_motor){
-        if (!m_hinge->getEnableAngularMotor()){
-            m_hinge->enableMotor(m_enable_motor);
-            m_hinge->setMaxMotorImpulse(m_max_motor_impulse);
+    if (m_enable_actuator){
+        if (m_jointType == JointType::revolute){
+            if (!((btHingeConstraint*)m_btConstraint)->getEnableAngularMotor()){
+                ((btHingeConstraint*)m_btConstraint)->enableMotor(m_enable_actuator);
+                ((btHingeConstraint*)m_btConstraint)->setMaxMotorImpulse(m_max_motor_impulse);
+            }
+            ((btHingeConstraint*)m_btConstraint)->setMotorTarget(cmd + m_joint_offset, 0.001);
         }
-        m_hinge->setMotorTarget(cmd + m_joint_offset, 0.001);
+        else if(m_jointType == JointType::prismatic){
+            if (!((btSliderConstraint*) m_btConstraint)->getPoweredLinMotor()){
+                ((btSliderConstraint*) m_btConstraint)->setPoweredLinMotor(m_enable_actuator);
+                ((btSliderConstraint*) m_btConstraint)->setMaxLinMotorForce(m_max_motor_impulse * 1000);
+            }
+        }
     }
     else{
         std::cerr << "WARNING, MOTOR NOT ENABLED FOR JOINT: " << m_name << std::endl;
@@ -1147,21 +1158,34 @@ void afJoint::commandPosition(double &cmd){
 /// \param cmd
 ///
 void afJoint::commandTorque(double &cmd){
-    // If the motor was enabled, disable it before setting joint torques
-    if (m_hinge->getEnableAngularMotor())
-        m_hinge->enableMotor(false);{
+    if (m_jointType == JointType::revolute){
+        // If the motor was enabled, disable it before setting joint torques
+        if (((btHingeConstraint*)m_btConstraint)->getEnableAngularMotor())
+            ((btHingeConstraint*)m_btConstraint)->enableMotor(false);{
+        }
+        btTransform trA = m_btConstraint->getRigidBodyA().getWorldTransform();
+        btVector3 hingeAxisInWorld = trA.getBasis()*m_axisA;
+        m_btConstraint->getRigidBodyA().applyTorque(-hingeAxisInWorld * cmd);
+        m_btConstraint->getRigidBodyB().applyTorque(hingeAxisInWorld * cmd);
     }
-    btTransform trA = m_hinge->getRigidBodyA().getWorldTransform();
-    btVector3 hingeAxisInWorld = trA.getBasis()*m_axisA;
-    m_hinge->getRigidBodyA().applyTorque(-hingeAxisInWorld * cmd);
-    m_hinge->getRigidBodyB().applyTorque(hingeAxisInWorld * cmd);
+    else if (m_jointType == JointType::prismatic){
+        // If the motor was enabled, disable it before setting joint torques
+        if (((btSliderConstraint*) m_btConstraint)->getPoweredLinMotor())
+            ((btSliderConstraint*) m_btConstraint)->setPoweredLinMotor(false);{
+        }
+        btTransform trA = m_btConstraint->getRigidBodyA().getWorldTransform();
+        const btVector3 sliderAxisInWorld = trA.getBasis()*m_axisA;
+        const btVector3 relPos(0,0,0);
+        m_rbodyA->applyForce(-sliderAxisInWorld * cmd, relPos);
+        m_rbodyB->applyForce(sliderAxisInWorld * cmd, relPos);
+    }
 }
 
 ///
 /// \brief afJoint::~afJoint
 ///
 afJoint::~afJoint(){
-    delete m_hinge;
+    delete m_btConstraint;
 }
 
 ///
@@ -1424,16 +1448,41 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
             m_afJointMap[jnt_name+remap_str] = tmpJoint;
         }
     }
+    if (multiBodyNode["ignore inter-collision"].IsDefined()){
+        if (multiBodyNode["ignore inter-collision"].as<bool>())
+            ignoreCollisionChecking();
+    }
 
     removeOverlappingCollisionChecking();
+
     return true;
+}
+
+///
+/// \brief afMultiBody::removeCollisionChecking
+///
+void afMultiBody::ignoreCollisionChecking(){
+    afRigidBodyMap::iterator rBodyItA = m_afRigidBodyMap.begin();
+    std::vector<btRigidBody*> rBodiesVec;
+    rBodiesVec.resize(m_afRigidBodyMap.size());
+    int i=0;
+    for ( ; rBodyItA != m_afRigidBodyMap.end() ; ++rBodyItA){
+        rBodiesVec[i] = rBodyItA->second->m_bulletRigidBody;
+        i++;
+    }
+
+    for (int i = 0 ; i < rBodiesVec.size() - 1 ; i++){
+        for (int j = i+1 ; j < rBodiesVec.size() ; j++){
+            rBodiesVec[i]->setIgnoreCollisionCheck(rBodiesVec[j], true);
+        }
+    }
 }
 
 ///
 /// \brief afMultiBody::removeOverlappingCollisionChecking
 ///
 void afMultiBody::removeOverlappingCollisionChecking(){
-    // This function checks all the constraints of each ridig body
+    // This function checks all the constraints of each rigid body
     // if there are more than 1, it means that multiple bodies share each other
     // In this case, iteratively go over all the shared bodies and ignore their
     // collision if their common body has the same pivot

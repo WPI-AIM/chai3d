@@ -210,17 +210,16 @@ protected:
     btVector3 m_pvtA, m_pvtB;
     double m_joint_damping;
     double m_max_effort;
-    bool m_enable_motor;
+    bool m_enable_actuator;
     double m_max_motor_impulse;
     double m_lower_limit, m_higher_limit;
     double m_joint_offset;
-    btRigidBody *bodyA, *bodyB;
+    btRigidBody *m_rbodyA, *m_rbodyB;
     void printVec(std::string name, btVector3* v);
 
 protected:
 
-    btHingeConstraint* m_hinge;
-    btSliderConstraint *m_slider;
+    btTypedConstraint *m_btConstraint;
     JointType m_jointType;
 
 };
@@ -330,6 +329,9 @@ public:
     // There isn't a direct way in bullet to disable collision
     // between all these bodies connected in a tree
     void removeOverlappingCollisionChecking();
+    //Remove collision checking for this entire multi-body, mostly for
+    // debugging purposes
+    void ignoreCollisionChecking();
 
 protected:
 

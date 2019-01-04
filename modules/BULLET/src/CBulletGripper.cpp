@@ -65,7 +65,14 @@ void afGripperLink::setAngle(double &angle, double dt){
         for (size_t jnt = 0 ; jnt < m_joints.size() ; jnt++){
             double ang;
             ang = m_joints[jnt]->m_lower_limit + clipped_angle * (m_joints[jnt]->m_higher_limit - m_joints[jnt]->m_lower_limit);
-            m_joints[jnt]->m_hinge->setMotorTarget(ang, dt);
+            if (m_joints[jnt]->m_jointType == JointType::revolute){
+                ((btHingeConstraint* )m_joints[jnt]->m_btConstraint)->setMotorTarget(ang, dt);
+            }
+            else if (m_joints[jnt]->m_jointType == JointType::prismatic){
+                // Implement Slider Constraint
+                std::cerr << "Prismatic Joint Control Not Implemented Yet";
+                //((btSliderConstraint* )m_joints[jnt]->m_btConstraint)->set;
+            }
         }
 
     }
@@ -84,7 +91,14 @@ void afGripperLink::setAngle(std::vector<double> &angles, double dt){
         double jntCmdSize = m_joints.size() < angles.size() ? m_joints.size() : angles.size();
         for (size_t jnt = 0 ; jnt < jntCmdSize ; jnt++){
             double clipped_angle = cClamp(angles[jnt], 0.0, 1.0);
-            m_joints[jnt]->m_hinge->setMotorTarget(clipped_angle, dt);
+            if (m_joints[jnt]->m_jointType == JointType::revolute){
+                ((btHingeConstraint*) m_joints[jnt]->m_btConstraint)->setMotorTarget(clipped_angle, dt);
+            }
+            else if (m_joints[jnt]->m_jointType == JointType::prismatic){
+                // Implement Slider Constraint
+                std::cerr << "Prismatic Joint Control Not Implemented Yet";
+                //((btSliderConstraint* )m_joints[jnt]->m_btConstraint)->set;
+            }
         }
 
     }
