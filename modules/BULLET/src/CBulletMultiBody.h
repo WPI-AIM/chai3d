@@ -155,6 +155,9 @@ public:
     std::string m_body_namespace;
     btVector3 computeInertialOffset(cMesh* mesh);
 
+    //! This method toggles the viewing of frames of this rigid bodyl.
+    inline void toggleFrameVisibility(){m_showFrame = !m_showFrame;}
+
 protected:
 
     double m_scale;
@@ -216,6 +219,7 @@ protected:
     double m_joint_offset;
     btRigidBody *m_rbodyA, *m_rbodyB;
     void printVec(std::string name, btVector3* v);
+    btQuaternion getRotationBetweenVectors(btVector3 &v1, btVector3 &v2);
 
 protected:
 

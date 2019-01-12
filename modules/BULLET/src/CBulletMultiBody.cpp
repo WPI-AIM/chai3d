@@ -267,6 +267,7 @@ std::vector<double> afConfigHandler::getColorRGBA(std::string a_color_name){
 /// \param a_world
 ///
 afRigidBody::afRigidBody(cBulletWorld* a_world): cBulletMultiMesh(a_world){
+    setFrameSize(0.5);
 }
 
 ///
@@ -350,7 +351,7 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     YAML::Node bodyInertia = bodyNode["inertia"];
     YAML::Node bodyPos = bodyNode["location"]["position"];
     YAML::Node bodyRot = bodyNode["location"]["orientation"];
-    YAML::Node bodyColorRaw = bodyNode["color raw"];
+    YAML::Node bodyColorRGBA = bodyNode["color rgba"];
     YAML::Node bodyColor = bodyNode["color"];
     YAML::Node bodyLinDamping = bodyNode["damping"]["linear"];
     YAML::Node bodyAngDamping = bodyNode["damping"]["angular"];
@@ -475,11 +476,11 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
         setLocalRot(m_initialRot);
     }
 
-    if(bodyColorRaw.IsDefined()){
-            m_mat.setColorf(bodyColorRaw["r"].as<float>(),
-                            bodyColorRaw["g"].as<float>(),
-                            bodyColorRaw["b"].as<float>(),
-                            bodyColorRaw["a"].as<float>());
+    if(bodyColorRGBA.IsDefined()){
+            m_mat.setColorf(bodyColorRGBA["r"].as<float>(),
+                            bodyColorRGBA["g"].as<float>(),
+                            bodyColorRGBA["b"].as<float>(),
+                            bodyColorRGBA["a"].as<float>());
         }
     else if(bodyColor.IsDefined()){
         std::vector<double> rgba = mB->getColorRGBA(bodyColor.as<std::string>());
@@ -1070,37 +1071,16 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         // Bullet takes the x axis as the default for prismatic joints
         btVector3 nx(1,0,0);
 
-        double rot_anglA = nx.angle(m_axisA);
-        if (rot_anglA < 0.01){
-            quat.setEulerZYX(0,0,0);
-        }
-        else if (abs( 3.14 - rot_anglA) < 0.01 ){
-            quat.setEulerZYX(0, 3.14, 0);
-        }
-        else{
-            btVector3 rot_axisA = nx.cross(m_axisA);
-            quat.setRotation(rot_axisA, rot_anglA);
-        }
+        quat = getRotationBetweenVectors(nx, m_axisA);
         frameA.setRotation(quat);
         frameA.setOrigin(m_pvtA);
 
-        nx.setValue(1,0,0);
-        double rot_anglB = nx.angle(m_axisB);
-        if (rot_anglB < 0.01){
-            quat.setEulerZYX(0,0,0);
-        }
-        else if (abs( 3.14 - rot_anglB) < 0.01 ){
-            quat.setEulerZYX(0, 3.14, 0);
-        }
-        else{
-            btVector3 rot_axisB = nx.cross(m_axisB);
-            quat.setRotation(rot_axisB, rot_anglB);
-        }
+        quat = getRotationBetweenVectors(m_axisA, m_axisB);
         btQuaternion offset_quat;
-        offset_quat.setRotation(m_axisB, m_joint_offset);
-        // We need to pre-multiply frameA's rot to cancel out the shift in axis, then
+        offset_quat.setRotation(m_axisA, -m_joint_offset);
+        // We need to post-multiply frameA's rot to cancel out the shift in axis, then
         // the offset along joint axis and finally the frameB's axis alignment
-        frameB.setRotation(frameA.getRotation() * offset_quat * quat);
+        frameB.setRotation( quat * offset_quat * frameA.getRotation());
 //        frameB.setRotation(offset_quat * quat);
         frameB.setOrigin(m_pvtB);
 
@@ -1124,6 +1104,33 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         afBodyA->addChildBody(afBodyB, this);
     }
     return true;
+}
+
+btQuaternion afJoint::getRotationBetweenVectors(btVector3 &v1, btVector3 &v2){
+    btQuaternion quat;
+    double rot_angle = v1.angle(v2);
+    if ( abs(rot_angle) < 0.1){
+        quat.setEulerZYX(0,0,0);
+    }
+    else if ( abs(rot_angle) > 3.13 ){
+        btVector3 ny(0, 1, 0);
+        double temp_ang = v1.angle(ny);
+        if ( abs(temp_ang) > 0.1 && abs(temp_ang) < 3.13 ){
+            btVector3 rot_axis = v1.cross(ny);
+            quat.setRotation(rot_axis, rot_angle);
+        }
+        else{
+            btVector3 nz(0, 0, 1);
+            btVector3 rot_axis = m_axisA.cross(nz);
+            quat.setRotation(rot_axis, rot_angle);
+        }
+    }
+    else{
+        btVector3 rot_axis = v1.cross(v2);
+        quat.setRotation(rot_axis, rot_angle);
+    }
+
+    return quat;
 }
 
 ///

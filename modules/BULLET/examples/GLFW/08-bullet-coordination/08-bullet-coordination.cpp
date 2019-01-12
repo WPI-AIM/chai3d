@@ -1514,6 +1514,13 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
             sbIt->second->toggleSkeletalModelVisibility();
         }
     }
+    else if (a_key == GLFW_KEY_V){
+        auto rbMap = g_afMultiBody->getRigidBodyMap();
+        afRigidBodyMap::const_iterator rbIt;
+        for (rbIt = rbMap->begin() ; rbIt != rbMap->end(); ++rbIt){
+            rbIt->second->toggleFrameVisibility();
+        }
+    }
     //    // option - open gripper
     //    else if (a_key == GLFW_KEY_S)
     //    {
