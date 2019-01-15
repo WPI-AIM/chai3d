@@ -523,8 +523,9 @@ void Sim::set_sim_params(cHapticDeviceInfo &a_hInfo, Device* a_dev){
 ///
 class ToolGripper: public Sim, public afGripper{
 public:
-    ToolGripper(cBulletWorld *a_chaiWorld, std::string a_gripper_name, std::string a_device_name);
+    ToolGripper(cBulletWorld *a_chaiWorld);
     ~ToolGripper(){}
+    bool loadFromAFMB(std::string a_gripper_name, std::string a_device_name);
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual void update_measured_pose();
@@ -547,13 +548,21 @@ public:
 /// \param a_gripper_name
 /// \param a_device_name
 ///
-ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld,
-                         std::string a_gripper_name,
-                         std::string a_device_name): afGripper (a_chaiWorld){
+ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld): afGripper (a_chaiWorld){
     m_gripper_angle = 3.0;
+}
+
+///
+/// \brief ToolGripper::loadFromAFMB
+/// \param a_gripper_name
+/// \param a_device_name
+/// \return
+///
+bool ToolGripper::loadFromAFMB(std::string a_gripper_name, std::string a_device_name){
     std::string config = getGripperConfig(a_device_name);
-    loadMultiBody(config, a_gripper_name, a_device_name);
+    bool res = loadMultiBody(config, a_gripper_name, a_device_name);
     m_rootLink = getRootRigidBody();
+    return res;
 }
 
 ///
@@ -645,7 +654,7 @@ public:
     Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs = MAX_DEVICES);
     ~Coordination();
     bool retrieve_device_handle(uint dev_num);
-    void create_bullet_gripper(uint dev_num);
+    bool create_bullet_gripper(uint dev_num);
     void close_devices();
 
     double increment_K_lh(double a_offset);
@@ -661,10 +670,11 @@ public:
     void next_mode();
     void prev_mode();
 
-    cHapticDeviceHandler *m_deviceHandler;
+    std::shared_ptr<cHapticDeviceHandler> m_deviceHandler;
     ToolGripper *m_bulletGrippers[MAX_DEVICES];
     Device m_hapticDevices[MAX_DEVICES];
     uint m_num_devices;
+    uint m_num_grippers;
     cBulletWorld* m_bulletWorld;
 
     // bool to enable the rotation of tool be in camera frame. i.e. Orienting the camera
@@ -702,17 +712,23 @@ Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
     m_deviceHandler = NULL;
     m_bulletWorld = a_bullet_world;
     if (a_max_load_devs > 0){
-        m_deviceHandler = new cHapticDeviceHandler();
+        m_deviceHandler.reset(new cHapticDeviceHandler());
         int numDevs = m_deviceHandler->getNumDevices();
         m_num_devices = a_max_load_devs < numDevs ? a_max_load_devs : numDevs;
+        m_num_grippers = m_num_devices;
         std::cerr << "Num of devices " << m_num_devices << std::endl;
-        for (uint i = 0; i < m_num_devices; i++){
+        for (uint i = 0; i < m_num_grippers; i++){
+            m_deviceHandler->getDeviceSpecifications(m_hapticDevices[i].m_hInfo, i);
             retrieve_device_handle(i);
-            create_bullet_gripper(i);
+            if (!create_bullet_gripper(i)){
+                delete m_bulletGrippers[i];
+                m_num_grippers--;
+            }
         }
     }
     else{
         m_num_devices = 0;
+        m_num_grippers = 0;
     }
     m_use_cam_frame_rot = true;
     m_simModes = CAM_CLUTCH_CONTROL;
@@ -721,9 +737,6 @@ Coordination::Coordination(cBulletWorld* a_bullet_world, int a_max_load_devs){
 }
 
 Coordination::~Coordination(){
-    if (m_deviceHandler){
-        delete m_deviceHandler;
-    }
 }
 
 ///
@@ -758,7 +771,6 @@ void Coordination::prev_mode(){
 /// \return
 ///
 bool Coordination::retrieve_device_handle(uint dev_num){
-    m_deviceHandler->getDeviceSpecifications(m_hapticDevices[dev_num].m_hInfo, dev_num);
     bool result = m_deviceHandler->getDevice(m_hapticDevices[dev_num].m_hDevice, dev_num);
     if (result){
         m_hapticDevices[dev_num].m_hDevice->open();
@@ -773,30 +785,34 @@ bool Coordination::retrieve_device_handle(uint dev_num){
 /// \brief Coordination::create_bullet_gripper
 /// \param dev_num
 ///
-void Coordination::create_bullet_gripper(uint dev_num){
+bool Coordination::create_bullet_gripper(uint dev_num){
     std::ostringstream dev_str;
     dev_str << (dev_num + 1);
     std::string gripper_name = "Gripper" + dev_str.str();
-    m_bulletGrippers[dev_num] = new ToolGripper(m_bulletWorld, gripper_name, m_hapticDevices[dev_num].m_hInfo.m_modelName);
-    m_bulletGrippers[dev_num]->set_sim_params(m_hapticDevices[dev_num].m_hInfo, & m_hapticDevices[dev_num]);
-    m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
-    cVector3d localGripperPos = m_bulletGrippers[dev_num]->m_rootLink->getLocalPos();
-    double l,w,h;
-    m_bulletGrippers[dev_num]->getEnclosureExtents(l,w,h);
-    if (localGripperPos.length() == 0.0){
-        double x = (int(dev_num / 2.0) * 0.8);
-        double y = (dev_num % 2) ? +0.4 : -0.4;
-        x /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
-        y /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
-        m_bulletGrippers[dev_num]->m_posRefOrigin.set(x, y, 0);
+    m_bulletGrippers[dev_num] = new ToolGripper(m_bulletWorld);
+    bool res = m_bulletGrippers[dev_num]->loadFromAFMB(gripper_name, m_hapticDevices[dev_num].m_hInfo.m_modelName);
+    if (res){
+        m_bulletGrippers[dev_num]->set_sim_params(m_hapticDevices[dev_num].m_hInfo, & m_hapticDevices[dev_num]);
+        m_hapticDevices[dev_num].m_workspace_scale_factor = m_bulletGrippers[dev_num]->get_workspace_scale_factor();
+        cVector3d localGripperPos = m_bulletGrippers[dev_num]->m_rootLink->getLocalPos();
+        double l,w,h;
+        m_bulletGrippers[dev_num]->getEnclosureExtents(l,w,h);
+        if (localGripperPos.length() == 0.0){
+            double x = (int(dev_num / 2.0) * 0.8);
+            double y = (dev_num % 2) ? +0.4 : -0.4;
+            x /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
+            y /= m_bulletGrippers[dev_num]->m_workspaceScaleFactor;
+            m_bulletGrippers[dev_num]->m_posRefOrigin.set(x, y, 0);
+        }
     }
+    return res;
 }
 
 ///
 /// \brief Coordination::close_devices
 ///
 void Coordination::close_devices(){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         m_hapticDevices[i].m_hDevice->close();
     }
 }
@@ -807,7 +823,7 @@ void Coordination::close_devices(){
 ///
 int Coordination::num_of_haptics_loop_execd(){
     int num_devs_loop_execd = 0;
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         if (m_bulletGrippers[i]->is_loop_exec()) num_devs_loop_execd++;
     }
     return num_devs_loop_execd;
@@ -819,7 +835,7 @@ int Coordination::num_of_haptics_loop_execd(){
 ///
 bool Coordination::are_all_haptics_loop_exec(){
     bool flag = true;
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         flag &= m_bulletGrippers[i]->is_loop_exec();
     }
     return flag;
@@ -829,7 +845,7 @@ bool Coordination::are_all_haptics_loop_exec(){
 /// \brief Coordination::clear_all_haptics_loop_exec_flags
 ///
 void Coordination::clear_all_haptics_loop_exec_flags(){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         m_bulletGrippers[i]->clear_loop_exec_flag();
     }
 }
@@ -840,7 +856,7 @@ void Coordination::clear_all_haptics_loop_exec_flags(){
 /// \return
 ///
 double Coordination::increment_K_lh(double a_offset){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         if (m_bulletGrippers[i]->K_lh + a_offset <= 0)
         {
             m_bulletGrippers[i]->K_lh = 0.0;
@@ -850,8 +866,8 @@ double Coordination::increment_K_lh(double a_offset){
         }
     }
     //Set the return value to the gain of the last device
-    if(m_num_devices > 0){
-        a_offset = m_bulletGrippers[m_num_devices-1]->K_lh;
+    if(m_num_grippers > 0){
+        a_offset = m_bulletGrippers[m_num_grippers-1]->K_lh;
         g_btn_action_str = "K_lh = " + cStr(a_offset, 4);
     }
     return a_offset;
@@ -863,7 +879,7 @@ double Coordination::increment_K_lh(double a_offset){
 /// \return
 ///
 double Coordination::increment_K_ah(double a_offset){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         if (m_bulletGrippers[i]->K_ah + a_offset <=0){
             m_bulletGrippers[i]->K_ah = 0.0;
         }
@@ -872,8 +888,8 @@ double Coordination::increment_K_ah(double a_offset){
         }
     }
     //Set the return value to the gain of the last device
-    if(m_num_devices > 0){
-        a_offset = m_bulletGrippers[m_num_devices-1]->K_ah;
+    if(m_num_grippers > 0){
+        a_offset = m_bulletGrippers[m_num_grippers-1]->K_ah;
         g_btn_action_str = "K_ah = " + cStr(a_offset, 4);
     }
     return a_offset;
@@ -885,7 +901,7 @@ double Coordination::increment_K_ah(double a_offset){
 /// \return
 ///
 double Coordination::increment_K_lc(double a_offset){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         if (m_bulletGrippers[i]->K_lc + a_offset <=0){
             m_bulletGrippers[i]->K_lc = 0.0;
         }
@@ -894,8 +910,8 @@ double Coordination::increment_K_lc(double a_offset){
         }
     }
     //Set the return value to the stiffness of the last device
-    if(m_num_devices > 0){
-        a_offset = m_bulletGrippers[m_num_devices-1]->K_lc;
+    if(m_num_grippers > 0){
+        a_offset = m_bulletGrippers[m_num_grippers-1]->K_lc;
         g_btn_action_str = "K_lc = " + cStr(a_offset, 4);
     }
     return a_offset;
@@ -907,7 +923,7 @@ double Coordination::increment_K_lc(double a_offset){
 /// \return
 ///
 double Coordination::increment_K_ac(double a_offset){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         if (m_bulletGrippers[i]->K_ac + a_offset <=0){
             m_bulletGrippers[i]->K_ac = 0.0;
         }
@@ -916,8 +932,8 @@ double Coordination::increment_K_ac(double a_offset){
         }
     }
     //Set the return value to the stiffness of the last device
-    if(m_num_devices > 0){
-        a_offset = m_bulletGrippers[m_num_devices-1]->K_ac;
+    if(m_num_grippers > 0){
+        a_offset = m_bulletGrippers[m_num_grippers-1]->K_ac;
         g_btn_action_str = "K_ac = " + cStr(a_offset, 4);
     }
     return a_offset;
@@ -929,7 +945,7 @@ double Coordination::increment_K_ac(double a_offset){
 /// \return
 ///
 double Coordination::increment_B_lc(double a_offset){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         if (m_bulletGrippers[i]->B_lc + a_offset <=0){
             m_bulletGrippers[i]->B_lc = 0.0;
         }
@@ -938,8 +954,8 @@ double Coordination::increment_B_lc(double a_offset){
         }
     }
     //Set the return value to the stiffness of the last device
-    if(m_num_devices > 0){
-        a_offset = m_bulletGrippers[m_num_devices-1]->B_lc;
+    if(m_num_grippers > 0){
+        a_offset = m_bulletGrippers[m_num_grippers-1]->B_lc;
         g_btn_action_str = "B_lc = " + cStr(a_offset, 4);
     }
     return a_offset;
@@ -951,7 +967,7 @@ double Coordination::increment_B_lc(double a_offset){
 /// \return
 ///
 double Coordination::increment_B_ac(double a_offset){
-    for (int i = 0 ; i < m_num_devices ; i++){
+    for (int i = 0 ; i < m_num_grippers ; i++){
         if (m_bulletGrippers[i]->B_ac + a_offset <=0){
             m_bulletGrippers[i]->B_ac = 0.0;
         }
@@ -960,8 +976,8 @@ double Coordination::increment_B_ac(double a_offset){
         }
     }
     //Set the return value to the stiffness of the last device
-    if(m_num_devices > 0){
-        a_offset = m_bulletGrippers[m_num_devices-1]->B_ac;
+    if(m_num_grippers > 0){
+        a_offset = m_bulletGrippers[m_num_grippers-1]->B_ac;
         g_btn_action_str = "B_ac = " + cStr(a_offset, 4);
     }
     return a_offset;
@@ -1210,12 +1226,13 @@ int main(int argc, char* argv[])
     // AF MULTIBODY HANDLER
     //////////////////////////////////////////////////////////////////////////
     g_afWorld = new afWorld(g_bulletWorld);
-    g_afWorld->loadYAML("../resources/config/coordination.yaml");
-    g_afWorld->loadWorld();
+    if (g_afWorld->loadYAML("../resources/config/coordination.yaml")){
+        g_afWorld->loadWorld();
 
-    g_afMultiBody = new afMultiBody(g_bulletWorld);
-//    g_afMultiBody->loadMultiBody();
-    g_afMultiBody->loadAllMultiBodies();
+        g_afMultiBody = new afMultiBody(g_bulletWorld);
+    //    g_afMultiBody->loadMultiBody();
+        g_afMultiBody->loadAllMultiBodies();
+    }
 
     // end puzzle meshes
     //////////////////////////////////////////////////////////////////////////
@@ -1292,7 +1309,7 @@ int main(int argc, char* argv[])
 
     // create a thread which starts the main haptics rendering loop
     int dev_num[10] = {0,1,2,3,4,5,6,7,8,9};
-    for (int i = 0 ; i < g_coordApp->m_num_devices ; i++){
+    for (int i = 0 ; i < g_coordApp->m_num_grippers ; i++){
         g_hapticsThreads[i] = new cThread();
         g_hapticsThreads[i]->start(updateHaptics, CTHREAD_PRIORITY_HAPTICS, &dev_num[i]);
         g_labelDevRates[i] = new cLabel(font);
@@ -1416,10 +1433,10 @@ void keyCallback(GLFWwindow* a_window, int a_key, int a_scancode, int a_action, 
     // option - help menu
     else if (a_key == GLFW_KEY_H)
     {
-        cout << "Keyboard Options:" << endl << endl;    g_coordApp->close_devices();
+        cout << "Keyboard Options:" << endl << endl;
         cout << "[h] - Display help menu" << endl;
         cout << "[1] - Enable gravity" << endl;
-        cout << "[2] - Disable gravity" << endl << endl;    g_coordApp->close_devices();
+        cout << "[2] - Disable gravity" << endl << endl;
         cout << "[3] - decrease linear haptic gain" << endl;
         cout << "[4] - increase linear haptic gain" << endl;
         cout << "[5] - decrease angular haptic gain" << endl;
@@ -1545,13 +1562,13 @@ void close(void)
     // wait for graphics and haptics loops to terminate
     while (!g_simulationFinished) { cSleepMs(100); }
     g_bulletSimThread->stop();
-    for(int i = 0 ; i < g_coordApp->m_num_devices ; i ++){
+    for(int i = 0 ; i < g_coordApp->m_num_grippers ; i ++){
         g_hapticsThreads[i]->stop();
     }
 
     // delete resources
     g_coordApp->close_devices();
-    for(int i = 0 ; i < g_coordApp->m_num_devices ; i ++){
+    for(int i = 0 ; i < g_coordApp->m_num_grippers ; i ++){
         delete g_hapticsThreads[i];
     }
     delete g_bulletWorld;
@@ -1667,7 +1684,7 @@ void updateGraphics(void)
     g_labelModes->setText("MODE: " + g_coordApp->m_mode_str);
     g_labelBtnAction->setText(" : " + g_btn_action_str);
 
-    for (int i = 0 ; i < g_coordApp->m_num_devices ; i++){
+    for (int i = 0 ; i < g_coordApp->m_num_grippers ; i++){
         g_labelDevRates[i]->setText(g_coordApp->m_hapticDevices[i].m_hInfo.m_modelName + ": " + cStr(g_coordApp->m_hapticDevices[i].m_freq_ctr.getFrequency(), 0) + " Hz");
         g_labelDevRates[i]->setLocalPos(10, (int)(g_height - (i+1)*20));
     }
@@ -1680,18 +1697,18 @@ void updateGraphics(void)
     g_labelModes->setLocalPos((int)(0.5 * (g_width - g_labelModes->getWidth())), 50);
     g_labelBtnAction->setLocalPos((int)(0.5 * (g_width - g_labelModes->getWidth()) + g_labelModes->getWidth()), 50);
 
-    for (size_t dev_num = 0; dev_num < g_coordApp->m_num_devices ; dev_num ++){
-        g_coordApp->m_hapticDevices[dev_num].m_hDevice->getUserSwitch(g_coordApp->m_bulletGrippers[dev_num]->act_2_btn, _cam_pressed[dev_num]);
-        if(_cam_pressed[dev_num] && g_coordApp->m_simModes == MODES::CAM_CLUTCH_CONTROL){
+    for (size_t gripper_num = 0; gripper_num < g_coordApp->m_num_grippers ; gripper_num ++){
+        g_coordApp->m_hapticDevices[gripper_num].m_hDevice->getUserSwitch(g_coordApp->m_bulletGrippers[gripper_num]->act_2_btn, _cam_pressed[gripper_num]);
+        if(_cam_pressed[gripper_num] && g_coordApp->m_simModes == MODES::CAM_CLUTCH_CONTROL){
             double scale = 0.3;
-            g_dev_vel = g_coordApp->m_hapticDevices[dev_num].measured_lin_vel();
-            g_coordApp->m_hapticDevices[dev_num].m_hDevice->getRotation(g_dev_rot_cur[dev_num]);
+            g_dev_vel = g_coordApp->m_hapticDevices[gripper_num].measured_lin_vel();
+            g_coordApp->m_hapticDevices[gripper_num].m_hDevice->getRotation(g_dev_rot_cur[gripper_num]);
             g_camera->setLocalPos(g_camera->getLocalPos() + cMul(scale, cMul(g_camera->getGlobalRot(), g_dev_vel)));
-            g_camera->setLocalRot(cMul(g_cam_rot_last[dev_num], cMul(cTranspose(g_dev_rot_last[dev_num]), g_dev_rot_cur[dev_num])));
+            g_camera->setLocalRot(cMul(g_cam_rot_last[gripper_num], cMul(cTranspose(g_dev_rot_last[gripper_num]), g_dev_rot_cur[gripper_num])));
         }
-        if(!_cam_pressed[dev_num]){
-            g_cam_rot_last[dev_num] = g_camera->getGlobalRot();
-            g_coordApp->m_hapticDevices[dev_num].m_hDevice->getRotation(g_dev_rot_last[dev_num]);
+        if(!_cam_pressed[gripper_num]){
+            g_cam_rot_last[gripper_num] = g_camera->getGlobalRot();
+            g_coordApp->m_hapticDevices[gripper_num].m_hDevice->getRotation(g_dev_rot_last[gripper_num]);
         }
     }
 
@@ -1741,7 +1758,7 @@ void updateBulletSim(){
     // start haptic device
     g_clockWorld.start(true);
     // main Bullet simulation loop
-    unsigned int n = g_coordApp->m_num_devices;
+    unsigned int n = g_coordApp->m_num_grippers;
     std::vector<cVector3d> dpos, ddpos, dposPre;
     std::vector<cMatrix3d> drot, ddrot, drotPre;
 
@@ -1765,7 +1782,7 @@ void updateBulletSim(){
         double dt;
         if (g_dt_fixed > 0.0) dt = g_dt_fixed;
         else dt = compute_dt(true);
-        for (unsigned int i = 0 ; i < g_coordApp->m_num_devices ; i++){
+        for (unsigned int i = 0 ; i < g_coordApp->m_num_grippers ; i++){
             // update position of tool
             ToolGripper * bGripper = g_coordApp->m_bulletGrippers[i];
             bGripper->update_measured_pose();
@@ -1811,7 +1828,7 @@ void updateBulletSim(){
                 bGripper->K_ac_ramp = 1.0;
             }
         }
-        g_bulletWorld->updateDynamics(dt, g_clockWorld.getCurrentTimeSeconds(), g_freqCounterHaptics.getFrequency(), g_coordApp->m_num_devices);
+        g_bulletWorld->updateDynamics(dt, g_clockWorld.getCurrentTimeSeconds(), g_freqCounterHaptics.getFrequency(), g_coordApp->m_num_grippers);
         g_coordApp->clear_all_haptics_loop_exec_flags();
         rateSleep.sleep();
     }

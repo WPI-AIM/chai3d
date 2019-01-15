@@ -60,7 +60,7 @@ afRigidBodySurfaceProperties afRigidBody::m_surfaceProps;
 
 cMaterial afSoftBody::m_mat;
 
-std::string afConfigHandler::s_path;
+boost::filesystem::path afConfigHandler::s_boostBaseDir;
 std::string afConfigHandler::s_color_config;
 std::vector<std::string> afConfigHandler::s_multiBody_configs;
 std::string afConfigHandler::s_world_config;
@@ -125,37 +125,42 @@ afConfigHandler::afConfigHandler(){
 /// \return
 ///
 bool afConfigHandler::loadYAML(std::string a_config_file){
-    configNode = YAML::LoadFile(a_config_file);
-    if(!configNode){
-        std::cerr << "ERROR! FAILED TO LOAD CONFIG FILE \n";
+    try{
+        configNode = YAML::LoadFile(a_config_file);
+    } catch (std::exception &e){
+        std::cerr << "[Exception]: " << e.what() << std::endl;
+        std::cerr << "ERROR! FAILED TO LOAD CONFIG FILE: " << a_config_file << std::endl;
+        return 0;
     }
+
 
     //Declare all the YAML Params that we want to look for
-    YAML::Node cfgPath = configNode["path"];
-    YAML::Node cfgMultiBodyFiles = configNode["multibody configs"];
-    YAML::Node cfgColorFile = configNode["color config"];
-    YAML::Node cfgGripperFiles = configNode["gripper configs"];
     YAML::Node cfgWorldFiles = configNode["world config"];
+    YAML::Node cfgColorFile = configNode["color config"];
+    YAML::Node cfgMultiBodyFiles = configNode["multibody configs"];
+    YAML::Node cfgGripperConfigs = configNode["gripper configs"];
 
-    // Check if a world config file or a plain multibody config file
-    if (cfgPath.IsDefined() && cfgMultiBodyFiles.IsDefined()){
-        s_path = cfgPath.as<std::string>();
-    }
-    else{
-        std::cerr << "PATH NOT DEFINED \n";
-        return 0;
-    }
-    if (cfgMultiBodyFiles.IsDefined()){
-        for (int i = 0 ; i < cfgMultiBodyFiles.size() ; i++){
-            s_multiBody_configs.push_back(s_path + cfgMultiBodyFiles[i].as<std::string>());
+
+    s_boostBaseDir = boost::filesystem::path(a_config_file).parent_path();
+
+    if(cfgWorldFiles.IsDefined()){
+        boost::filesystem::path world_cfg_filename = cfgWorldFiles.as<std::string>();
+        if (world_cfg_filename.is_relative()){
+            world_cfg_filename = s_boostBaseDir / world_cfg_filename;
         }
+        s_world_config = world_cfg_filename.c_str();
     }
     else{
-        std::cerr << "PATH AND MULTIBODY CONFIG NOT DEFINED \n";
+        std::cerr << "ERROR! WORLD CONFIG NOT DEFINED \n";
         return 0;
     }
+
     if(cfgColorFile.IsDefined()){
-        s_color_config = s_path + cfgColorFile.as<std::string>();
+        boost::filesystem::path color_cfg_filename = cfgColorFile.as<std::string>();
+        if (color_cfg_filename.is_relative()){
+            color_cfg_filename = s_boostBaseDir / color_cfg_filename;
+        }
+        s_color_config = color_cfg_filename.c_str();
         s_colorsNode = YAML::LoadFile(s_color_config.c_str());
         if (!s_colorsNode){
             std::cerr << "ERROR! COLOR CONFIG NOT FOUND \n";
@@ -165,23 +170,32 @@ bool afConfigHandler::loadYAML(std::string a_config_file){
         return 0;
     }
 
-    if(cfgGripperFiles.IsDefined()){
-        for(size_t i=0 ; i < cfgGripperFiles.size(); ++i){
-            std::string gconf = cfgGripperFiles[i].as<std::string>();
-            s_gripperConfigFiles[gconf] = s_path + configNode[gconf].as<std::string>();
+    if (cfgMultiBodyFiles.IsDefined()){
+        for (size_t i = 0 ; i < cfgMultiBodyFiles.size() ; i++){
+            boost::filesystem::path mb_cfg_filename =  cfgMultiBodyFiles[i].as<std::string>();
+            if (mb_cfg_filename.is_relative()){
+                mb_cfg_filename = s_boostBaseDir / mb_cfg_filename;
+            }
+            s_multiBody_configs.push_back(std::string(mb_cfg_filename.c_str()));
+        }
+    }
+    else{
+        std::cerr << "PATH AND MULTIBODY CONFIG NOT DEFINED \n";
+        return 0;
+    }
+
+    if(cfgGripperConfigs.IsDefined()){
+        for(size_t i = 0 ; i < cfgGripperConfigs.size(); ++i){
+            std::string gripper_name = cfgGripperConfigs[i].as<std::string>();
+            boost::filesystem::path gripper_cfg_filename =  configNode[gripper_name].as<std::string>();
+            if (gripper_cfg_filename.is_relative()){
+                gripper_cfg_filename = s_boostBaseDir / gripper_cfg_filename;
+            }
+            s_gripperConfigFiles[gripper_name] = std::string(gripper_cfg_filename.c_str());
         }
     }
     else{
         std::cerr << "ERROR! GRIPPER CONFIGS NOT DEFINED \n";
-        return 0;
-    }
-
-    if(cfgWorldFiles.IsDefined()){
-        std::string gconf = cfgWorldFiles.as<std::string>();
-        s_world_config = s_path + gconf;
-    }
-    else{
-        std::cerr << "ERROR! WORLD CONFIG NOT DEFINED \n";
         return 0;
     }
 
@@ -328,9 +342,15 @@ void afRigidBody::addChildBody(afRigidBody* a_childBody, afJointPtr a_jnt){
 /// \param name_remapping
 /// \return
 ///
-bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
-    YAML::Node baseNode = YAML::LoadFile(file);
-    if (baseNode.IsNull()) return false;
+bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBodyPtr mB) {
+    YAML::Node baseNode;
+    try{
+        baseNode = YAML::LoadFile(rb_config_file);
+    }catch(std::exception &e){
+        std::cerr << "[Exception]: " << e.what() << std::endl;
+        std::cerr << "ERROR! FAILED TO CONFIG FILE: " << rb_config_file << std::endl;
+        return 0;
+    }
 
     YAML::Node bodyNode = baseNode[name];
     if (bodyNode.IsNull()) return false;
@@ -379,25 +399,31 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
     if(bodyScale.IsDefined())
         m_scale = bodyScale.as<double>();
 
-    std::string high_res_filepath;
-    std::string low_res_filepath;
+    boost::filesystem::path high_res_filepath;
+    boost::filesystem::path low_res_filepath;
 
     // Each ridig body can have a seperate path for its low and high res meshes
     // Incase they are defined, we use those paths and if they are not, we use
     // the paths for the whole file
     if (bodyMeshPathHR.IsDefined()){
         high_res_filepath = bodyMeshPathHR.as<std::string>() + m_mesh_name;
+        if (high_res_filepath.is_relative()){
+            high_res_filepath = mB->getMultiBodyPath() + '/' + high_res_filepath.c_str();
+        }
     }
     else{
-        high_res_filepath = mB->getHighResPath() + m_mesh_name;
+        high_res_filepath = mB->getHighResMeshesPath() + m_mesh_name;
     }
 
     if (bodyMeshPathLR.IsDefined()){
         low_res_filepath = bodyMeshPathLR.as<std::string>() + m_collision_mesh_name;
+        if (low_res_filepath.is_relative()){
+            low_res_filepath = mB->getMultiBodyPath() + '/' + low_res_filepath.c_str();
+        }
     }
     else{
         // If low res path is not defined, use the high res path to load the high-res mesh for collision
-        low_res_filepath = mB->getLowResPath() + m_collision_mesh_name;
+        low_res_filepath = mB->getLowResMeshesPath() + m_collision_mesh_name;
     }
 
     if (bodyNameSpace.IsDefined()){
@@ -407,8 +433,8 @@ bool afRigidBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
         m_body_namespace = mB->getNameSpace();
     }
 
-    loadFromFile(RESOURCE_PATH(high_res_filepath));
-    m_lowResMesh.loadFromFile(RESOURCE_PATH(low_res_filepath));
+    loadFromFile(high_res_filepath.c_str());
+    m_lowResMesh.loadFromFile(low_res_filepath.c_str());
     scale(m_scale);
     m_lowResMesh.scale(m_scale);
 
@@ -684,9 +710,15 @@ afSoftBody::afSoftBody(cBulletWorld *a_chaiWorld): cBulletSoftMultiMesh(a_chaiWo
 /// \param mB
 /// \return
 ///
-bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
-    YAML::Node baseNode = YAML::LoadFile(file);
-    if (baseNode.IsNull()) return false;
+bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyPtr mB) {
+    YAML::Node baseNode;
+    try{
+        baseNode = YAML::LoadFile(sb_config_file);
+    }catch(std::exception &e){
+        std::cerr << "[Exception]: " << e.what() << std::endl;
+        std::cerr << "ERROR! FAILED TO CONFIG FILE: " << sb_config_file << std::endl;
+        return 0;
+    }
 
     YAML::Node softBodyNode = baseNode[name];
     if (softBodyNode.IsNull()) return false;
@@ -765,20 +797,29 @@ bool afSoftBody::load(std::string file, std::string name, afMultiBodyPtr mB) {
         setInertialOffsetTransform(trans);
     }
 
-    std::string rel_path_high_res;
-    std::string rel_path_low_res;
-    if (softBodyMeshPathHR.IsDefined())
-        rel_path_high_res = softBodyMeshPathHR.as<std::string>() + m_mesh_name;
-    else
-        rel_path_high_res = mB->getHighResPath() + m_mesh_name;
+    boost::filesystem::path high_res_filepath;
+    boost::filesystem::path low_res_filepath;
+    if (softBodyMeshPathHR.IsDefined()){
+        high_res_filepath = softBodyMeshPathHR.as<std::string>() + m_mesh_name;
+        if (high_res_filepath.is_relative()){
+            high_res_filepath =  mB->getMultiBodyPath() + '/' + high_res_filepath.c_str();
+        }
+    }
+    else{
+        high_res_filepath = mB->getHighResMeshesPath() + m_mesh_name;
+    }
+    if (softBodyMeshPathLR.IsDefined()){
+        low_res_filepath = softBodyMeshPathLR.as<std::string>() + m_mesh_name;
+        if (low_res_filepath.is_relative()){
+            low_res_filepath = mB->getMultiBodyPath() + '/' + low_res_filepath.c_str();
+        }
+    }
+    else{
+        low_res_filepath = mB->getLowResMeshesPath() + m_mesh_name;
+    }
 
-    if (softBodyMeshPathLR.IsDefined())
-        rel_path_high_res = softBodyMeshPathLR.as<std::string>() + m_mesh_name;
-    else
-        rel_path_low_res = mB->getLowResPath() + m_mesh_name;
-
-    loadFromFile(RESOURCE_PATH(rel_path_high_res));
-    m_lowResMesh.loadFromFile(RESOURCE_PATH(rel_path_low_res));
+    loadFromFile(high_res_filepath.c_str());
+    m_lowResMesh.loadFromFile(low_res_filepath.c_str());
     scale(m_scale);
     m_lowResMesh.scale(m_scale);
     buildContactTriangles(0.001, &m_lowResMesh);
@@ -899,7 +940,14 @@ void afJoint::printVec(std::string name, btVector3* v){
 /// \return
 ///
 bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::string name_remapping){
-    YAML::Node baseNode = YAML::LoadFile(file);
+    YAML::Node baseNode;
+    try{
+        baseNode = YAML::LoadFile(file);
+    }catch (std::exception &e){
+        std::cerr << "[Exception]: " << e.what() << std::endl;
+        std::cerr << "ERROR! FAILED TO JOINT CONFIG: " << file << std::endl;
+        return 0;
+    }
     if (baseNode.IsNull()) return false;
 
     YAML::Node baseJointNode = baseNode[name];
@@ -1252,16 +1300,18 @@ bool afWorld::loadWorld(std::string a_world_config){
     if (a_world_config.empty()){
         a_world_config = getWorldConfig();
     }
-    YAML::Node worldNode = YAML::LoadFile(a_world_config);
-    if (!worldNode){
-        std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
-        return -1;
+    YAML::Node worldNode;
+    try{
+        worldNode = YAML::LoadFile(a_world_config);
+    }catch(std::exception &e){
+        std::cerr << "[Exception]: " << e.what() << std::endl;
+        std::cerr << "ERROR! FAILED TO CONFIG FILE: " << a_world_config << std::endl;
+        return 0;
     }
-    else{
-        m_encl_length = worldNode["enclosure size"]["length"].as<double>();
-        m_encl_width = worldNode["enclosure size"]["width"].as<double>();
-        m_encl_height = worldNode["enclosure size"]["height"].as<double>();
-    }
+
+    m_encl_length = worldNode["enclosure size"]["length"].as<double>();
+    m_encl_width = worldNode["enclosure size"]["width"].as<double>();
+    m_encl_height = worldNode["enclosure size"]["height"].as<double>();
 
     return true;
 
@@ -1381,14 +1431,17 @@ void afMultiBody::loadAllMultiBodies(){
 /// \param a_multibody_config
 /// \return
 ///
-bool afMultiBody::loadMultiBody(std::string a_multibody_config){
-    if (a_multibody_config.empty()){
-        a_multibody_config = getMultiBodyConfig();
+bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
+    if (a_multibody_config_file.empty()){
+        a_multibody_config_file = getMultiBodyConfig();
     }
-    YAML::Node multiBodyNode = YAML::LoadFile(a_multibody_config);
-    if (!multiBodyNode){
-        std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
-        return NULL;
+    YAML::Node multiBodyNode;
+    try{
+       multiBodyNode = YAML::LoadFile(a_multibody_config_file);
+    }catch (std::exception &e){
+        std::cerr << "[Exception]: " << e.what() << std::endl;
+        std::cerr << "ERROR! FAILED TO CONFIG FILE: " << a_multibody_config_file << std::endl;
+        return 0;
     }
 
     // Declare all the yaml parameters that we want to look for
@@ -1399,15 +1452,29 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
     YAML::Node multiBodySoftBodies = multiBodyNode["soft bodies"];
     YAML::Node multiBodyJoints = multiBodyNode["joints"];
 
+    boost::filesystem::path mb_cfg_dir = boost::filesystem::path(a_multibody_config_file).parent_path();
+    m_multibody_path = mb_cfg_dir.c_str();
+
     /// Loading Rigid Bodies
     afRigidBodyPtr tmpRigidBody;
+    boost::filesystem::path high_res_filepath;
+    boost::filesystem::path low_res_filepath;
     if(multiBodyMeshPathHR.IsDefined() && multiBodyMeshPathLR.IsDefined()){
-        m_multibody_high_res_path = multiBodyMeshPathHR.as<std::string>();
-        m_multibody_low_res_path = multiBodyMeshPathLR.as<std::string>();
+        high_res_filepath = multiBodyMeshPathHR.as<std::string>();
+        low_res_filepath = multiBodyMeshPathLR.as<std::string>();
+
+        if (high_res_filepath.is_relative()){
+            high_res_filepath = mb_cfg_dir / high_res_filepath;
+        }
+        if (low_res_filepath.is_relative()){
+            low_res_filepath = mb_cfg_dir / low_res_filepath;
+        }
+        m_multibody_high_res_meshes_path = high_res_filepath.c_str();
+        m_multibody_low_res_meshes_path = low_res_filepath.c_str();
     }
     else{
-        m_multibody_high_res_path = "../resources/models/puzzle/high_res/";
-        m_multibody_low_res_path = "../resources/models/puzzle/low_res/";
+        m_multibody_high_res_meshes_path = "../resources/models/puzzle/high_res/";
+        m_multibody_low_res_meshes_path = "../resources/models/puzzle/low_res/";
     }
     if (multiBodyNameSpace.IsDefined()){
         m_multibody_namespace = multiBodyNameSpace.as<std::string>();
@@ -1422,7 +1489,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
         std::string body_name = multiBodyRidigBodies[i].as<std::string>();
         std::string remap_str = remapBodyName(body_name, &m_afRigidBodyMap);
 //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
-        if (tmpRigidBody->load(a_multibody_config.c_str(), body_name, this)){
+        if (tmpRigidBody->load(a_multibody_config_file.c_str(), body_name, this)){
             m_afRigidBodyMap[(body_name + remap_str).c_str()] = tmpRigidBody;
             tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str, tmpRigidBody->m_body_namespace);
         }
@@ -1437,7 +1504,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
         std::string body_name = multiBodySoftBodies[i].as<std::string>();
         std::string remap_str = remapBodyName(body_name, &m_afSoftBodyMap);
 //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
-        if (tmpSoftBody->load(a_multibody_config.c_str(), body_name, this)){
+        if (tmpSoftBody->load(a_multibody_config_file.c_str(), body_name, this)){
             m_afSoftBodyMap[(body_name + remap_str).c_str()] = tmpSoftBody;
 //            tmpSoftBody->createAFObject(tmpSoftBody->m_name + remap_str);
         }
@@ -1451,7 +1518,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config){
         std::string jnt_name = multiBodyJoints[i].as<std::string>();
         std::string remap_str = remapJointName(jnt_name);
 //        printf("Loading body: %s \n", (jnt_name + remap_str).c_str());
-        if (tmpJoint->load(a_multibody_config.c_str(), jnt_name, this, remap_str)){
+        if (tmpJoint->load(a_multibody_config_file.c_str(), jnt_name, this, remap_str)){
             m_afJointMap[jnt_name+remap_str] = tmpJoint;
         }
     }

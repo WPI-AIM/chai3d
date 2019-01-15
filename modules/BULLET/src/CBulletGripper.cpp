@@ -111,14 +111,17 @@ void afGripperLink::setAngle(std::vector<double> &angles, double dt){
 /// \param a_suffix_name
 /// \return
 ///
-bool afGripper::loadMultiBody(std::string a_file, std::string a_gripper_name, std::string a_suffix_name){
+bool afGripper::loadMultiBody(std::string a_gripper_config_file, std::string a_gripper_name, std::string a_suffix_name){
     m_gripper_name = a_gripper_name;
     m_suffix_name = a_suffix_name;
 
-    YAML::Node multiBodyNode = YAML::LoadFile(a_file);
-    if (!multiBodyNode){
-        std::cerr << "FAILED TO LOAD YAML CONFIG FILE \n";
-        return NULL;
+    YAML::Node multiBodyNode;
+    try{
+        multiBodyNode = YAML::LoadFile(a_gripper_config_file);
+    }catch(std::exception &e){
+        std::cerr << "[Exception]: " << e.what() << std::endl;
+        std::cerr << "ERROR! FAILED TO CONFIG FILE: " << a_gripper_config_file << std::endl;
+        return 0;
     }
 
     // Declare all the yaml parameters that we want to look for
@@ -127,19 +130,28 @@ bool afGripper::loadMultiBody(std::string a_file, std::string a_gripper_name, st
     YAML::Node multiBodyNameSpace = multiBodyNode["namespace"];
     YAML::Node multiBodyRidigBodies = multiBodyNode["bodies"];
     YAML::Node multiBodyJoints = multiBodyNode["joints"];
-    YAML::Node multiBodyColorConfig = multiBodyNode["color config"];
 
-    if (multiBodyColorConfig.IsDefined())
-        s_colorsNode = YAML::LoadFile(multiBodyColorConfig.as<std::string>().c_str());
+    boost::filesystem::path mb_cfg_dir = boost::filesystem::path(a_gripper_config_file).parent_path();
 
     afGripperLinkPtr tmpBody;
+    boost::filesystem::path high_res_filepath;
+    boost::filesystem::path low_res_filepath;
     if(multiBodyMeshPathHR.IsDefined() && multiBodyMeshPathLR.IsDefined()){
-        m_multibody_high_res_path = multiBodyMeshPathHR.as<std::string>();
-        m_multibody_low_res_path = multiBodyMeshPathLR.as<std::string>();
+        high_res_filepath = multiBodyMeshPathHR.as<std::string>();
+        low_res_filepath = multiBodyMeshPathLR.as<std::string>();
+
+        if (high_res_filepath.is_relative()){
+            high_res_filepath = mb_cfg_dir / high_res_filepath;
+        }
+        if (low_res_filepath.is_relative()){
+            low_res_filepath = mb_cfg_dir / low_res_filepath;
+        }
+        m_multibody_high_res_meshes_path = high_res_filepath.c_str();
+        m_multibody_low_res_meshes_path = low_res_filepath.c_str();
     }
     else{
-        m_multibody_high_res_path = "../resources/models/puzzle/high_res/";
-        m_multibody_low_res_path = "../resources/models/puzzle/low_res/";
+        m_multibody_high_res_meshes_path = "../resources/models/puzzle/high_res/";
+        m_multibody_low_res_meshes_path = "../resources/models/puzzle/low_res/";
     }
     if (multiBodyNameSpace.IsDefined()){
         m_multibody_namespace = multiBodyNameSpace.as<std::string>();
@@ -148,12 +160,12 @@ bool afGripper::loadMultiBody(std::string a_file, std::string a_gripper_name, st
         m_multibody_namespace = "/chai/env/";
     }
 
-    size_t totalBodys = multiBodyRidigBodies.size();
-    for (size_t i = 0; i < totalBodys; ++i) {
+    size_t totalBodies = multiBodyRidigBodies.size();
+    for (size_t i = 0; i < totalBodies; ++i) {
         tmpBody = new afGripperLink(m_chaiWorld);
         std::string body_name = multiBodyRidigBodies[i].as<std::string>();
 //        printf("Loading body: %s \n", body_name .c_str());
-        if (tmpBody->load(a_file.c_str(), body_name, this)){
+        if (tmpBody->load(a_gripper_config_file.c_str(), body_name, this)){
             m_afRigidBodyMap[body_name.c_str()] = tmpBody;
         }
     }
@@ -163,7 +175,7 @@ bool afGripper::loadMultiBody(std::string a_file, std::string a_gripper_name, st
         tmpJoint = new afJoint();
         std::string jnt_name = multiBodyJoints[i].as<std::string>();
 //        printf("Loading body: %s \n", jnt_name.c_str());
-        if (tmpJoint->load(a_file.c_str(), jnt_name, this)){
+        if (tmpJoint->load(a_gripper_config_file.c_str(), jnt_name, this)){
             m_afJointMap[jnt_name] = tmpJoint;
         }
     }

@@ -50,6 +50,7 @@
 #include "CBulletWorld.h"
 #include "chai3d.h"
 #include <yaml-cpp/yaml.h>
+#include <boost/filesystem/path.hpp>
 
 namespace chai3d {
 
@@ -90,7 +91,7 @@ public:
 
 private:
 
-    static std::string s_path;
+    static boost::filesystem::path s_boostBaseDir;
     static std::string s_color_config;
     static std::vector<std::string> s_multiBody_configs;
     static std::string s_world_config;
@@ -324,8 +325,9 @@ public:
     afRigidBodyPtr getRidigBody(std::string a_name);
     afRigidBodyPtr getRootRigidBody(afRigidBodyPtr a_bodyPtr = NULL);
     afSoftBodyPtr getSoftBody(std::string a_name);
-    inline std::string getHighResPath(){return m_multibody_high_res_path;}
-    inline std::string getLowResPath(){return m_multibody_low_res_path;}
+    inline std::string getHighResMeshesPath(){return m_multibody_high_res_meshes_path;}
+    inline std::string getLowResMeshesPath(){return m_multibody_low_res_meshes_path;}
+    inline std::string getMultiBodyPath(){return m_multibody_path;}
     inline std::string getNameSpace(){return m_multibody_namespace;}
     inline const afSoftBodyMap* getSoftBodyMap(){return &m_afSoftBodyMap;}
     inline const afRigidBodyMap* getRigidBodyMap(){return &m_afRigidBodyMap;}
@@ -342,8 +344,9 @@ protected:
     afRigidBodyMap m_afRigidBodyMap;
     afSoftBodyMap m_afSoftBodyMap;
     afJointMap m_afJointMap;
-    std::string m_multibody_high_res_path, m_multibody_low_res_path;
+    std::string m_multibody_high_res_meshes_path, m_multibody_low_res_meshes_path;
     std::string m_multibody_namespace;
+    std::string m_multibody_path;
 
 protected:
 
