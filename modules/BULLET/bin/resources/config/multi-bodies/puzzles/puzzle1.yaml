@@ -2,8 +2,8 @@
 # Testing, no version number yet
 bodies: [body1, body2, body3, body4, body5, body6, body7, body8, body9]
 joints: [joint1, joint2]
-high resolution path: ../../models/puzzle/high_res/
-low resolution path: ../../models/puzzle/low_res/
+high resolution path: ../../../models/puzzle/high_res/
+low resolution path: ../../../models/puzzle/low_res/
 
 body1:
  name: Torus
