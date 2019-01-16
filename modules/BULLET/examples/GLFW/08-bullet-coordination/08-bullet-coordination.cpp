@@ -1187,7 +1187,7 @@ int main(int argc, char* argv[])
     g_light->setShadowMapEnabled(true);
 
     // set the resolution of the shadow map
-    g_light->m_shadowMap->setQualityMedium();
+    g_light->m_shadowMap->setQualityHigh();
     //light->m_shadowMap->setQualityMedium();
 
     // set light cone half angle

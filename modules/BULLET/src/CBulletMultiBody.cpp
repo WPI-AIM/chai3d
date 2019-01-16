@@ -498,7 +498,7 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
         double r = bodyRot["r"].as<double>();
         double p = bodyRot["p"].as<double>();
         double y = bodyRot["y"].as<double>();
-        m_initialRot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZYX);
+        m_initialRot.setExtrinsicEulerRotationRad(r,p,y,cEulerOrder::C_EULER_ORDER_XYZ);
         setLocalRot(m_initialRot);
     }
 
@@ -783,7 +783,7 @@ bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyP
         btTransform trans;
         btQuaternion quat;
         btVector3 pos;
-        quat.setEuler(0,0,0);
+        quat.setEulerZYX(0,0,0);
         pos.setValue(0,0,0);
         if(softBodyInertialOffsetRot.IsDefined()){
             double r = softBodyInertialOffsetRot["r"].as<double>();
@@ -849,7 +849,7 @@ bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyP
         double r = softBodyRot["r"].as<double>();
         double p = softBodyRot["p"].as<double>();
         double y = softBodyRot["y"].as<double>();
-        rot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_ZXY);
+        rot.setExtrinsicEulerRotationRad(y,p,r,cEulerOrder::C_EULER_ORDER_XYZ);
         setLocalRot(rot);
     }
 
@@ -1112,24 +1112,24 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     }
     if (m_jointType == JointType::prismatic){
         btTransform frameA, frameB;
-        btQuaternion quat;
         frameA.setIdentity();
         frameB.setIdentity();
 
         // Bullet takes the x axis as the default for prismatic joints
         btVector3 nx(1,0,0);
 
-        quat = getRotationBetweenVectors(nx, m_axisA);
-        frameA.setRotation(quat);
+        btQuaternion quat_nx_p;
+        quat_nx_p = getRotationBetweenVectors(nx, m_axisA);
+        frameA.setRotation(quat_nx_p);
         frameA.setOrigin(m_pvtA);
 
-        quat = getRotationBetweenVectors(m_axisA, m_axisB);
+        btQuaternion quat_c_p;
+        quat_c_p = getRotationBetweenVectors(m_axisB, m_axisA);
         btQuaternion offset_quat;
-        offset_quat.setRotation(m_axisA, -m_joint_offset);
+        offset_quat.setRotation(m_axisA, m_joint_offset);
         // We need to post-multiply frameA's rot to cancel out the shift in axis, then
-        // the offset along joint axis and finally the frameB's axis alignment
-        frameB.setRotation( quat * offset_quat * frameA.getRotation());
-//        frameB.setRotation(offset_quat * quat);
+        // the offset along joint axis and finally frameB's axis alignment in frameA.
+        frameB.setRotation( quat_c_p.inverse() * offset_quat.inverse() * quat_nx_p);
         frameB.setOrigin(m_pvtB);
 
         m_btConstraint = new btSliderConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
@@ -1161,15 +1161,15 @@ btQuaternion afJoint::getRotationBetweenVectors(btVector3 &v1, btVector3 &v2){
         quat.setEulerZYX(0,0,0);
     }
     else if ( abs(rot_angle) > 3.13 ){
-        btVector3 ny(0, 1, 0);
-        double temp_ang = v1.angle(ny);
+        btVector3 nx(1, 0, 0);
+        double temp_ang = v1.angle(nx);
         if ( abs(temp_ang) > 0.1 && abs(temp_ang) < 3.13 ){
-            btVector3 rot_axis = v1.cross(ny);
+            btVector3 rot_axis = v1.cross(nx);
             quat.setRotation(rot_axis, rot_angle);
         }
         else{
-            btVector3 nz(0, 0, 1);
-            btVector3 rot_axis = m_axisA.cross(nz);
+            btVector3 ny(0, 1, 0);
+            btVector3 rot_axis = m_axisA.cross(ny);
             quat.setRotation(rot_axis, rot_angle);
         }
     }
