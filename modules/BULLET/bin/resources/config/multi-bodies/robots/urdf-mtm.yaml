@@ -35,7 +35,7 @@ BODY mtm_top_panel:
   collision mesh: Top Panel.STL
 BODY mtm_outer_yaw_link:
   name: mtm_outer_yaw_link
-  mesh: OutPitch_Shoulder.STL
+  mesh: OutPitch Shoulder.STL
   mass: 1.0
   scale: 1.0
   location:
@@ -45,7 +45,7 @@ BODY mtm_outer_yaw_link:
     orientation: {p: 0, r: 0, y: 0}
     position: {x: 0, y: 0, z: 0}
   color: random
-  collision mesh: OutPitch_Shoulder.STL
+  collision mesh: OutPitch Shoulder.STL
 BODY mtm_back_parallel_link:
   name: mtm_back_parallel_link
   mesh: ArmParallel.STL

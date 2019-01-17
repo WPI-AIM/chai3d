@@ -292,7 +292,7 @@ JOINT psm_tool_roll_joint:
   enable motor: 1
   max motor impulse: 0
   type: revolute
-  offset: -1.571
+  offset: 3.142
 JOINT psm_tool_pitch_joint:
   name: psm_tool_pitch_joint
   parent: BODY psm_tool_roll_link
