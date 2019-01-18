@@ -292,12 +292,12 @@ afRigidBody::afRigidBody(cBulletWorld* a_world): cBulletMultiMesh(a_world){
 void afRigidBody::populateParentsTree(afRigidBodyPtr a_body, afJointPtr a_jnt){
     m_childrenBodies.push_back(a_body);
     m_childrenBodies.insert(m_childrenBodies.end(),
-                           a_body->m_childrenBodies.begin(),
-                           a_body->m_childrenBodies.end());
+                            a_body->m_childrenBodies.begin(),
+                            a_body->m_childrenBodies.end());
     m_joints.push_back(a_jnt);
     m_joints.insert(m_joints.end(),
-                           a_body->m_joints.begin(),
-                           a_body->m_joints.end());
+                    a_body->m_joints.begin(),
+                    a_body->m_joints.end());
 }
 
 ///
@@ -316,15 +316,15 @@ void afRigidBody::addParentBody(afRigidBody* a_parentBody){
 void afRigidBody::addChildBody(afRigidBody* a_childBody, afJointPtr a_jnt){
     a_childBody->addParentBody(this);
     a_childBody->m_parentBodies.insert(a_childBody->m_parentBodies.end(),
-                                      m_parentBodies.begin(), m_parentBodies.end());
+                                       m_parentBodies.begin(), m_parentBodies.end());
     m_childrenBodies.push_back(a_childBody);
     m_childrenBodies.insert(m_childrenBodies.end(),
-                           a_childBody->m_childrenBodies.begin(),
-                           a_childBody->m_childrenBodies.end());
+                            a_childBody->m_childrenBodies.begin(),
+                            a_childBody->m_childrenBodies.end());
     m_joints.push_back(a_jnt);
     m_joints.insert(m_joints.end(),
-                           a_childBody->m_joints.begin(),
-                           a_childBody->m_joints.end());
+                    a_childBody->m_joints.begin(),
+                    a_childBody->m_joints.end());
     for (m_bodyIt = m_parentBodies.begin() ; m_bodyIt != m_parentBodies.end() ; ++m_bodyIt){
         (*m_bodyIt)->populateParentsTree(a_childBody, a_jnt);
     }
@@ -503,11 +503,11 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
     }
 
     if(bodyColorRGBA.IsDefined()){
-            m_mat.setColorf(bodyColorRGBA["r"].as<float>(),
-                            bodyColorRGBA["g"].as<float>(),
-                            bodyColorRGBA["b"].as<float>(),
-                            bodyColorRGBA["a"].as<float>());
-        }
+        m_mat.setColorf(bodyColorRGBA["r"].as<float>(),
+                bodyColorRGBA["g"].as<float>(),
+                bodyColorRGBA["b"].as<float>(),
+                bodyColorRGBA["a"].as<float>());
+    }
     else if(bodyColor.IsDefined()){
         std::vector<double> rgba = mB->getColorRGBA(bodyColor.as<std::string>());
         m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
@@ -589,7 +589,7 @@ void afRigidBody::setConfigProperties(const afRigidBodyPtr a_body, const afRigid
 /// \param dt
 ///
 void afRigidBody::updateCmdFromROS(double dt){
-    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
     if (m_afObjPtr.get() != nullptr){
         m_afObjPtr->update_af_cmd();
         cVector3d force, torque;
@@ -655,7 +655,7 @@ void afRigidBody::updateCmdFromROS(double dt){
 
         }
     }
-    #endif
+#endif
 }
 
 ///
@@ -854,11 +854,11 @@ bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyP
     }
 
     if(softBodyColorRaw.IsDefined()){
-            m_mat.setColorf(softBodyColorRaw["r"].as<float>(),
-                            softBodyColorRaw["g"].as<float>(),
-                            softBodyColorRaw["b"].as<float>(),
-                            softBodyColorRaw["a"].as<float>());
-        }
+        m_mat.setColorf(softBodyColorRaw["r"].as<float>(),
+                softBodyColorRaw["g"].as<float>(),
+                softBodyColorRaw["b"].as<float>(),
+                softBodyColorRaw["a"].as<float>());
+    }
     else if(softBodyColor.IsDefined()){
         std::vector<double> rgba = mB->getColorRGBA(softBodyColor.as<std::string>());
         m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
@@ -902,7 +902,7 @@ bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyP
 
 
     setMaterial(m_mat);
-//    setConfigProperties(this, &m_bulletSoftBody->m_cfg);
+    //    setConfigProperties(this, &m_bulletSoftBody->m_cfg);
     mB->m_chaiWorld->addChild(this);
     return true;
 }
@@ -1043,30 +1043,30 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     }
 
     // For Testing Joints
-//    if (strcmp(m_name.c_str(), "test") == 0){
-//        btTransform tA, tB;
-//        btQuaternion quat;
+    //    if (strcmp(m_name.c_str(), "test") == 0){
+    //        btTransform tA, tB;
+    //        btQuaternion quat;
 
-//        quat.setEulerZYX(m_axisA.getZ(), m_axisA.getY(), m_axisA.getX());
+    //        quat.setEulerZYX(m_axisA.getZ(), m_axisA.getY(), m_axisA.getX());
 
-//        tA.setOrigin(m_pvtA);
-//        tA.setRotation(quat);
+    //        tA.setOrigin(m_pvtA);
+    //        tA.setRotation(quat);
 
-//        quat.setEulerZYX(m_axisB.getZ(), m_axisB.getY(), m_axisB.getX());
+    //        quat.setEulerZYX(m_axisB.getZ(), m_axisB.getY(), m_axisB.getX());
 
-//        tB.setOrigin(m_pvtB);
-//        tB.setRotation(quat);
+    //        tB.setOrigin(m_pvtB);
+    //        tB.setRotation(quat);
 
-//        m_hinge = new btHingeConstraint(*m_rbodyA, *m_rbodyB, tA, tB, true);
-//        if(jointLimits.IsDefined()){
-//            m_lower_limit = jointLimits["low"].as<double>() + m_joint_offset;
-//            m_higher_limit = jointLimits["high"].as<double>() + m_joint_offset;
-//            m_hinge->setLimit(m_lower_limit, m_higher_limit);
-//        }
-//        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
-//        afBodyA->addChildBody(afBodyB, this);
-//        return true;
-//    }
+    //        m_hinge = new btHingeConstraint(*m_rbodyA, *m_rbodyB, tA, tB, true);
+    //        if(jointLimits.IsDefined()){
+    //            m_lower_limit = jointLimits["low"].as<double>() + m_joint_offset;
+    //            m_higher_limit = jointLimits["high"].as<double>() + m_joint_offset;
+    //            m_hinge->setLimit(m_lower_limit, m_higher_limit);
+    //        }
+    //        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
+    //        afBodyA->addChildBody(afBodyB, this);
+    //        return true;
+    //    }
 
     if(jointOffset.IsDefined()){
         m_joint_offset = jointOffset.as<double>();
@@ -1084,7 +1084,7 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
             m_jointType = JointType::revolute;
         }
         else if ((strcmp(jointType.as<std::string>().c_str(), "slider") == 0)
-                || (strcmp(jointType.as<std::string>().c_str(), "prismatic") == 0)){
+                 || (strcmp(jointType.as<std::string>().c_str(), "prismatic") == 0)){
             m_jointType = JointType::prismatic;
         }
         else if ((strcmp(jointType.as<std::string>().c_str(), "fixed") == 0)){
@@ -1130,13 +1130,13 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         }
 
         if(jointLimits.IsDefined()){
-           ((btHingeConstraint*)m_btConstraint)->setLimit(m_lower_limit, m_higher_limit);
+            ((btHingeConstraint*)m_btConstraint)->setLimit(m_lower_limit, m_higher_limit);
         }
 
         mB->m_chaiWorld->m_bulletWorld->addConstraint(m_btConstraint, true);
         afBodyA->addChildBody(afBodyB, this);
     }
-    if (m_jointType == JointType::prismatic){
+    else if (m_jointType == JointType::prismatic){
         btTransform frameA, frameB;
         frameA.setIdentity();
         frameB.setIdentity();
@@ -1170,10 +1170,29 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         }
 
         if(jointLimits.IsDefined()){
-           ((btSliderConstraint*) m_btConstraint)->setLowerLinLimit(m_lower_limit);
-           ((btSliderConstraint*) m_btConstraint)->setUpperLinLimit(m_higher_limit);
+            ((btSliderConstraint*) m_btConstraint)->setLowerLinLimit(m_lower_limit);
+            ((btSliderConstraint*) m_btConstraint)->setUpperLinLimit(m_higher_limit);
         }
 
+        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_btConstraint, true);
+        afBodyA->addChildBody(afBodyB, this);
+    }
+    else if (m_jointType == JointType::fixed){
+        btTransform frameA, frameB;
+        frameA.setIdentity();
+        frameB.setIdentity();
+
+        frameA.setOrigin(m_pvtA);
+
+        btQuaternion quat_c_p;
+        quat_c_p = getRotationBetweenVectors(m_axisB, m_axisA);
+        btQuaternion offset_quat;
+        offset_quat.setRotation(m_axisA, m_joint_offset);
+        // We need to post-multiply frameA's rot to cancel out the shift in axis, then
+        // the offset along joint axis and finally frameB's axis alignment in frameA.
+        frameB.setRotation( quat_c_p.inverse() * offset_quat.inverse());
+        frameB.setOrigin(m_pvtB);
+        m_btConstraint = new btFixedConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB);
         mB->m_chaiWorld->m_bulletWorld->addConstraint(m_btConstraint, true);
         afBodyA->addChildBody(afBodyB, this);
     }
@@ -1293,7 +1312,7 @@ double afWorld::getEnclosureLength(){
 /// \return
 ///
 double afWorld::getEnclosureWidth(){
-   return m_encl_width;
+    return m_encl_width;
 }
 
 ///
@@ -1463,7 +1482,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
     }
     YAML::Node multiBodyNode;
     try{
-       multiBodyNode = YAML::LoadFile(a_multibody_config_file);
+        multiBodyNode = YAML::LoadFile(a_multibody_config_file);
     }catch (std::exception &e){
         std::cerr << "[Exception]: " << e.what() << std::endl;
         std::cerr << "ERROR! FAILED TO CONFIG FILE: " << a_multibody_config_file << std::endl;
@@ -1514,7 +1533,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
         tmpRigidBody = new afRigidBody(m_chaiWorld);
         std::string body_name = multiBodyRidigBodies[i].as<std::string>();
         std::string remap_str = remapBodyName(body_name, &m_afRigidBodyMap);
-//        printf("Loading body: %s \n", (body_name + remap_str).c_str());
+        //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
         if (tmpRigidBody->load(a_multibody_config_file.c_str(), body_name, this)){
             m_afRigidBodyMap[(body_name + remap_str).c_str()] = tmpRigidBody;
             tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str, tmpRigidBody->m_body_namespace);
@@ -1529,10 +1548,10 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
         tmpSoftBody = new afSoftBody(m_chaiWorld);
         std::string body_name = multiBodySoftBodies[i].as<std::string>();
         std::string remap_str = remapBodyName(body_name, &m_afSoftBodyMap);
-//        printf("Loading body: %s \n", (body_name + remap_str).c_str());
+        //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
         if (tmpSoftBody->load(a_multibody_config_file.c_str(), body_name, this)){
             m_afSoftBodyMap[(body_name + remap_str).c_str()] = tmpSoftBody;
-//            tmpSoftBody->createAFObject(tmpSoftBody->m_name + remap_str);
+            //            tmpSoftBody->createAFObject(tmpSoftBody->m_name + remap_str);
         }
     }
 
@@ -1543,7 +1562,7 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
         tmpJoint = new afJoint();
         std::string jnt_name = multiBodyJoints[i].as<std::string>();
         std::string remap_str = remapJointName(jnt_name);
-//        printf("Loading body: %s \n", (jnt_name + remap_str).c_str());
+        //        printf("Loading body: %s \n", (jnt_name + remap_str).c_str());
         if (tmpJoint->load(a_multibody_config_file.c_str(), jnt_name, this, remap_str)){
             m_afJointMap[jnt_name+remap_str] = tmpJoint;
         }
@@ -1760,19 +1779,19 @@ afRigidBodyPtr afMultiBody::getRootRigidBody(afRigidBodyPtr a_bodyPtr){
 /// \brief afMultiBody::~afMultiBody
 ///
 afMultiBody::~afMultiBody(){
-//    afJointMap::const_iterator jIt = m_afJointMap.begin();
-//    for (; jIt != m_afJointMap.end() ; ++jIt){
-//        delete jIt->second;
-//    }
-//    afRigidBodyMap::iterator rIt = m_afRigidBodyMap.begin();
-//    for ( ; rIt != m_afRigidBodyMap.end() ; ++rIt){
-//        if (rIt->second)
-//            delete rIt->second;
-//    }
-//    afSoftBodyMap::const_iterator sIt = m_afSoftBodyMap.begin();
-//    for ( ; sIt != m_afSoftBodyMap.end() ; ++sIt){
-//        delete sIt->second;
-//    }
+    //    afJointMap::const_iterator jIt = m_afJointMap.begin();
+    //    for (; jIt != m_afJointMap.end() ; ++jIt){
+    //        delete jIt->second;
+    //    }
+    //    afRigidBodyMap::iterator rIt = m_afRigidBodyMap.begin();
+    //    for ( ; rIt != m_afRigidBodyMap.end() ; ++rIt){
+    //        if (rIt->second)
+    //            delete rIt->second;
+    //    }
+    //    afSoftBodyMap::const_iterator sIt = m_afSoftBodyMap.begin();
+    //    for ( ; sIt != m_afSoftBodyMap.end() ; ++sIt){
+    //        delete sIt->second;
+    //    }
 }
 
 }
