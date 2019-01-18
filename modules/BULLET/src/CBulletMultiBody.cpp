@@ -1093,7 +1093,33 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
 
     }
     if (m_jointType == JointType::revolute){
+#ifdef USE_PIVOT_AXIS_METHOD
         m_btConstraint = new btHingeConstraint(*m_rbodyA, *m_rbodyB, m_pvtA, m_pvtB, m_axisA, m_axisB, true);
+#else
+        btTransform frameA, frameB;
+        frameA.setIdentity();
+        frameB.setIdentity();
+
+        // Bullet takes the x axis as the default for prismatic joints
+        btVector3 nz(0,0,1);
+
+        btQuaternion quat_nz_p;
+        quat_nz_p = getRotationBetweenVectors(nz, m_axisA);
+        frameA.setRotation(quat_nz_p);
+        frameA.setOrigin(m_pvtA);
+
+        btQuaternion quat_c_p;
+        quat_c_p = getRotationBetweenVectors(m_axisB, m_axisA);
+        btQuaternion offset_quat;
+        offset_quat.setRotation(m_axisA, m_joint_offset);
+        // We need to post-multiply frameA's rot to cancel out the shift in axis, then
+        // the offset along joint axis and finally frameB's axis alignment in frameA.
+        frameB.setRotation( quat_c_p.inverse() * offset_quat.inverse() * quat_nz_p);
+        frameB.setOrigin(m_pvtB);
+
+        m_btConstraint = new btHingeConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
+#endif
+
         if (jointEnableMotor.IsDefined()){
             m_enable_actuator = jointEnableMotor.as<int>();
             // Don't enable motor yet, only enable when set position is called
@@ -1104,7 +1130,7 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         }
 
         if(jointLimits.IsDefined()){
-           ((btHingeConstraint*)m_btConstraint)->setLimit(m_lower_limit + m_joint_offset, m_higher_limit + m_joint_offset);
+           ((btHingeConstraint*)m_btConstraint)->setLimit(m_lower_limit, m_higher_limit);
         }
 
         mB->m_chaiWorld->m_bulletWorld->addConstraint(m_btConstraint, true);
@@ -1194,7 +1220,7 @@ void afJoint::commandPosition(double &cmd){
                 ((btHingeConstraint*)m_btConstraint)->enableMotor(m_enable_actuator);
                 ((btHingeConstraint*)m_btConstraint)->setMaxMotorImpulse(m_max_motor_impulse);
             }
-            ((btHingeConstraint*)m_btConstraint)->setMotorTarget(cmd + m_joint_offset, 0.001);
+            ((btHingeConstraint*)m_btConstraint)->setMotorTarget(cmd, 0.001);
         }
         else if(m_jointType == JointType::prismatic){
             if (!((btSliderConstraint*) m_btConstraint)->getPoweredLinMotor()){
