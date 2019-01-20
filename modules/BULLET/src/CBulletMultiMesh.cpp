@@ -263,9 +263,6 @@ void cBulletMultiMesh::buildContactTriangles(const double a_margin, cMultiMesh* 
         // add collision shape to compound
         compound->addChildShape(localTrans, collisionShape);
     }
-    if(lowResMesh){
-        lowResMesh->m_meshes->clear();
-    }
 }
 
 

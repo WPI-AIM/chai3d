@@ -477,6 +477,19 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
                       << m_name
                       << "'s mesh \"" << low_res_filepath << "\" not found\n";
         }
+
+        if(bodyColorRGBA.IsDefined()){
+            m_mat.setColorf(bodyColorRGBA["r"].as<float>(),
+                    bodyColorRGBA["g"].as<float>(),
+                    bodyColorRGBA["b"].as<float>(),
+                    bodyColorRGBA["a"].as<float>());
+        }
+        else if(bodyColor.IsDefined()){
+            std::vector<double> rgba = mB->getColorRGBA(bodyColor.as<std::string>());
+            m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
+        }
+
+        setMaterial(m_mat);
     }
 
     if (bodyNameSpace.IsDefined()){
@@ -491,6 +504,7 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
     btVector3 iOffPos;
     iOffQuat.setEuler(0,0,0);
     iOffPos.setValue(0,0,0);
+
     if(bodyInertialOffsetPos.IsDefined()){
         if(bodyInertialOffsetRot.IsDefined()){
             double r = bodyInertialOffsetRot["r"].as<double>();
@@ -502,9 +516,8 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
     }
     else{
         // Call the compute inertial offset before the build contact triangle method
-        // as this method clears the low res mesh.
         // Sanity check, see if a mesh is defined or not
-        if (m_lowResMesh.m_meshes[0][0]){
+        if (m_lowResMesh.m_meshes->size() > 0){
             iOffPos = computeInertialOffset(m_lowResMesh.m_meshes[0][0]);
         }
     }
@@ -528,17 +541,22 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
         _ang_gains_computed = true;
     }
 
-    if(bodyInertia.IsDefined()){
-        setInertia(cVector3d(bodyInertia["ix"].as<double>(), bodyInertia["iy"].as<double>(), bodyInertia["iz"].as<double>()));
-        if (m_inertia.x() < 0.0 || m_inertia.y() < 0.0 || m_inertia.z() < 0.0 ){
-            std::cerr << "WARNING: Body "
-                      << m_name
-                      << "'s intertia is \"" << &m_inertia << "\". Inertia cannot be negative, ignoring\n";
-            return 0;
-        }
+    if(m_mass == 0.0){
+        setInertia(cVector3d(0, 0, 0));
     }
-    else if (m_lowResMesh.m_meshes[0][0]){
-        estimateInertia();
+    else{
+        if(bodyInertia.IsDefined()){
+            setInertia(cVector3d(bodyInertia["ix"].as<double>(), bodyInertia["iy"].as<double>(), bodyInertia["iz"].as<double>()));
+            if (m_inertia.x() < 0.0 || m_inertia.y() < 0.0 || m_inertia.z() < 0.0 ){
+                std::cerr << "WARNING: Body "
+                          << m_name
+                          << "'s intertia is \"" << &m_inertia << "\". Inertia cannot be negative, ignoring\n";
+                return 0;
+            }
+        }
+        else if (m_lowResMesh.m_meshes->size() > 0){
+            estimateInertia();
+        }
     }
 
     buildDynamicModel();
@@ -556,17 +574,6 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
         setLocalRot(m_initialRot);
     }
 
-    if(bodyColorRGBA.IsDefined()){
-        m_mat.setColorf(bodyColorRGBA["r"].as<float>(),
-                bodyColorRGBA["g"].as<float>(),
-                bodyColorRGBA["b"].as<float>(),
-                bodyColorRGBA["a"].as<float>());
-    }
-    else if(bodyColor.IsDefined()){
-        std::vector<double> rgba = mB->getColorRGBA(bodyColor.as<std::string>());
-        m_mat.setColorf(rgba[0], rgba[1], rgba[2], rgba[3]);
-    }
-
     if (bodyLinDamping.IsDefined())
         m_surfaceProps.m_linear_damping = bodyLinDamping.as<double>();
     if (bodyAngDamping.IsDefined())
@@ -576,7 +583,6 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
     if (bodyRollingFriction.IsDefined())
         m_surfaceProps.m_rolling_friction = bodyRollingFriction.as<double>();
 
-    setMaterial(m_mat);
     setConfigProperties(this, &m_surfaceProps);
     mB->m_chaiWorld->addChild(this);
     return true;
@@ -1066,6 +1072,31 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         assignXYZ( &jointChildPivot, &m_pvtB);
         assignXYZ( &jointChildAxis, &m_axisB);
 
+        if (m_axisA.length() < 0.9 || m_axisA.length() > 1.1 ){
+            std::cerr << "WARNING: Joint " << m_name << "'s parent axis is not normalized\n";
+            // If length is > 1, we can normalize it, no big deal
+            if (m_axisA.length() > 1.1){
+                m_axisA.normalize();
+            }
+            // However if the length is <0, there is something wrong, just ignore
+            else{
+                std::cerr << "Ignoring \n";
+                return 0;
+            }
+        }
+        if (m_axisB.length() < 0.9 || m_axisB.length() > 1.1 ){
+            std::cerr << "WARNING: Joint " << m_name << "'s child axis is not normalized\n";
+            // If length is > 1, we can normalize it, no big deal
+            if (m_axisB.length() > 1.1){
+                m_axisB.normalize();
+            }
+            // However if the length is <0, there is something wrong, just ignore
+            else{
+                std::cerr << "Ignoring \n";
+                return 0;
+            }
+        }
+
         // Scale the pivot before transforming as the default scale methods don't move this pivot
         m_pvtA *= afBodyA->m_scale;
         m_pvtA = afBodyA->getInertialOffsetTransform().inverse() * m_pvtA;
@@ -1460,7 +1491,7 @@ template<typename T>
 /// \param tMap
 /// \return
 ///
-std::string afMultiBody::remapBodyName(std::string a_body_name,const T* tMap){
+std::string afMultiBody::remapBodyName(std::string a_body_name, const T* tMap){
     int occurances = 0;
     std::string remap_string = "" ;
     std::stringstream ss;
