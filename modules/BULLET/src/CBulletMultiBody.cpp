@@ -282,6 +282,9 @@ std::vector<double> afConfigHandler::getColorRGBA(std::string a_color_name){
 ///
 afRigidBody::afRigidBody(cBulletWorld* a_world): cBulletMultiMesh(a_world){
     setFrameSize(0.5);
+    m_mesh_name.clear();
+    m_collision_mesh_name.clear();
+    m_scale = 1.0;
 }
 
 ///
@@ -384,46 +387,96 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
         m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     }
 
-    if(bodyMesh.IsDefined())
+    if(bodyMesh.IsDefined()){
         m_mesh_name = bodyMesh.as<std::string>();
-    if (m_mesh_name.empty()){
-        std::cerr << "WARNING: Body " << m_name << "'s mesh field is empty, ignoring\n";
+    }
+
+    if(!bodyMass.IsDefined()){
+        std::cerr << "WARNING: Body "
+                  << m_name
+                  << "'s mass is not defined, hence ignoring\n";
         return 0;
     }
+    else if(bodyMass.as<double>() < 0.0){
+        std::cerr << "WARNING: Body "
+                  << m_name
+                  << "'s mass is \"" << m_mass << "\". Mass cannot be negative, ignoring\n";
+        return 0;
 
-    if(bodyCollisionMesh.IsDefined())
-        m_collision_mesh_name = bodyCollisionMesh.as<std::string>();
-    else
-        m_collision_mesh_name = m_mesh_name;
+    }
+    else if (m_mesh_name.empty() && bodyMass.as<double>() > 0.0 && !bodyInertia.IsDefined()){
+        std::cerr << "WARNING: Body "
+                  << m_name
+                  << "'s mesh field is empty, mass > 0 and no intertia defined, hence ignoring\n";
+        return 0;
+    }
+    else if (m_mesh_name.empty() && bodyMass.as<double>() > 0.0 && bodyInertia.IsDefined()){
+        std::cerr << "INFO: Body "
+                  << m_name
+                  << "'s mesh field is empty but mass and interia defined\n";
+    }
 
-    if(bodyScale.IsDefined())
-        m_scale = bodyScale.as<double>();
+    if (!m_mesh_name.empty()){
 
-    boost::filesystem::path high_res_filepath;
-    boost::filesystem::path low_res_filepath;
-
-    // Each ridig body can have a seperate path for its low and high res meshes
-    // Incase they are defined, we use those paths and if they are not, we use
-    // the paths for the whole file
-    if (bodyMeshPathHR.IsDefined()){
-        high_res_filepath = bodyMeshPathHR.as<std::string>() + m_mesh_name;
-        if (high_res_filepath.is_relative()){
-            high_res_filepath = mB->getMultiBodyPath() + '/' + high_res_filepath.c_str();
+        if(bodyCollisionMesh.IsDefined()){
+            m_collision_mesh_name = bodyCollisionMesh.as<std::string>();
         }
-    }
-    else{
-        high_res_filepath = mB->getHighResMeshesPath() + m_mesh_name;
-    }
-
-    if (bodyMeshPathLR.IsDefined()){
-        low_res_filepath = bodyMeshPathLR.as<std::string>() + m_collision_mesh_name;
-        if (low_res_filepath.is_relative()){
-            low_res_filepath = mB->getMultiBodyPath() + '/' + low_res_filepath.c_str();
+        else{
+            m_collision_mesh_name = m_mesh_name;
         }
-    }
-    else{
-        // If low res path is not defined, use the high res path to load the high-res mesh for collision
-        low_res_filepath = mB->getLowResMeshesPath() + m_collision_mesh_name;
+
+        if(bodyScale.IsDefined()){
+            m_scale = bodyScale.as<double>();
+        }
+
+        boost::filesystem::path high_res_filepath;
+        boost::filesystem::path low_res_filepath;
+
+        // Each ridig body can have a seperate path for its low and high res meshes
+        // Incase they are defined, we use those paths and if they are not, we use
+        // the paths for the whole file
+        if (bodyMeshPathHR.IsDefined()){
+            high_res_filepath = bodyMeshPathHR.as<std::string>() + m_mesh_name;
+            if (high_res_filepath.is_relative()){
+                high_res_filepath = mB->getMultiBodyPath() + '/' + high_res_filepath.c_str();
+            }
+        }
+        else{
+            high_res_filepath = mB->getHighResMeshesPath() + m_mesh_name;
+        }
+
+        if (bodyMeshPathLR.IsDefined()){
+            low_res_filepath = bodyMeshPathLR.as<std::string>() + m_collision_mesh_name;
+            if (low_res_filepath.is_relative()){
+                low_res_filepath = mB->getMultiBodyPath() + '/' + low_res_filepath.c_str();
+            }
+        }
+        else{
+            // If low res path is not defined, use the high res path to load the high-res mesh for collision
+            low_res_filepath = mB->getLowResMeshesPath() + m_collision_mesh_name;
+        }
+
+        if ( loadFromFile(high_res_filepath.c_str()) ){
+            if( abs( m_scale - 1.0) > 0.01){
+                scale(m_scale);
+            }
+        }
+        else{
+            std::cerr << "WARNING: Body "
+                      << m_name
+                      << "'s mesh \"" << high_res_filepath << "\" not found\n";
+        }
+
+        if( m_lowResMesh.loadFromFile(low_res_filepath.c_str()) ){
+            if( abs( m_scale - 1.0) > 0.01){
+                m_lowResMesh.scale(m_scale);
+            }
+        }
+        else{
+            std::cerr << "WARNING: Body "
+                      << m_name
+                      << "'s mesh \"" << low_res_filepath << "\" not found\n";
+        }
     }
 
     if (bodyNameSpace.IsDefined()){
@@ -432,11 +485,6 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
     else{
         m_body_namespace = mB->getNameSpace();
     }
-
-    loadFromFile(high_res_filepath.c_str());
-    m_lowResMesh.loadFromFile(low_res_filepath.c_str());
-    scale(m_scale);
-    m_lowResMesh.scale(m_scale);
 
     btTransform iOffTrans;
     btQuaternion iOffQuat;
@@ -455,7 +503,10 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
     else{
         // Call the compute inertial offset before the build contact triangle method
         // as this method clears the low res mesh.
-        iOffPos = computeInertialOffset(m_lowResMesh.m_meshes[0][0]);
+        // Sanity check, see if a mesh is defined or not
+        if (m_lowResMesh.m_meshes[0][0]){
+            iOffPos = computeInertialOffset(m_lowResMesh.m_meshes[0][0]);
+        }
     }
 
     iOffTrans.setOrigin(iOffPos);
@@ -465,25 +516,28 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
     // Build contact triangles
     buildContactTriangles(0.001, &m_lowResMesh);
 
-
-    if(bodyMass.IsDefined()){
-        m_mass = bodyMass.as<double>();
-        if(bodyLinGain.IsDefined()){
-            K_lin = bodyLinGain["P"].as<double>();
-            D_lin = bodyLinGain["D"].as<double>();
-            _lin_gains_computed = true;
-        }
-        if(bodyAngGain.IsDefined()){
-            K_ang = bodyAngGain["P"].as<double>();
-            D_ang = bodyAngGain["D"].as<double>();
-            _ang_gains_computed = true;
-        }
+    m_mass = bodyMass.as<double>();
+    if(bodyLinGain.IsDefined()){
+        K_lin = bodyLinGain["P"].as<double>();
+        D_lin = bodyLinGain["D"].as<double>();
+        _lin_gains_computed = true;
+    }
+    if(bodyAngGain.IsDefined()){
+        K_ang = bodyAngGain["P"].as<double>();
+        D_ang = bodyAngGain["D"].as<double>();
+        _ang_gains_computed = true;
     }
 
     if(bodyInertia.IsDefined()){
         setInertia(cVector3d(bodyInertia["ix"].as<double>(), bodyInertia["iy"].as<double>(), bodyInertia["iz"].as<double>()));
+        if (m_inertia.x() < 0.0 || m_inertia.y() < 0.0 || m_inertia.z() < 0.0 ){
+            std::cerr << "WARNING: Body "
+                      << m_name
+                      << "'s intertia is \"" << &m_inertia << "\". Inertia cannot be negative, ignoring\n";
+            return 0;
+        }
     }
-    else{
+    else if (m_lowResMesh.m_meshes[0][0]){
         estimateInertia();
     }
 
@@ -534,15 +588,17 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
 /// \return
 ///
 btVector3 afRigidBody::computeInertialOffset(cMesh* mesh){
-    cVector3d intertialOffset(0,0,0);
+    cVector3d intertialOffset(0, 0, 0);
     cVector3d vPos;
-
-    int nvertices = mesh->getNumVertices();
-    int i;
-    double idx;
-    for (i = 0, idx = 0 ; i < nvertices ; i++, idx++){
-        vPos = mesh->m_vertices->getLocalPos(i);
-        intertialOffset = ((( idx ) / ( idx + 1.0 )) * intertialOffset) + (( 1.0 / ( idx + 1.0 )) * vPos);
+    // Sanity Check
+    if (mesh){
+        int nvertices = mesh->getNumVertices();
+        int i;
+        double idx;
+        for (i = 0, idx = 0 ; i < nvertices ; i++, idx++){
+            vPos = mesh->m_vertices->getLocalPos(i);
+            intertialOffset = ((( idx ) / ( idx + 1.0 )) * intertialOffset) + (( 1.0 / ( idx + 1.0 )) * vPos);
+        }
     }
     return btVector3(intertialOffset.x(), intertialOffset.y(), intertialOffset.z());
 }
