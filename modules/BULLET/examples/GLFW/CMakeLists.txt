@@ -40,7 +40,7 @@
 
 # common settings required to build examples
 find_package (GLFW REQUIRED)
-find_package (Boost COMPONENTS program_options REQUIRED)
+find_package (Boost COMPONENTS program_options filesystem REQUIRED)
 include_directories (${GLFW_INCLUDE_DIRS})
 
 # build all targets
