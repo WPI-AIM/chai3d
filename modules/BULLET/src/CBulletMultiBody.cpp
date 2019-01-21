@@ -124,7 +124,7 @@ afConfigHandler::afConfigHandler(){
 /// \param a_config_file
 /// \return
 ///
-bool afConfigHandler::loadYAML(std::string a_config_file){
+bool afConfigHandler::loadBaseConfig(std::string a_config_file){
     try{
         configNode = YAML::LoadFile(a_config_file);
     } catch (std::exception &e){
@@ -345,7 +345,7 @@ void afRigidBody::addChildBody(afRigidBody* a_childBody, afJointPtr a_jnt){
 /// \param name_remapping
 /// \return
 ///
-bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBodyPtr mB) {
+bool afRigidBody::loadRidigBody(std::string rb_config_file, std::string node_name, afMultiBodyPtr mB) {
     YAML::Node baseNode;
     try{
         baseNode = YAML::LoadFile(rb_config_file);
@@ -354,10 +354,23 @@ bool afRigidBody::load(std::string rb_config_file, std::string name, afMultiBody
         std::cerr << "ERROR! FAILED TO CONFIG FILE: " << rb_config_file << std::endl;
         return 0;
     }
+    YAML::Node bodyNode = baseNode[node_name];
+    return loadRidigBody(&bodyNode, node_name, mB);
+}
 
-    YAML::Node bodyNode = baseNode[name];
-    if (bodyNode.IsNull()) return false;
-
+///
+/// \brief afRigidBody::loadRidigBody
+/// \param rb_config_data
+/// \param name
+/// \param mB
+/// \return
+///
+bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMultiBodyPtr mB){
+    YAML::Node bodyNode = *rb_node;
+    if (bodyNode.IsNull()){
+        std::cerr << "ERROR: RIGID BODY'S "<< node_name << " YAML CONFIG DATA IS NULL\n";
+        return 0;
+    }
     // Declare all the yaml parameters that we want to look for
     YAML::Node bodyName = bodyNode["name"];
     YAML::Node bodyMesh = bodyNode["mesh"];
@@ -772,7 +785,7 @@ afSoftBody::afSoftBody(cBulletWorld *a_chaiWorld): cBulletSoftMultiMesh(a_chaiWo
 /// \param mB
 /// \return
 ///
-bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyPtr mB) {
+bool afSoftBody::loadSoftBody(std::string sb_config_file, std::string node_name, afMultiBodyPtr mB) {
     YAML::Node baseNode;
     try{
         baseNode = YAML::LoadFile(sb_config_file);
@@ -782,9 +795,23 @@ bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyP
         return 0;
     }
 
-    YAML::Node softBodyNode = baseNode[name];
-    if (softBodyNode.IsNull()) return false;
+    YAML::Node softBodyNode = baseNode[node_name];
+    return loadSoftBody(&softBodyNode, node_name, mB);
+}
 
+///
+/// \brief afSoftBody::loadSofyBody
+/// \param sb_config_data
+/// \param name
+/// \param mB
+/// \return
+///
+bool afSoftBody::loadSoftBody(YAML::Node* sb_node, std::string node_name, afMultiBodyPtr mB) {
+    YAML::Node softBodyNode = *sb_node;
+    if (softBodyNode.IsNull()){
+        std::cerr << "ERROR: SOFT BODY'S "<< node_name << " YAML CONFIG DATA IS NULL\n";
+        return 0;
+    }
     // Declare all the yaml parameters that we want to look for
     YAML::Node softBodyName = softBodyNode["name"];
     YAML::Node softBodyMesh = softBodyNode["mesh"];
@@ -969,6 +996,12 @@ bool afSoftBody::load(std::string sb_config_file, std::string name, afMultiBodyP
     return true;
 }
 
+
+///
+/// \brief afSoftBody::setConfigProperties
+/// \param a_body
+/// \param a_configProps
+///
 void afSoftBody::setConfigProperties(const afSoftBodyPtr a_body, const afSoftBodyConfigPropertiesPtr a_configProps){
 
 }
@@ -1001,39 +1034,54 @@ void afJoint::printVec(std::string name, btVector3* v){
 /// \param name_remapping
 /// \return
 ///
-bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::string name_remapping){
+bool afJoint::loadJoint(std::string jnt_config_file, std::string node_name, afMultiBodyPtr mB, std::string name_remapping){
     YAML::Node baseNode;
     try{
-        baseNode = YAML::LoadFile(file);
+        baseNode = YAML::LoadFile(jnt_config_file);
     }catch (std::exception &e){
         std::cerr << "[Exception]: " << e.what() << std::endl;
-        std::cerr << "ERROR! FAILED TO JOINT CONFIG: " << file << std::endl;
+        std::cerr << "ERROR! FAILED TO JOINT CONFIG: " << jnt_config_file << std::endl;
         return 0;
     }
     if (baseNode.IsNull()) return false;
 
-    YAML::Node baseJointNode = baseNode[name];
-    if (baseJointNode.IsNull()) return false;
+    YAML::Node baseJointNode = baseNode[node_name];
+    return loadJoint(&baseJointNode, node_name, mB, name_remapping);
+}
 
+///
+/// \brief afJoint::loadJoint
+/// \param node
+/// \param node_name
+/// \param mB
+/// \param name_remapping
+/// \return
+///
+bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBodyPtr mB, std::string name_remapping){
+    YAML::Node jointNode = *jnt_node;
+    if (jointNode.IsNull()){
+        std::cerr << "ERROR: JOINT'S "<< node_name << " YAML CONFIG DATA IS NULL\n";
+        return 0;
+    }
     // Declare all the yaml parameters that we want to look for
-    YAML::Node jointParentName = baseJointNode["parent"];
-    YAML::Node jointChildName = baseJointNode["child"];
-    YAML::Node jointName = baseJointNode["name"];
-    YAML::Node jointParentPivot = baseJointNode["parent pivot"];
-    YAML::Node jointChildPivot = baseJointNode["child pivot"];
-    YAML::Node jointParentAxis = baseJointNode["parent axis"];
-    YAML::Node jointChildAxis = baseJointNode["child axis"];
-    YAML::Node jointOrigin = baseJointNode["origin"];
-    YAML::Node jointAxis = baseJointNode["axis"];
-    YAML::Node jointEnableMotor = baseJointNode["enable motor"];
-    YAML::Node jointMaxMotorImpulse = baseJointNode["max motor impulse"];
-    YAML::Node jointLimits = baseJointNode["joint limits"];
-    YAML::Node jointOffset = baseJointNode["offset"];
-    YAML::Node jointDamping = baseJointNode["joint damping"];
-    YAML::Node jointType = baseJointNode["type"];
+    YAML::Node jointParentName = jointNode["parent"];
+    YAML::Node jointChildName = jointNode["child"];
+    YAML::Node jointName = jointNode["name"];
+    YAML::Node jointParentPivot = jointNode["parent pivot"];
+    YAML::Node jointChildPivot = jointNode["child pivot"];
+    YAML::Node jointParentAxis = jointNode["parent axis"];
+    YAML::Node jointChildAxis = jointNode["child axis"];
+    YAML::Node jointOrigin = jointNode["origin"];
+    YAML::Node jointAxis = jointNode["axis"];
+    YAML::Node jointEnableMotor = jointNode["enable motor"];
+    YAML::Node jointMaxMotorImpulse = jointNode["max motor impulse"];
+    YAML::Node jointLimits = jointNode["joint limits"];
+    YAML::Node jointOffset = jointNode["offset"];
+    YAML::Node jointDamping = jointNode["joint damping"];
+    YAML::Node jointType = jointNode["type"];
 
     if (!jointParentName.IsDefined() || !jointChildName.IsDefined()){
-        std::cerr << "ERROR: PARENT/CHILD FOR: " << name << " NOT DEFINED \n";
+        std::cerr << "ERROR: PARENT/CHILD FOR: " << node_name << " NOT DEFINED \n";
         return false;
     }
     m_name = jointName.as<std::string>();
@@ -1125,7 +1173,7 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
         }
     }
     else{
-        std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << name << " NOT DEFINED \n";
+        std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << node_name << " NOT DEFINED \n";
         return false;
     }
 
@@ -1286,6 +1334,12 @@ bool afJoint::load(std::string file, std::string name, afMultiBodyPtr mB, std::s
     return true;
 }
 
+///
+/// \brief afJoint::getRotationBetweenVectors
+/// \param v1
+/// \param v2
+/// \return
+///
 btQuaternion afJoint::getRotationBetweenVectors(btVector3 &v1, btVector3 &v2){
     btQuaternion quat;
     double rot_angle = v1.angle(v2);
@@ -1533,14 +1587,6 @@ std::string afMultiBody::remapJointName(std::string a_joint_name){
 
 ///
 /// \brief afMultiBody::loadMultiBody
-/// \return
-///
-bool afMultiBody::loadMultiBody(){
-    return loadMultiBody(0);
-}
-
-///
-/// \brief afMultiBody::loadMultiBody
 /// \param i
 /// \return
 ///
@@ -1618,11 +1664,12 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
     size_t totalRigidBodies = multiBodyRidigBodies.size();
     for (size_t i = 0; i < totalRigidBodies; ++i) {
         tmpRigidBody = new afRigidBody(m_chaiWorld);
-        std::string body_name = multiBodyRidigBodies[i].as<std::string>();
-        std::string remap_str = remapBodyName(body_name, &m_afRigidBodyMap);
+        std::string rb_name = multiBodyRidigBodies[i].as<std::string>();
+        std::string remap_str = remapBodyName(rb_name, &m_afRigidBodyMap);
         //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
-        if (tmpRigidBody->load(a_multibody_config_file.c_str(), body_name, this)){
-            m_afRigidBodyMap[(body_name + remap_str).c_str()] = tmpRigidBody;
+        YAML::Node rb_node = multiBodyNode[rb_name];
+        if (tmpRigidBody->loadRidigBody(&rb_node, rb_name, this)){
+            m_afRigidBodyMap[(rb_name + remap_str).c_str()] = tmpRigidBody;
             tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str, tmpRigidBody->m_body_namespace);
         }
     }
@@ -1633,11 +1680,12 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
     size_t totalSoftBodies = multiBodySoftBodies.size();
     for (size_t i = 0; i < totalSoftBodies; ++i) {
         tmpSoftBody = new afSoftBody(m_chaiWorld);
-        std::string body_name = multiBodySoftBodies[i].as<std::string>();
-        std::string remap_str = remapBodyName(body_name, &m_afSoftBodyMap);
+        std::string sb_name = multiBodySoftBodies[i].as<std::string>();
+        std::string remap_str = remapBodyName(sb_name, &m_afSoftBodyMap);
         //        printf("Loading body: %s \n", (body_name + remap_str).c_str());
-        if (tmpSoftBody->load(a_multibody_config_file.c_str(), body_name, this)){
-            m_afSoftBodyMap[(body_name + remap_str).c_str()] = tmpSoftBody;
+        YAML::Node sb_node = multiBodyNode[sb_name];
+        if (tmpSoftBody->loadSoftBody(&sb_node, sb_name, this)){
+            m_afSoftBodyMap[(sb_name + remap_str).c_str()] = tmpSoftBody;
             //            tmpSoftBody->createAFObject(tmpSoftBody->m_name + remap_str);
         }
     }
@@ -1650,7 +1698,8 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
         std::string jnt_name = multiBodyJoints[i].as<std::string>();
         std::string remap_str = remapJointName(jnt_name);
         //        printf("Loading body: %s \n", (jnt_name + remap_str).c_str());
-        if (tmpJoint->load(a_multibody_config_file.c_str(), jnt_name, this, remap_str)){
+        YAML::Node jnt_node = multiBodyNode[jnt_name];
+        if (tmpJoint->loadJoint(&jnt_node, jnt_name, this, remap_str)){
             m_afJointMap[jnt_name+remap_str] = tmpJoint;
         }
     }

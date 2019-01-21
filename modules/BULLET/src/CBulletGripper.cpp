@@ -165,7 +165,7 @@ bool afGripper::loadMultiBody(std::string a_gripper_config_file, std::string a_g
         tmpBody = new afGripperLink(m_chaiWorld);
         std::string body_name = multiBodyRidigBodies[i].as<std::string>();
 //        printf("Loading body: %s \n", body_name .c_str());
-        if (tmpBody->load(a_gripper_config_file.c_str(), body_name, this)){
+        if (tmpBody->loadRidigBody(a_gripper_config_file.c_str(), body_name, this)){
             m_afRigidBodyMap[body_name.c_str()] = tmpBody;
         }
     }
@@ -175,7 +175,7 @@ bool afGripper::loadMultiBody(std::string a_gripper_config_file, std::string a_g
         tmpJoint = new afJoint();
         std::string jnt_name = multiBodyJoints[i].as<std::string>();
 //        printf("Loading body: %s \n", jnt_name.c_str());
-        if (tmpJoint->load(a_gripper_config_file.c_str(), jnt_name, this)){
+        if (tmpJoint->loadJoint(a_gripper_config_file.c_str(), jnt_name, this)){
             m_afJointMap[jnt_name] = tmpJoint;
         }
     }

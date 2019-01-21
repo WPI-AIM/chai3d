@@ -1226,7 +1226,7 @@ int main(int argc, char* argv[])
     // AF MULTIBODY HANDLER
     //////////////////////////////////////////////////////////////////////////
     g_afWorld = new afWorld(g_bulletWorld);
-    if (g_afWorld->loadYAML("../resources/config/coordination.yaml")){
+    if (g_afWorld->loadBaseConfig("../resources/config/coordination.yaml")){
         g_afWorld->loadWorld();
 
         g_afMultiBody = new afMultiBody(g_bulletWorld);

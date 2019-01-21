@@ -58,8 +58,8 @@ class afMultiBody;
 class afRigidBody;
 class afSoftBody;
 class afJoint;
-class afRigidBodySurfaceProperties;
-class afSoftBodyConfigProperties;
+struct afRigidBodySurfaceProperties;
+struct afSoftBodyConfigProperties;
 
 typedef afMultiBody* afMultiBodyPtr;
 typedef afRigidBody* afRigidBodyPtr;
@@ -86,7 +86,7 @@ public:
     std::string getWorldConfig();
     std::vector<double> getColorRGBA(std::string a_color_name);
     std::string getGripperConfig(std::string a_gripper_name);
-    bool loadYAML(std::string file);
+    bool loadBaseConfig(std::string file);
     inline int numMultiBodyConfig(){return s_multiBody_configs.size();}
 
 private:
@@ -143,7 +143,8 @@ public:
     afRigidBody(cBulletWorld* a_chaiWorld);
     virtual ~afRigidBody();
     virtual void updateCmdFromROS(double dt);
-    virtual bool load(std::string file, std::string name, afMultiBodyPtr mB);
+    virtual bool loadRidigBody(std::string rb_config_file, std::string node_name, afMultiBodyPtr mB);
+    virtual bool loadRidigBody(YAML::Node* rb_node, std::string node_name, afMultiBodyPtr mB);
     virtual void addChildBody(afRigidBodyPtr childBody, afJointPtr jnt);
 
     std::vector<afJointPtr> m_joints;
@@ -183,52 +184,6 @@ protected:
 
 };
 
-enum JointType{
-    revolute = 0,
-    prismatic = 1,
-    fixed = 2
-};
-
-///
-/// \brief The afJoint class
-///
-class afJoint{
-    friend class afRigidBody;
-    friend class afGripperLink;
-    friend class afMultiBody;
-
-public:
-
-    afJoint();
-    virtual ~afJoint();
-    virtual bool load (std::string file, std::string name, afMultiBodyPtr mB, std::string name_remapping_idx = "");
-    void commandTorque(double &cmd);
-    void commandPosition(double &cmd);
-
-protected:
-
-    std::string m_name;
-    std::string m_parent_name, m_child_name;
-    std::string m_joint_name;
-    btVector3 m_axisA, m_axisB;
-    btVector3 m_pvtA, m_pvtB;
-    double m_joint_damping;
-    double m_max_effort;
-    bool m_enable_actuator;
-    double m_max_motor_impulse;
-    double m_lower_limit, m_higher_limit;
-    double m_joint_offset;
-    btRigidBody *m_rbodyA, *m_rbodyB;
-    void printVec(std::string name, btVector3* v);
-    btQuaternion getRotationBetweenVectors(btVector3 &v1, btVector3 &v2);
-
-protected:
-
-    btTypedConstraint *m_btConstraint;
-    JointType m_jointType;
-
-};
-
 ///
 /// \brief The afSoftBody class
 ///
@@ -240,7 +195,8 @@ public:
 
     afSoftBody(cBulletWorld* a_chaiWorld);
     virtual void updateCmdFromROS(double dt){}
-    virtual bool load(std::string file, std::string name, afMultiBodyPtr mB);
+    virtual bool loadSoftBody(std::string sb_config_file, std::string node_name, afMultiBodyPtr mB);
+    virtual bool loadSoftBody(YAML::Node* sb_node, std::string node_name, afMultiBodyPtr mB);
     virtual void addChildBody(afSoftBodyPtr childBody, afJointPtr jnt){}
 
     std::vector<afJointPtr> m_joints;
@@ -273,6 +229,54 @@ protected:
     static afSoftBodyConfigProperties m_configProps;
     static cMaterial m_mat;
 };
+
+enum JointType{
+    revolute = 0,
+    prismatic = 1,
+    fixed = 2
+};
+
+///
+/// \brief The afJoint class
+///
+class afJoint{
+    friend class afRigidBody;
+    friend class afGripperLink;
+    friend class afMultiBody;
+
+public:
+
+    afJoint();
+    virtual ~afJoint();
+    virtual bool loadJoint(std::string jnt_config_file, std::string node_name, afMultiBodyPtr mB, std::string name_remapping_idx = "");
+    virtual bool loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBodyPtr mB, std::string name_remapping_idx = "");
+    void commandTorque(double &cmd);
+    void commandPosition(double &cmd);
+
+protected:
+
+    std::string m_name;
+    std::string m_parent_name, m_child_name;
+    std::string m_joint_name;
+    btVector3 m_axisA, m_axisB;
+    btVector3 m_pvtA, m_pvtB;
+    double m_joint_damping;
+    double m_max_effort;
+    bool m_enable_actuator;
+    double m_max_motor_impulse;
+    double m_lower_limit, m_higher_limit;
+    double m_joint_offset;
+    btRigidBody *m_rbodyA, *m_rbodyB;
+    void printVec(std::string name, btVector3* v);
+    btQuaternion getRotationBetweenVectors(btVector3 &v1, btVector3 &v2);
+
+protected:
+
+    btTypedConstraint *m_btConstraint;
+    JointType m_jointType;
+
+};
+
 
 ///
 /// \brief The afWorld class
@@ -318,10 +322,9 @@ public:
     afMultiBody();
     afMultiBody(cBulletWorld* a_chaiWorld){m_chaiWorld = a_chaiWorld;}
     virtual ~afMultiBody();
-    bool loadMultiBody();
-    bool loadMultiBody(int i);
+    virtual bool loadMultiBody(int i);
     virtual bool loadMultiBody(std::string a_multibody_config);
-    virtual void loadAllMultiBodies();
+    void loadAllMultiBodies();
     afRigidBodyPtr getRidigBody(std::string a_name);
     afRigidBodyPtr getRootRigidBody(afRigidBodyPtr a_bodyPtr = NULL);
     afSoftBodyPtr getSoftBody(std::string a_name);
