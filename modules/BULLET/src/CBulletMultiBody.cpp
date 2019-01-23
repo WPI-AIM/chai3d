@@ -37,6 +37,7 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.aimlab.wpi.edu>
+    \author    <amunawar@wpi.edu>
     \author    Adnan Munawar
     \Motivation: https://www.gamedev.net/articles/programming/engines-and-middleware/yaml-basics-and-parsing-with-yaml-cpp-r3508/
     \version   3.2.1 $Rev: 2161 $
@@ -335,6 +336,10 @@ void afRigidBody::addChildBody(afRigidBody* a_childBody, afJointPtr a_jnt){
     for (m_bodyIt = a_childBody->m_childrenBodies.begin() ; m_bodyIt != a_childBody->m_childrenBodies.end() ; ++m_bodyIt){
         (*m_bodyIt)->addParentBody(this);
     }
+    // Update the afObject State Message's children field.
+    // This field shall be updated any time add_child method is called
+    // and not in the high-speed control loops to avoid computational load
+    afObjectStateSetChildrenNames();
 }
 
 ///
@@ -393,7 +398,9 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
     YAML::Node bodyAngDamping = bodyNode["damping"]["angular"];
     YAML::Node bodyStaticFriction = bodyNode["friction"]["static"];
     YAML::Node bodyRollingFriction = bodyNode["friction"]["rolling"];
-
+    YAML::Node bodyPublishChildrenNames = bodyNode["publish joint positions"];
+    YAML::Node bodyPublishJointPositions = bodyNode["publish children names"];
+    YAML::Node bodyPublishFrequency = bodyNode["publish frequency"];
 
     if(bodyName.IsDefined()){
         m_name = bodyName.as<std::string>();
@@ -605,6 +612,24 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
     if (bodyRollingFriction.IsDefined())
         m_surfaceProps.m_rolling_friction = bodyRollingFriction.as<double>();
 
+    if (bodyPublishChildrenNames.IsDefined()){
+        _publish_children_names = bodyPublishChildrenNames.as<bool>();
+    }
+
+    if (bodyPublishJointPositions.IsDefined()){
+        _publish_joint_positions = bodyPublishJointPositions.as<bool>();
+    }
+
+    if (bodyPublishFrequency.IsDefined()){
+        _min_publish_frequency = bodyPublishFrequency["low"];
+        _max_publish_frequency = bodyPublishFrequency["high"];
+    }
+    else{
+        // Set min to 50 Hz and max to 2000 Hz
+        _min_publish_frequency = 50;
+        _max_publish_frequency = 2000;
+    }
+
     setConfigProperties(this, &m_surfaceProps);
     mB->m_chaiWorld->addChild(this);
     return true;
@@ -669,16 +694,16 @@ void afRigidBody::setConfigProperties(const afRigidBodyPtr a_body, const afRigid
 }
 
 ///
-/// \brief afBody::updateCmdFromROS
+/// \brief afRigidBody::afCommandExecute
 /// \param dt
 ///
-void afRigidBody::updateCmdFromROS(double dt){
+void afRigidBody::afObjectCommandExecute(double dt){
 #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    if (m_afObjPtr.get() != nullptr){
-        m_afObjPtr->update_af_cmd();
+    if (m_afObjectPtr.get() != nullptr){
+        m_afObjectPtr->update_af_cmd();
         cVector3d force, torque;
-        m_af_pos_ctrl_active = m_afObjPtr->m_afCmd.pos_ctrl;
-        if (m_afObjPtr->m_afCmd.pos_ctrl){
+        m_af_enable_position_controller = m_afObjectPtr->m_afCmd.enable_position_controller;
+        if (m_afObjectPtr->m_afCmd.enable_position_controller){
             computeControllerGains();
             cVector3d cur_pos, cmd_pos, rot_axis, rot_axix_w_gain;
             cQuaternion cur_rot, cmd_rot;
@@ -696,14 +721,14 @@ void afRigidBody::updateCmdFromROS(double dt){
             cur_rot.w = b_trans.getRotation().getW();
             cur_rot.toRotMat(cur_rot_mat);
 
-            cmd_pos.set(m_afObjPtr->m_afCmd.px,
-                        m_afObjPtr->m_afCmd.py,
-                        m_afObjPtr->m_afCmd.pz);
+            cmd_pos.set(m_afObjectPtr->m_afCmd.px,
+                        m_afObjectPtr->m_afCmd.py,
+                        m_afObjectPtr->m_afCmd.pz);
 
-            cmd_rot.x = m_afObjPtr->m_afCmd.qx;
-            cmd_rot.y = m_afObjPtr->m_afCmd.qy;
-            cmd_rot.z = m_afObjPtr->m_afCmd.qz;
-            cmd_rot.w = m_afObjPtr->m_afCmd.qw;
+            cmd_rot.x = m_afObjectPtr->m_afCmd.qx;
+            cmd_rot.y = m_afObjectPtr->m_afCmd.qy;
+            cmd_rot.z = m_afObjectPtr->m_afCmd.qz;
+            cmd_rot.w = m_afObjectPtr->m_afCmd.qw;
             cmd_rot.toRotMat(cmd_rot_mat);
 
             m_dpos_prev = m_dpos;
@@ -718,25 +743,67 @@ void afRigidBody::updateCmdFromROS(double dt){
             cur_rot_mat.mul(torque);
         }
         else{
-            force.set(m_afObjPtr->m_afCmd.Fx,
-                      m_afObjPtr->m_afCmd.Fy,
-                      m_afObjPtr->m_afCmd.Fz);
-            torque.set(m_afObjPtr->m_afCmd.Nx,
-                       m_afObjPtr->m_afCmd.Ny,
-                       m_afObjPtr->m_afCmd.Nz);
+            force.set(m_afObjectPtr->m_afCmd.Fx,
+                      m_afObjectPtr->m_afCmd.Fy,
+                      m_afObjectPtr->m_afCmd.Fz);
+            torque.set(m_afObjectPtr->m_afCmd.Nx,
+                       m_afObjectPtr->m_afCmd.Ny,
+                       m_afObjectPtr->m_afCmd.Nz);
         }
         addExternalForce(force);
         addExternalTorque(torque);
-        size_t jntCmdSize = m_afObjPtr->m_afCmd.size_J_cmd;
+        size_t jntCmdSize = m_afObjectPtr->m_afCmd.size_J_cmd;
         if (jntCmdSize > 0 && m_parentBodies.size() == 0){
             size_t jntCnt = m_joints.size() < jntCmdSize ? m_joints.size() : jntCmdSize;
             for (size_t jnt = 0 ; jnt < jntCnt ; jnt++){
-                if (m_afObjPtr->m_afCmd.pos_ctrl)
-                    m_joints[jnt]->commandPosition(m_afObjPtr->m_afCmd.J_cmd[jnt]);
+                if (m_afObjectPtr->m_afCmd.enable_position_controller)
+                    m_joints[jnt]->commandPosition(m_afObjectPtr->m_afCmd.J_cmd[jnt]);
                 else
-                    m_joints[jnt]->commandTorque(m_afObjPtr->m_afCmd.J_cmd[jnt]);
+                    m_joints[jnt]->commandTorque(m_afObjectPtr->m_afCmd.J_cmd[jnt]);
             }
 
+        }
+    }
+#endif
+}
+
+///
+/// \brief afRigidBody::afObjectSetChildrenNames
+///
+void afRigidBody::afObjectStateSetChildrenNames(){
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    if (_publish_children_names){
+        int num_children = m_childrenBodies.size();
+        if (num_children > 0 && m_afObjectPtr != NULL){
+            std::vector<std::string> children_names;
+
+            children_names.resize(num_children);
+            for (size_t i = 0 ; i < num_children ; i++){
+                children_names[i] = m_childrenBodies[i]->m_name;
+            }
+            m_afObjectPtr->set_children(children_names);
+        }
+    }
+
+#endif
+}
+
+///
+/// \brief afRigidBody::afObjectSetJointPositions
+///
+void afRigidBody::afObjectSetJointPositions(){
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    if (_publish_joint_positions){
+        int num_jnts = m_joints.size();
+        if (num_jnts > 0 && m_afObjectPtr != NULL){
+            std::vector<float> joint_positions;
+            joint_positions.resize(num_jnts);
+            for (size_t i = 0 ; i < num_jnts ; i++){
+                float jnt_pos = m_joints[i]->getPosition();
+                jnt_pos = floor(jnt_pos * 100) / 100;
+                joint_positions[i] = jnt_pos;
+            }
+            m_afObjectPtr->set_joint_positions(joint_positions);
         }
     }
 #endif
@@ -1296,7 +1363,8 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
         frameB.setRotation( quat_c_p.inverse() * offset_quat.inverse() * quat_nz_p);
         frameB.setOrigin(m_pvtB);
 
-        m_btConstraint = new btHingeConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
+        m_hinge = new btHingeConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
+        m_btConstraint = m_hinge;
 #endif
 
         if (jointEnableMotor.IsDefined()){
@@ -1337,7 +1405,8 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
         frameB.setRotation( quat_c_p.inverse() * offset_quat.inverse() * quat_nx_p);
         frameB.setOrigin(m_pvtB);
 
-        m_btConstraint = new btSliderConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
+        m_slider = new btSliderConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
+        m_btConstraint = m_slider;
 
         if (jointEnableMotor.IsDefined()){
             m_enable_actuator = jointEnableMotor.as<int>();
@@ -1464,6 +1533,15 @@ void afJoint::commandTorque(double &cmd){
         m_rbodyA->applyForce(-sliderAxisInWorld * cmd, relPos);
         m_rbodyB->applyForce(sliderAxisInWorld * cmd, relPos);
     }
+}
+
+double afJoint::getPosition(){
+    if (m_jointType == JointType::revolute)
+        return m_hinge->getHingeAngle();
+    else if (m_jointType == JointType::prismatic)
+        return m_slider->getLinearPos();
+    else if (m_jointType == JointType::fixed)
+        return 0;
 }
 
 ///
@@ -1721,7 +1799,10 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
                 continue;
             }
             else{
-                tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str, tmpRigidBody->m_body_namespace);
+                tmpRigidBody->afObjectCreate(tmpRigidBody->m_name + remap_str,
+                                             tmpRigidBody->m_body_namespace,
+                                             tmpRigidBody->getMinPublishFrequency(),
+                                             tmpRigidBody->getMaxPublishFrequency());
             }
         }
     }

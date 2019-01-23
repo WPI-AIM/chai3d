@@ -36,7 +36,9 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti, Adnan Munawar
+    \author    Francois Conti
+    \contributor <amunawar@wpi.edu>
+    \contributor Adnan Munawar
     \version   3.2.0 $Rev: 2015 $
 */
 //==============================================================================
@@ -59,7 +61,7 @@ namespace chai3d {
 cBulletWorld::cBulletWorld(std::string a_worldName)
 {
     if(!a_worldName.empty()){
-        createAFWorld(a_worldName);
+        afWorldCreate(a_worldName);
     }
     // reset simulation time
     m_simulationTime = 0.0;
@@ -158,19 +160,6 @@ cVector3d cBulletWorld::getGravity()
     return (result);
 }
 
-//==============================================================================
-/*!
-    This method creates an afCommunication World
-
-    \param  a_name  af World Name.
-*/
-//==============================================================================
-void cBulletWorld::createAFWorld(std::string a_name){
-#ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    m_afWorldPtr.reset(new chai_env::World(a_name));
-#endif
-}
-
 
 //==============================================================================
 /*!
@@ -180,9 +169,9 @@ void cBulletWorld::createAFWorld(std::string a_name){
     \param  a_name  af Namespace.
 */
 //==============================================================================
-void cBulletWorld::createAFWorld(std::string a_name, std::string a_namespace){
+void cBulletWorld::afWorldCreate(std::string a_name, std::string a_namespace, int a_min_freq, int a_max_freq){
 #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    m_afWorldPtr.reset(new chai_env::World(a_name, a_namespace));
+    m_afWorldPtr.reset(new chai_env::World(a_name, a_namespace, a_min_freq, a_max_freq));
 #endif
 }
 
@@ -215,7 +204,7 @@ void cBulletWorld::updateDynamics(double a_interval, double a_wallClock, double 
     for(i = m_bodies.begin(); i != m_bodies.end(); ++i)
     {
         cBulletGenericObject* nextItem = *i;
-        nextItem->updateCmdFromROS(a_interval);
+        nextItem->afObjectCommandExecute(a_interval);
     }
 
     // integrate simulation during an certain interval
@@ -252,7 +241,7 @@ void cBulletWorld::updatePositionFromDynamics()
     {
         cBulletGenericObject* nextItem = *i;
         nextItem->updatePositionFromDynamics();
-        nextItem->updateROSMessageTime(&m_wallClock, &m_simulationTime);
+        nextItem->afObjectSetTime(&m_wallClock, &m_simulationTime);
     }
 }
 

@@ -36,7 +36,9 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti, Adnan Munawar
+    \author    Francois Conti
+    \contributor Adnan Munawar
+    \contributor <amunawar@wpi.edu>
     \version   3.2.0 $Rev: 2161 $
 */
 //==============================================================================
@@ -167,11 +169,11 @@ void cBulletMesh::updatePositionFromDynamics()
 
     #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     // update Transform data for m_rosObj
-    if(m_afObjPtr.get() != nullptr){
-        m_afObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
+    if(m_afObjectPtr.get() != nullptr){
+        m_afObjectPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
         cQuaternion q;
         q.fromRotMat(m_localRot);
-        m_afObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
+        m_afObjectPtr->cur_orientation(q.x, q.y, q.z, q.w);
     }
     #endif
 }

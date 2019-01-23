@@ -35,7 +35,8 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE. 
 
-    \author    <http://www.chai3d.org>
+    \author    <http://www.aimlab.wpi.edu>
+    \autor     <amunawar@wpi.edu>
     \author    Adnan Munawar
     \version   3.2.1 $Rev: 2161 $
 */
@@ -224,11 +225,11 @@ void cBulletSoftMultiMesh::updatePositionFromDynamics()
 
     // update Transform data for m_rosObj
 #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    if(m_afObjPtr.get() != nullptr){
-        m_afObjPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
+    if(m_afObjectPtr.get() != nullptr){
+        m_afObjectPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
         cQuaternion q;
         q.fromRotMat(m_localRot);
-        m_afObjPtr->cur_orientation(q.x, q.y, q.z, q.w);
+        m_afObjectPtr->cur_orientation(q.x, q.y, q.z, q.w);
     }
 #endif
 }

@@ -35,7 +35,7 @@
     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
     POSSIBILITY OF SUCH DAMAGE.
 
-    \author    <http://www.aimlab.wpi.edu>
+    \author    <amunawar@wpi.edu>
     \author    Adnan Munawar
     \version   3.2.1 $Rev: 2161 $
 */
@@ -187,7 +187,7 @@ bool afGripper::loadMultiBody(std::string a_gripper_config_file, std::string a_g
     else{
         std::string sfx = m_suffix_name;
         sfx.erase(remove_if(sfx.begin(), sfx.end(), isspace), sfx.end());
-        m_rootLink->createAFObject(m_gripper_name + sfx, m_multibody_namespace);
+        m_rootLink->afObjectCreate(m_gripper_name + sfx, m_multibody_namespace);
     }
 
     return true;

@@ -300,8 +300,8 @@ void Device::update_cursor_pose(){
         m_af_cursor->setLocalPos(m_pos * m_workspace_scale_factor);
         m_af_cursor->setLocalRot(m_rot);
 #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-        m_af_cursor->m_afObjPtr->set_userdata_desc("haptics frequency");
-        m_af_cursor->m_afObjPtr->set_userdata(m_freq_ctr.getFrequency());
+        m_af_cursor->m_afObjectPtr->set_userdata_desc("haptics frequency");
+        m_af_cursor->m_afObjectPtr->set_userdata(m_freq_ctr.getFrequency());
 #endif
     }
 }
@@ -529,8 +529,8 @@ public:
     virtual cVector3d measured_pos();
     virtual cMatrix3d measured_rot();
     virtual void update_measured_pose();
-    virtual inline void apply_force(cVector3d force){if (!m_rootLink->m_af_pos_ctrl_active) m_rootLink->addExternalForce(force);}
-    virtual inline void apply_torque(cVector3d torque){if (!m_rootLink->m_af_pos_ctrl_active) m_rootLink->addExternalTorque(torque);}
+    virtual inline void apply_force(cVector3d force){if (!m_rootLink->m_af_enable_position_controller) m_rootLink->addExternalForce(force);}
+    virtual inline void apply_torque(cVector3d torque){if (!m_rootLink->m_af_enable_position_controller) m_rootLink->addExternalTorque(torque);}
     bool is_wrench_set();
     void clear_wrench();
     void offset_gripper_angle(double offset);

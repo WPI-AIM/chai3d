@@ -36,7 +36,8 @@
     POSSIBILITY OF SUCH DAMAGE. 
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti
+    \author    <amunawar@wpi.edu>
+    \author    Francois Conti, Adnan Munawar
     \version   3.2.0 $Rev: 2189 $
 */
 //==============================================================================

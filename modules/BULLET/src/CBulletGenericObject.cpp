@@ -36,7 +36,9 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti, Adnan Munawar
+    \author    Francois Conti
+    \contributor Adnan Munawar
+    \contributor <amunawar@wpi.edu>
     \version   3.2.0 $Rev: 2181 $
 */
 //==============================================================================
@@ -121,8 +123,8 @@ void cBulletGenericObject::setMass(const double a_mass)
 {
     m_mass = a_mass;
     #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    if(m_afObjPtr.get() != nullptr){
-        m_afObjPtr->set_mass(a_mass);
+    if(m_afObjectPtr.get() != nullptr){
+        m_afObjectPtr->set_mass(a_mass);
     }
     #endif
 }
@@ -139,8 +141,8 @@ void cBulletGenericObject::setInertia(const cVector3d& a_inertia)
 {
     m_inertia = a_inertia;
     #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    if(m_afObjPtr.get() != nullptr){
-        m_afObjPtr->set_principal_intertia(a_inertia(0),
+    if(m_afObjectPtr.get() != nullptr){
+        m_afObjectPtr->set_principal_intertia(a_inertia(0),
                                             a_inertia(1),
                                             a_inertia(2));
     }
@@ -211,8 +213,8 @@ void cBulletGenericObject::estimateInertia()
         m_inertia(2) = inertia[2];
 
         #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-        if(m_afObjPtr.get() != nullptr){
-            m_afObjPtr->set_principal_intertia(m_inertia(0),
+        if(m_afObjectPtr.get() != nullptr){
+            m_afObjectPtr->set_principal_intertia(m_inertia(0),
                                                 m_inertia(1),
                                                 m_inertia(2));
         }
@@ -236,8 +238,8 @@ void cBulletGenericObject::setStatic(bool a_static)
         m_bulletRigidBody->activate(!a_static);
 
         #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-        if(m_afObjPtr.get() != nullptr){
-            m_afObjPtr->set_mass(0);
+        if(m_afObjectPtr.get() != nullptr){
+            m_afObjectPtr->set_mass(0);
         }
         #endif
     }
@@ -325,58 +327,44 @@ void cBulletGenericObject::addExternalTorque(const cVector3d& a_torque)
     This method creates an afCommunication Object
 
     \param  a_name  af Object Name.
-*/
-//==============================================================================
-void cBulletGenericObject::createAFObject(std::string a_name){
-#ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    m_afObjPtr.reset(new chai_env::Object(a_name));
-#endif
-}
-
-
-//==============================================================================
-/*!
-    This method creates an afCommunication Object
-
-    \param  a_name  af Object Name.
     \param  a_name  af Namespace.
 */
 //==============================================================================
-void cBulletGenericObject::createAFObject(std::string a_name, std::string a_namespace){
+void cBulletGenericObject::afObjectCreate(std::string a_name, std::string a_namespace, int a_min_freq, int a_max_freq){
 #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    m_afObjPtr.reset(new chai_env::Object(a_name, a_namespace));
+    m_afObjectPtr.reset(new chai_env::Object(a_name, a_namespace, a_min_freq, a_max_freq));
 #endif
 }
 
 
 //==============================================================================
 /*!
-    //! This method applies updates Wall and Sim Time for ROS Message.
+    //! This method applies updates Wall and Sim Time for AF State Message.
 
     \param a_wall_time   Wall Time
     \param a_sim_time    Sim Time
 */
 //==============================================================================
-void cBulletGenericObject::updateROSMessageTime(const double *a_wall_time, const double *a_sim_time){
+void cBulletGenericObject::afObjectSetTime(const double *a_wall_time, const double *a_sim_time){
      #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-     if (m_afObjPtr.get() != nullptr){
-         m_afObjPtr->set_chai_wall_time(*a_wall_time);
-         m_afObjPtr->set_chai_sim_time(*a_sim_time);
+     if (m_afObjectPtr.get() != nullptr){
+         m_afObjectPtr->set_chai_wall_time(*a_wall_time);
+         m_afObjectPtr->set_chai_sim_time(*a_sim_time);
      }
      #endif
 }
 
 //==============================================================================
 /*!
-    This method updates forces sfrom ROS. This method is called from cBulletWorld if rosObj is created
+    This method updates forces from AF Command Message. This method is called from cBulletWorld if afWorldPtr is created
 */
 //==============================================================================
-void cBulletGenericObject::updateCmdFromROS(double dt){
+void cBulletGenericObject::afObjectCommandExecute(double dt){
   #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    if (m_afObjPtr.get() != nullptr){
-        m_afObjPtr->update_af_cmd();
+    if (m_afObjectPtr.get() != nullptr){
+        m_afObjectPtr->update_af_cmd();
         cVector3d force, torque;
-        if (m_afObjPtr->m_afCmd.pos_ctrl){
+        if (m_afObjectPtr->m_afCmd.enable_position_controller){
             cVector3d cur_pos, cmd_pos, rot_axis;
             cQuaternion cur_rot, cmd_rot;
             cMatrix3d cur_rot_mat, cmd_rot_mat;
@@ -395,14 +383,14 @@ void cBulletGenericObject::updateCmdFromROS(double dt){
             cur_rot.w = b_trans.getRotation().getW();
             cur_rot.toRotMat(cur_rot_mat);
 
-            cmd_pos.set(m_afObjPtr->m_afCmd.px,
-                        m_afObjPtr->m_afCmd.py,
-                        m_afObjPtr->m_afCmd.pz);
+            cmd_pos.set(m_afObjectPtr->m_afCmd.px,
+                        m_afObjectPtr->m_afCmd.py,
+                        m_afObjectPtr->m_afCmd.pz);
 
-            cmd_rot.x = m_afObjPtr->m_afCmd.qx;
-            cmd_rot.y = m_afObjPtr->m_afCmd.qy;
-            cmd_rot.z = m_afObjPtr->m_afCmd.qz;
-            cmd_rot.w = m_afObjPtr->m_afCmd.qw;
+            cmd_rot.x = m_afObjectPtr->m_afCmd.qx;
+            cmd_rot.y = m_afObjectPtr->m_afCmd.qy;
+            cmd_rot.z = m_afObjectPtr->m_afCmd.qz;
+            cmd_rot.w = m_afObjectPtr->m_afCmd.qw;
             cmd_rot.toRotMat(cmd_rot_mat);
 
             m_dpos_prev = m_dpos;
@@ -417,12 +405,12 @@ void cBulletGenericObject::updateCmdFromROS(double dt){
         }
         else{
 
-            force.set(m_afObjPtr->m_afCmd.Fx,
-                      m_afObjPtr->m_afCmd.Fy,
-                      m_afObjPtr->m_afCmd.Fz);
-            torque.set(m_afObjPtr->m_afCmd.Nx,
-                       m_afObjPtr->m_afCmd.Ny,
-                       m_afObjPtr->m_afCmd.Nz);
+            force.set(m_afObjectPtr->m_afCmd.Fx,
+                      m_afObjectPtr->m_afCmd.Fy,
+                      m_afObjectPtr->m_afCmd.Fz);
+            torque.set(m_afObjectPtr->m_afCmd.Nx,
+                       m_afObjectPtr->m_afCmd.Ny,
+                       m_afObjectPtr->m_afCmd.Nz);
         }
         addExternalForce(force);
         addExternalTorque(torque);
@@ -499,7 +487,6 @@ void cBulletGenericObject::setSurfaceFriction(const double a_friction)
         m_bulletRigidBody->setFriction(a_friction);
     }
 }
-
 
 //==============================================================================
 /*!

@@ -36,7 +36,9 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti, Adnan Munawar
+    \author    Francois Conti
+    \contributor Adnan Munawar
+    \contributor <amunawar@wpi.edu>
     \version   3.2.0 $Rev: 2126 $
 */
 //==============================================================================
@@ -105,7 +107,7 @@ public:
     //! Constructor of cBulletGenericBody.
     cBulletGenericObject(cBulletWorld* a_world, std::string a_objName="") {
         if(!a_objName.empty()){
-            createAFObject(a_objName);
+            afObjectCreate(a_objName);
         }
         initialize(a_world); }
 
@@ -159,13 +161,6 @@ public:
     //! This method updates the CHAI3D position representation from the Bullet dynamics engine.
     virtual void updatePositionFromDynamics() {}
 
-    //! This method create as afCommunication Instance
-    virtual void createAFObject(std::string a_name);
-
-    //! This method create as afCommunication Instance with the specified namespace
-    virtual void createAFObject(std::string a_name, std::string a_namespace);
-
-
     //--------------------------------------------------------------------------
     // PUBLIC METHODS - FRICTION PROPERTIES:
     //--------------------------------------------------------------------------
@@ -195,11 +190,35 @@ public:
     void addExternalForceAtPoint(const cVector3d& a_force,
                                  const cVector3d& a_relativePos);
 
-    //! This method applies any forces that are being sent by ROS.
-    virtual void updateCmdFromROS(double dt=0.001);
+    // AFMB API BEGIN
 
-    //! This method applies updates Wall and Sim Time for ROS Message.
-    virtual void updateROSMessageTime(const double* a_wall_time, const double* a_sim_time);
+    //! This method create as afCommunication Instance with the specified namespace
+    virtual void afObjectCreate(std::string a_name, std::string a_namespace = "/chai/env/", int a_min_freq=50, int a_max_freq=2000);
+
+    //! Update the children for this body in the afObject State Message
+    virtual void afObjectStateSetChildrenNames(){}
+
+    //! Update the joint positions of children in afObject State Message
+    virtual void afObjectSetJointPositions(){}
+
+    //! This method applies any wrenches, joint commands that are being sent by AF Ojbect Command Message.
+    virtual void afObjectCommandExecute(double dt=0.001);
+
+    //! This method applies updates Wall and Sim Time for AF State Message.
+    virtual void afObjectSetTime(const double* a_wall_time, const double* a_sim_time);
+
+    //! AF CHAI Env
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    std::shared_ptr<chai_env::Object> m_afObjectPtr;
+    #endif
+
+    //! If the Position Controller is active, disable Position Controller from Haptic Device
+    bool m_af_enable_position_controller;
+
+    //! AF Namespace, this can be different for every afObject
+    std::string m_af_namespace;
+
+    // AFMB API END
 
     //--------------------------------------------------------------------------
     // PUBLIC METHODS - DAMPING:
@@ -228,8 +247,6 @@ public:
     //--------------------------------------------------------------------------
 
 public:
-    //! If the afPos Controller is active, disable Position Ctrl from Haptic Device
-    bool m_af_pos_ctrl_active;
 
     //! Bullet world.
     cBulletWorld* m_dynamicWorld;
@@ -245,14 +262,6 @@ public:
 
     //! Bullet motion state.
     btDefaultMotionState* m_bulletMotionState;
-
-    //! ROS CHAI Env
-    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    std::shared_ptr<chai_env::Object> m_afObjPtr;
-    #endif
-
-    //! AF Namespace
-    std::string m_af_namespace;
 
     //--------------------------------------------------------------------------
     // PROTECTED METHODS:

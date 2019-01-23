@@ -36,7 +36,9 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.chai3d.org>
-    \author    Francois Conti, Adnan Munawar
+    \author    Francois Conti
+    \contributor <amunawar@wpi.edu>
+    \contributor Adnan Munawar
     \version   3.2.0 $Rev: 2126 $
 */
 //==============================================================================
@@ -151,11 +153,17 @@ public:
     //! This method returns the current simulation time
     double getSimulationTime(void);
 
-    //! This method create as afCommunication Instance
-    virtual void createAFWorld(std::string a_name);
+    // AFMB API BEGIN
 
     //! This method create as afCommunication Instance with the specified namespace
-    virtual void createAFWorld(std::string a_name, std::string a_namespace);
+    virtual void afWorldCreate(std::string a_name, std::string a_namespace = "/chai/env/", int a_min_freq=50, int a_max_freq=2000);
+
+#ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    //! AF World Ptr
+    std::shared_ptr<chai_env::World> m_afWorldPtr;
+#endif
+
+    // AFMB API END
 
 
     //--------------------------------------------------------------------------
@@ -204,10 +212,6 @@ protected:
     //! Maximum number of iterations.
     int m_integrationMaxIterations;
 
-    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    //! World ROS Object
-    std::shared_ptr<chai_env::World> m_afWorldPtr;
-    #endif
 };
 
 //------------------------------------------------------------------------------

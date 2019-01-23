@@ -36,6 +36,7 @@
     POSSIBILITY OF SUCH DAMAGE.
 
     \author    <http://www.aimlab.wpi.edu>
+    \author    <amunawar@wpi.edu>
     \author    Adnan Munawar
     \Motivation: https://www.gamedev.net/articles/programming/engines-and-middleware/yaml-basics-and-parsing-with-yaml-cpp-r3508/
     \version   3.2.1 $Rev: 2161 $
@@ -142,7 +143,7 @@ public:
 
     afRigidBody(cBulletWorld* a_chaiWorld);
     virtual ~afRigidBody();
-    virtual void updateCmdFromROS(double dt);
+    virtual void afObjectCommandExecute(double dt);
     virtual bool loadRidigBody(std::string rb_config_file, std::string node_name, afMultiBodyPtr mB);
     virtual bool loadRidigBody(YAML::Node* rb_node, std::string node_name, afMultiBodyPtr mB);
     virtual void addChildBody(afRigidBodyPtr childBody, afJointPtr jnt);
@@ -160,6 +161,10 @@ public:
     //! This method toggles the viewing of frames of this rigid bodyl.
     inline void toggleFrameVisibility(){m_showFrame = !m_showFrame;}
 
+    //! Get Min/Max publishing frequency for afObjectState for this body
+    inline int getMinPublishFrequency(){return _min_publish_frequency;}
+    inline int getMaxPublishFrequency(){return _max_publish_frequency;}
+
 protected:
 
     double m_scale;
@@ -173,12 +178,20 @@ protected:
     double K_ang, D_ang;
     bool _lin_gains_computed = false;
     bool _ang_gains_computed = false;
+    bool _publish_joint_positions = false;
+    bool _publish_children_names = false;
+    bool _min_publish_frequency;
+    bool _max_publish_frequency;
     void computeControllerGains();
 
 protected:
 
     void addParentBody(afRigidBodyPtr a_body);
     void populateParentsTree(afRigidBodyPtr a_body, afJointPtr a_jnt);
+    // Update the children for this body in the afObject State Message
+    virtual void afObjectStateSetChildrenNames();
+    // Update the joint positions of children in afObject State Message
+    virtual void afObjectSetJointPositions();
     static afRigidBodySurfaceProperties m_surfaceProps;
     static cMaterial m_mat;
 
@@ -194,7 +207,7 @@ class afSoftBody: public cBulletSoftMultiMesh{
 public:
 
     afSoftBody(cBulletWorld* a_chaiWorld);
-    virtual void updateCmdFromROS(double dt){}
+    virtual void afObjectCommandExecute(double dt){}
     virtual bool loadSoftBody(std::string sb_config_file, std::string node_name, afMultiBodyPtr mB);
     virtual bool loadSoftBody(YAML::Node* sb_node, std::string node_name, afMultiBodyPtr mB);
     virtual void addChildBody(afSoftBodyPtr childBody, afJointPtr jnt){}
@@ -252,6 +265,7 @@ public:
     virtual bool loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBodyPtr mB, std::string name_remapping_idx = "");
     void commandTorque(double &cmd);
     void commandPosition(double &cmd);
+    double getPosition();
 
 protected:
 
@@ -275,6 +289,12 @@ protected:
     btTypedConstraint *m_btConstraint;
     JointType m_jointType;
 
+private:
+    // Add these two pointers for faster access to constraint internals
+    // rather than having to cast the m_btConstraint ptr in high speed
+    // control loops
+    btHingeConstraint* m_hinge;
+    btSliderConstraint* m_slider;
 };
 
 
