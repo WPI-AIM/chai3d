@@ -325,7 +325,7 @@ public:
     virtual bool loadMultiBody(int i);
     virtual bool loadMultiBody(std::string a_multibody_config);
     void loadAllMultiBodies();
-    afRigidBodyPtr getRidigBody(std::string a_name);
+    afRigidBodyPtr getRidigBody(std::string a_name, bool suppress_warning=false);
     afRigidBodyPtr getRootRigidBody(afRigidBodyPtr a_bodyPtr = NULL);
     afSoftBodyPtr getSoftBody(std::string a_name);
     inline std::string getHighResMeshesPath(){return m_multibody_high_res_meshes_path;}

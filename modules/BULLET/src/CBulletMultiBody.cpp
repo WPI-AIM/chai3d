@@ -400,6 +400,15 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
         m_name.erase(std::remove(m_name.begin(), m_name.end(), ' '), m_name.end());
     }
 
+    // Check if the name is world and if it has already been defined.
+    if (strcmp(m_name.c_str(), "world") == 0 || strcmp(m_name.c_str(), "World") == 0 || strcmp(m_name.c_str(), "WORLD") == 0){
+        if(mB->getRidigBody(node_name, true)){
+            // Since we already found a world body/frame, we can skip adding another
+            return 0;
+        }
+
+    }
+
     if(bodyMesh.IsDefined()){
         m_mesh_name = bodyMesh.as<std::string>();
     }
@@ -470,8 +479,8 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
         }
 
         if ( loadFromFile(high_res_filepath.c_str()) ){
-            if( abs( m_scale - 1.0) > 0.01){
-                scale(m_scale);
+            if(m_scale != 1.0){
+                this->scale(m_scale);
             }
         }
         else{
@@ -481,7 +490,7 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
         }
 
         if( m_lowResMesh.loadFromFile(low_res_filepath.c_str()) ){
-            if( abs( m_scale - 1.0) > 0.01){
+            if(m_scale != 1.0){
                 m_lowResMesh.scale(m_scale);
             }
         }
@@ -519,13 +528,13 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
     iOffPos.setValue(0,0,0);
 
     if(bodyInertialOffsetPos.IsDefined()){
+        assignXYZ( &bodyInertialOffsetPos, &iOffPos);
         if(bodyInertialOffsetRot.IsDefined()){
             double r = bodyInertialOffsetRot["r"].as<double>();
             double p = bodyInertialOffsetRot["p"].as<double>();
             double y = bodyInertialOffsetRot["y"].as<double>();
             iOffQuat.setEulerZYX(y, p, r);
         }
-        assignXYZ( &bodyInertialOffsetPos, &iOffPos);
     }
     else{
         // Call the compute inertial offset before the build contact triangle method
@@ -1102,16 +1111,51 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
 
     afRigidBodyPtr afBodyA, afBodyB;
 
-    if (mB->m_afRigidBodyMap.find((m_parent_name + name_remapping).c_str()) != mB->m_afRigidBodyMap.end()
-            & mB->m_afRigidBodyMap.find((m_child_name + name_remapping).c_str()) != mB->m_afRigidBodyMap.end()){
-        afBodyA =  mB->m_afRigidBodyMap[(m_parent_name + name_remapping).c_str()];
-        afBodyB = mB->m_afRigidBodyMap[(m_child_name + name_remapping).c_str()];
+    afBodyA = mB->getRidigBody(m_parent_name + name_remapping, true);
+    afBodyB = mB->getRidigBody(m_child_name + name_remapping, true);
+
+    // If we couldn't find the body with name_remapping, it might have been
+    // Defined in another afmb file. Search without name_remapping string
+    if(afBodyA == NULL){
+        afBodyA = mB->getRidigBody(m_parent_name, true);
+        // If any body is still not found, print error and ignore joint
+        if (afBodyA == NULL){
+            std::cerr <<"ERROR: JOINT: \"" << m_name <<
+                        "\'s\" PARENT BODY \"" << m_parent_name <<
+                        "\" NOT FOUND" << std::endl;
+            return 0;
+        }
+        // If the body is not world, print what we just did
+        if ((!strcmp(afBodyA->m_name.c_str(), "world") == 0)
+            &&(!strcmp(afBodyA->m_name.c_str(), "World") == 0)
+            &&(!strcmp(afBodyA->m_name.c_str(), "WORLD") == 0)){
+            std::cerr <<"INFO: JOINT: \"" << m_name <<
+                        "\'s\" PARENT BODY \"" << m_parent_name <<
+                        "\" FOUND IN ANOTHER AFMB CONFIG," << std::endl;
+        }
+    }
+    if(afBodyB == NULL){
+        afBodyB = mB->getRidigBody(m_child_name, true);
+        // If any body is still not found, print error and ignore joint
+        if (afBodyB == NULL){
+            std::cerr <<"ERROR: JOINT: \"" << m_name <<
+                        "\'s\" CHILD BODY \"" << m_child_name <<
+                        "\" NOT FOUND" << std::endl;
+            return 0;
+        }
+        // If the body is not world, print what we just did
+        if ((!strcmp(afBodyB->m_name.c_str(), "world") == 0)
+            &&(!strcmp(afBodyB->m_name.c_str(), "World") == 0)
+            &&(!strcmp(afBodyB->m_name.c_str(), "WORLD") == 0)){
+            std::cerr <<"INFO: JOINT: \"" << m_name <<
+                        "\'s\" CHILD BODY \"" << m_child_name <<
+                        "\" FOUND IN ANOTHER AFMB CONFIG," << std::endl;
+        }
+    }
+
+    else{
         m_rbodyA = afBodyA->m_bulletRigidBody;
         m_rbodyB = afBodyB->m_bulletRigidBody;
-    }
-    else{
-        std::cerr <<"ERROR:COULDN'T FIND RIGID BODIES FOR: " << m_name+name_remapping << std::endl;
-        return -1;
     }
 
     if (jointParentPivot.IsDefined() & jointParentAxis.IsDefined() & jointChildPivot.IsDefined() & jointChildAxis.IsDefined()){
@@ -1670,7 +1714,15 @@ bool afMultiBody::loadMultiBody(std::string a_multibody_config_file){
         YAML::Node rb_node = multiBodyNode[rb_name];
         if (tmpRigidBody->loadRidigBody(&rb_node, rb_name, this)){
             m_afRigidBodyMap[(rb_name + remap_str).c_str()] = tmpRigidBody;
-            tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str, tmpRigidBody->m_body_namespace);
+            std::string af_name = tmpRigidBody->m_name;
+            if ((strcmp(af_name.c_str(), "world") == 0) ||
+                    (strcmp(af_name.c_str(), "World") == 0) ||
+                    (strcmp(af_name.c_str(), "WORLD") == 0)){
+                continue;
+            }
+            else{
+                tmpRigidBody->createAFObject(tmpRigidBody->m_name + remap_str, tmpRigidBody->m_body_namespace);
+            }
         }
     }
 
@@ -1845,12 +1897,14 @@ void afMultiBody::removeOverlappingCollisionChecking(){
 /// \param a_name
 /// \return
 ///
-afRigidBodyPtr afMultiBody::getRidigBody(std::string a_name){
+afRigidBodyPtr afMultiBody::getRidigBody(std::string a_name, bool suppress_warning){
     if (m_afRigidBodyMap.find(a_name) != m_afRigidBodyMap.end()){
         return m_afRigidBodyMap[a_name];
     }
     else{
-        std::cerr << "CAN'T FIND ANY BODY NAMED: " << a_name << std::endl;
+        if (!suppress_warning){
+            std::cerr << "WARNING: CAN'T FIND ANY BODY NAMED: " << a_name << std::endl;
+        }
         return NULL;
     }
 }
