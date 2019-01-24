@@ -702,8 +702,9 @@ void afRigidBody::afObjectCommandExecute(double dt){
     if (m_afObjectPtr.get() != nullptr){
         m_afObjectPtr->update_af_cmd();
         cVector3d force, torque;
-        m_af_enable_position_controller = m_afObjectPtr->m_objectCommand.enable_position_controller;
-        if (m_afObjectPtr->m_objectCommand.enable_position_controller){
+        ObjectCommand m_afCommand = m_afObjectPtr->m_objectCommand;
+        m_af_enable_position_controller = m_afCommand.enable_position_controller;
+        if (m_afCommand.enable_position_controller){
             computeControllerGains();
             cVector3d cur_pos, cmd_pos, rot_axis, rot_axix_w_gain;
             cQuaternion cur_rot, cmd_rot;
@@ -721,14 +722,12 @@ void afRigidBody::afObjectCommandExecute(double dt){
             cur_rot.w = b_trans.getRotation().getW();
             cur_rot.toRotMat(cur_rot_mat);
 
-            cmd_pos.set(m_afObjectPtr->m_objectCommand.px,
-                        m_afObjectPtr->m_objectCommand.py,
-                        m_afObjectPtr->m_objectCommand.pz);
+            cmd_pos.set(m_afCommand.px, m_afCommand.py, m_afCommand.pz);
 
-            cmd_rot.x = m_afObjectPtr->m_objectCommand.qx;
-            cmd_rot.y = m_afObjectPtr->m_objectCommand.qy;
-            cmd_rot.z = m_afObjectPtr->m_objectCommand.qz;
-            cmd_rot.w = m_afObjectPtr->m_objectCommand.qw;
+            cmd_rot.x = m_afCommand.qx;
+            cmd_rot.y = m_afCommand.qy;
+            cmd_rot.z = m_afCommand.qz;
+            cmd_rot.w = m_afCommand.qw;
             cmd_rot.toRotMat(cmd_rot_mat);
 
             m_dpos_prev = m_dpos;
@@ -743,25 +742,42 @@ void afRigidBody::afObjectCommandExecute(double dt){
             cur_rot_mat.mul(torque);
         }
         else{
-            force.set(m_afObjectPtr->m_objectCommand.Fx,
-                      m_afObjectPtr->m_objectCommand.Fy,
-                      m_afObjectPtr->m_objectCommand.Fz);
-            torque.set(m_afObjectPtr->m_objectCommand.Nx,
-                       m_afObjectPtr->m_objectCommand.Ny,
-                       m_afObjectPtr->m_objectCommand.Nz);
+            force.set(m_afCommand.Fx, m_afCommand.Fy, m_afCommand.Fz);
+            torque.set(m_afCommand.Nx, m_afCommand.Ny, m_afCommand.Nz);
         }
         addExternalForce(force);
         addExternalTorque(torque);
-        size_t jntCmdSize = m_afObjectPtr->m_objectCommand.size_J_cmd;
-        if (jntCmdSize > 0 && m_parentBodies.size() == 0){
-            size_t jntCnt = m_joints.size() < jntCmdSize ? m_joints.size() : jntCmdSize;
-            for (size_t jnt = 0 ; jnt < jntCnt ; jnt++){
-                if (m_afObjectPtr->m_objectCommand.enable_position_controller)
-                    m_joints[jnt]->commandPosition(m_afObjectPtr->m_objectCommand.J_cmd[jnt]);
-                else
-                    m_joints[jnt]->commandTorque(m_afObjectPtr->m_objectCommand.J_cmd[jnt]);
+        size_t jntCmdSize = m_afCommand.size_J_cmd;
+        if (jntCmdSize > 0){
+            size_t jntCmdCnt = m_joints.size() < jntCmdSize ? m_joints.size() : jntCmdSize;
+            // If the enable position controllers flag is set, run
+            // position control on all joints
+            if (m_afCommand.enable_position_controller){
+                for (size_t jnt = 0 ; jnt < jntCmdCnt ; jnt++){
+                    m_joints[jnt]->commandPosition(m_afCommand.J_cmd[jnt]);
+                }
             }
-
+            // Otherwise, read the pos controller mask and set the joints with 1
+            // in the mask to pos ctrl and the others to effort control
+            else{
+                size_t jntMaskSize = m_afCommand.position_controller_mask.size();
+                for (size_t jnt = 0 ; jnt < jntCmdCnt ; jnt++){
+                    // The size of pos ctrl mask can be less than the num of joint commands
+                    // keep this in check and still read the mask to apply it. Run
+                    // effort control on the masks not specified
+                    if (jnt < jntMaskSize){
+                        if (m_afCommand.position_controller_mask[jnt] == true){
+                            m_joints[jnt]->commandPosition(m_afCommand.J_cmd[jnt]);
+                        }
+                        else{
+                            m_joints[jnt]->commandTorque(m_afCommand.J_cmd[jnt]);
+                        }
+                    }
+                    else{
+                        m_joints[jnt]->commandTorque(m_afCommand.J_cmd[jnt]);
+                    }
+                }
+            }
         }
     }
 #endif
@@ -796,14 +812,13 @@ void afRigidBody::afObjectSetJointPositions(){
     if (_publish_joint_positions){
         int num_jnts = m_joints.size();
         if (num_jnts > 0 && m_afObjectPtr != NULL){
-            std::vector<float> joint_positions;
-            joint_positions.resize(num_jnts);
-            for (size_t i = 0 ; i < num_jnts ; i++){
-                float jnt_pos = m_joints[i]->getPosition();
-                jnt_pos = floor(jnt_pos * 100) / 100;
-                joint_positions[i] = jnt_pos;
+            if(m_joint_positions.size() != num_jnts){
+                m_joint_positions.resize(num_jnts);
             }
-            m_afObjectPtr->set_joint_positions(joint_positions);
+            for (size_t i = 0 ; i < num_jnts ; i++){
+                m_joint_positions[i] = m_joints[i]->getPosition();
+            }
+            m_afObjectPtr->set_joint_positions(m_joint_positions);
         }
     }
 #endif
@@ -1366,14 +1381,13 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
         m_hinge = new btHingeConstraint(*m_rbodyA, *m_rbodyB, frameA, frameB, true);
         m_btConstraint = m_hinge;
 #endif
+        // Don't enable motor yet, only enable when set position is called
+        // this keeps the joint behave freely when it's launched
+        m_enable_actuator = true;
 
-        if (jointEnableMotor.IsDefined()){
-            m_enable_actuator = jointEnableMotor.as<int>();
-            // Don't enable motor yet, only enable when set position is called
-            if(jointMaxMotorImpulse.IsDefined()){
-                m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
-                ((btHingeConstraint*)m_btConstraint)->setMaxMotorImpulse(m_max_motor_impulse);
-            }
+        if(jointMaxMotorImpulse.IsDefined()){
+            m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
+            ((btHingeConstraint*)m_btConstraint)->setMaxMotorImpulse(m_max_motor_impulse);
         }
 
         if(jointLimits.IsDefined()){

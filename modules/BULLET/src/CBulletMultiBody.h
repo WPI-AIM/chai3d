@@ -195,6 +195,9 @@ protected:
     static afRigidBodySurfaceProperties m_surfaceProps;
     static cMaterial m_mat;
 
+private:
+    std::vector<float> m_joint_positions;
+
 };
 
 ///
