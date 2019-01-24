@@ -336,10 +336,6 @@ void afRigidBody::addChildBody(afRigidBody* a_childBody, afJointPtr a_jnt){
     for (m_bodyIt = a_childBody->m_childrenBodies.begin() ; m_bodyIt != a_childBody->m_childrenBodies.end() ; ++m_bodyIt){
         (*m_bodyIt)->addParentBody(this);
     }
-    // Update the afObject State Message's children field.
-    // This field shall be updated any time add_child method is called
-    // and not in the high-speed control loops to avoid computational load
-    afObjectStateSetChildrenNames();
 }
 
 ///
@@ -352,6 +348,7 @@ void afRigidBody::addChildBody(afRigidBody* a_childBody, afJointPtr a_jnt){
 ///
 bool afRigidBody::loadRidigBody(std::string rb_config_file, std::string node_name, afMultiBodyPtr mB) {
     YAML::Node baseNode;
+    m_mBPtr = mB;
     try{
         baseNode = YAML::LoadFile(rb_config_file);
     }catch(std::exception &e){
@@ -372,6 +369,7 @@ bool afRigidBody::loadRidigBody(std::string rb_config_file, std::string node_nam
 ///
 bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMultiBodyPtr mB){
     YAML::Node bodyNode = *rb_node;
+    m_mBPtr = mB;
     if (bodyNode.IsNull()){
         std::cerr << "ERROR: RIGID BODY'S "<< node_name << " YAML CONFIG DATA IS NULL\n";
         return 0;
@@ -694,6 +692,55 @@ void afRigidBody::setConfigProperties(const afRigidBodyPtr a_body, const afRigid
 }
 
 ///
+/// \brief afRigidBody::updatePositionFromDynamics
+///
+void afRigidBody::updatePositionFromDynamics()
+{
+    if (m_bulletRigidBody)
+    {
+        // get transformation matrix of object
+        btTransform trans;
+        m_bulletRigidBody->getMotionState()->getWorldTransform(trans);
+        trans *= m_inertialOffsetTransform.inverse();
+
+        btVector3 pos = trans.getOrigin();
+        btQuaternion q = trans.getRotation();
+
+       // set new position
+        m_localPos.set(pos[0],pos[1],pos[2]);
+
+        // set new orientation
+        cQuaternion quaternion(q.getW(), q.getX(), q.getY(), q.getZ());
+        quaternion.toRotMat(m_localRot);
+
+        // orthogonalize frame
+        m_localRot.orthogonalize();
+    }
+
+    // update Transform data for m_ObjectPtr
+    #ifdef C_ENABLE_CHAI_ENV_SUPPORT
+    if(m_afObjectPtr.get() != nullptr){
+        m_afObjectPtr->cur_position(m_localPos.x(), m_localPos.y(), m_localPos.z());
+        cQuaternion q;
+        q.fromRotMat(m_localRot);
+        m_afObjectPtr->cur_orientation(q.x, q.y, q.z, q.w);
+        if (_publish_joint_positions){
+            afObjectSetJointPositions();
+        }
+        if (_publish_children_names){
+            // Since children names aren't going to change that often
+            // change the field less so often
+            if (m_write_count % 2000 == 0){
+                afObjectStateSetChildrenNames();
+                m_write_count = 0;
+            }
+        }
+        m_write_count++;
+    }
+    #endif
+}
+
+///
 /// \brief afRigidBody::afCommandExecute
 /// \param dt
 ///
@@ -788,19 +835,16 @@ void afRigidBody::afObjectCommandExecute(double dt){
 ///
 void afRigidBody::afObjectStateSetChildrenNames(){
 #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    if (_publish_children_names){
-        int num_children = m_childrenBodies.size();
-        if (num_children > 0 && m_afObjectPtr != NULL){
-            std::vector<std::string> children_names;
+    int num_children = m_childrenBodies.size();
+    if (num_children > 0 && m_afObjectPtr != NULL){
+        std::vector<std::string> children_names;
 
-            children_names.resize(num_children);
-            for (size_t i = 0 ; i < num_children ; i++){
-                children_names[i] = m_childrenBodies[i]->m_name;
-            }
-            m_afObjectPtr->set_children(children_names);
+        children_names.resize(num_children);
+        for (size_t i = 0 ; i < num_children ; i++){
+            children_names[i] = m_childrenBodies[i]->m_name;
         }
+        m_afObjectPtr->set_children_names(children_names);
     }
-
 #endif
 }
 
@@ -809,17 +853,15 @@ void afRigidBody::afObjectStateSetChildrenNames(){
 ///
 void afRigidBody::afObjectSetJointPositions(){
 #ifdef C_ENABLE_CHAI_ENV_SUPPORT
-    if (_publish_joint_positions){
-        int num_jnts = m_joints.size();
-        if (num_jnts > 0 && m_afObjectPtr != NULL){
-            if(m_joint_positions.size() != num_jnts){
-                m_joint_positions.resize(num_jnts);
-            }
-            for (size_t i = 0 ; i < num_jnts ; i++){
-                m_joint_positions[i] = m_joints[i]->getPosition();
-            }
-            m_afObjectPtr->set_joint_positions(m_joint_positions);
+    int num_jnts = m_joints.size();
+    if (num_jnts > 0 && m_afObjectPtr != NULL){
+        if(m_joint_positions.size() != num_jnts){
+            m_joint_positions.resize(num_jnts);
         }
+        for (size_t i = 0 ; i < num_jnts ; i++){
+            m_joint_positions[i] = m_joints[i]->getPosition();
+        }
+        m_afObjectPtr->set_joint_positions(m_joint_positions);
     }
 #endif
 }
@@ -1101,6 +1143,8 @@ void afSoftBody::setConfigProperties(const afSoftBodyPtr a_body, const afSoftBod
 /// \brief afJoint::afJoint
 ///
 afJoint::afJoint(){
+    // Set a small value to potentiall enable position control on joint
+    m_max_motor_impulse = 0.05;
 
 }
 
@@ -1302,32 +1346,6 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
         std::cerr << "ERROR: JOINT CONFIGURATION FOR: " << node_name << " NOT DEFINED \n";
         return false;
     }
-
-    // For Testing Joints
-    //    if (strcmp(m_name.c_str(), "test") == 0){
-    //        btTransform tA, tB;
-    //        btQuaternion quat;
-
-    //        quat.setEulerZYX(m_axisA.getZ(), m_axisA.getY(), m_axisA.getX());
-
-    //        tA.setOrigin(m_pvtA);
-    //        tA.setRotation(quat);
-
-    //        quat.setEulerZYX(m_axisB.getZ(), m_axisB.getY(), m_axisB.getX());
-
-    //        tB.setOrigin(m_pvtB);
-    //        tB.setRotation(quat);
-
-    //        m_hinge = new btHingeConstraint(*m_rbodyA, *m_rbodyB, tA, tB, true);
-    //        if(jointLimits.IsDefined()){
-    //            m_lower_limit = jointLimits["low"].as<double>() + m_joint_offset;
-    //            m_higher_limit = jointLimits["high"].as<double>() + m_joint_offset;
-    //            m_hinge->setLimit(m_lower_limit, m_higher_limit);
-    //        }
-    //        mB->m_chaiWorld->m_bulletWorld->addConstraint(m_hinge, true);
-    //        afBodyA->addChildBody(afBodyB, this);
-    //        return true;
-    //    }
 
     if(jointOffset.IsDefined()){
         m_joint_offset = jointOffset.as<double>();
@@ -1643,7 +1661,7 @@ bool afWorld::loadWorld(std::string a_world_config){
 /// \brief afMultiBody::afMultiBody
 ///
 afMultiBody::afMultiBody(){
-
+    m_wallClock.start(true);
 }
 
 

@@ -195,12 +195,6 @@ public:
     //! This method create as afCommunication Instance with the specified namespace
     virtual void afObjectCreate(std::string a_name, std::string a_namespace = "/chai/env/", int a_min_freq=50, int a_max_freq=2000);
 
-    //! Update the children for this body in the afObject State Message
-    virtual void afObjectStateSetChildrenNames(){}
-
-    //! Update the joint positions of children in afObject State Message
-    virtual void afObjectSetJointPositions(){}
-
     //! This method applies any wrenches, joint commands that are being sent by AF Ojbect Command Message.
     virtual void afObjectCommandExecute(double dt=0.001);
 
@@ -211,12 +205,6 @@ public:
     #ifdef C_ENABLE_CHAI_ENV_SUPPORT
     std::shared_ptr<chai_env::Object> m_afObjectPtr;
     #endif
-
-    //! If the Position Controller is active, disable Position Controller from Haptic Device
-    bool m_af_enable_position_controller;
-
-    //! AF Namespace, this can be different for every afObject
-    std::string m_af_namespace;
 
     // AFMB API END
 

@@ -147,6 +147,8 @@ public:
     virtual bool loadRidigBody(std::string rb_config_file, std::string node_name, afMultiBodyPtr mB);
     virtual bool loadRidigBody(YAML::Node* rb_node, std::string node_name, afMultiBodyPtr mB);
     virtual void addChildBody(afRigidBodyPtr childBody, afJointPtr jnt);
+    //! This method update the CHAI3D position representation from the Bullet dynamics engine.
+    virtual void updatePositionFromDynamics();
 
     std::vector<afJointPtr> m_joints;
     std::vector<afRigidBodyPtr> m_childrenBodies;
@@ -164,6 +166,10 @@ public:
     //! Get Min/Max publishing frequency for afObjectState for this body
     inline int getMinPublishFrequency(){return _min_publish_frequency;}
     inline int getMaxPublishFrequency(){return _max_publish_frequency;}
+
+public:
+    //! If the Position Controller is active, disable Position Controller from Haptic Device
+    bool m_af_enable_position_controller;
 
 protected:
 
@@ -197,6 +203,10 @@ protected:
 
 private:
     std::vector<float> m_joint_positions;
+    afMultiBodyPtr m_mBPtr;
+    // Counter for the times we have written to chai_env API
+    // This is only of internal use as it could be reset
+    unsigned short m_write_count = 0;
 
 };
 
@@ -364,6 +374,8 @@ public:
     //Remove collision checking for this entire multi-body, mostly for
     // debugging purposes
     void ignoreCollisionChecking();
+
+    cPrecisionClock m_wallClock;
 
 protected:
 

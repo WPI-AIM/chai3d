@@ -174,7 +174,6 @@ void cBulletMultiMesh::updatePositionFromDynamics()
         cQuaternion q;
         q.fromRotMat(m_localRot);
         m_afObjectPtr->cur_orientation(q.x, q.y, q.z, q.w);
-        afObjectSetJointPositions();
     }
     #endif
 }
