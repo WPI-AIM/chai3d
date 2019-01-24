@@ -180,8 +180,8 @@ protected:
     bool _ang_gains_computed = false;
     bool _publish_joint_positions = false;
     bool _publish_children_names = false;
-    bool _min_publish_frequency;
-    bool _max_publish_frequency;
+    int _min_publish_frequency;
+    int _max_publish_frequency;
     void computeControllerGains();
 
 protected:

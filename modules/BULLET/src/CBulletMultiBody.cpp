@@ -398,8 +398,8 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
     YAML::Node bodyAngDamping = bodyNode["damping"]["angular"];
     YAML::Node bodyStaticFriction = bodyNode["friction"]["static"];
     YAML::Node bodyRollingFriction = bodyNode["friction"]["rolling"];
-    YAML::Node bodyPublishChildrenNames = bodyNode["publish joint positions"];
-    YAML::Node bodyPublishJointPositions = bodyNode["publish children names"];
+    YAML::Node bodyPublishChildrenNames = bodyNode["publish children names"];
+    YAML::Node bodyPublishJointPositions = bodyNode["publish joint positions"];
     YAML::Node bodyPublishFrequency = bodyNode["publish frequency"];
 
     if(bodyName.IsDefined()){
@@ -621,8 +621,8 @@ bool afRigidBody::loadRidigBody(YAML::Node* rb_node, std::string node_name, afMu
     }
 
     if (bodyPublishFrequency.IsDefined()){
-        _min_publish_frequency = bodyPublishFrequency["low"];
-        _max_publish_frequency = bodyPublishFrequency["high"];
+        _min_publish_frequency = bodyPublishFrequency["low"].as<int>();
+        _max_publish_frequency = bodyPublishFrequency["high"].as<int>();
     }
     else{
         // Set min to 50 Hz and max to 2000 Hz
@@ -702,8 +702,8 @@ void afRigidBody::afObjectCommandExecute(double dt){
     if (m_afObjectPtr.get() != nullptr){
         m_afObjectPtr->update_af_cmd();
         cVector3d force, torque;
-        m_af_enable_position_controller = m_afObjectPtr->m_afCmd.enable_position_controller;
-        if (m_afObjectPtr->m_afCmd.enable_position_controller){
+        m_af_enable_position_controller = m_afObjectPtr->m_objectCommand.enable_position_controller;
+        if (m_afObjectPtr->m_objectCommand.enable_position_controller){
             computeControllerGains();
             cVector3d cur_pos, cmd_pos, rot_axis, rot_axix_w_gain;
             cQuaternion cur_rot, cmd_rot;
@@ -721,14 +721,14 @@ void afRigidBody::afObjectCommandExecute(double dt){
             cur_rot.w = b_trans.getRotation().getW();
             cur_rot.toRotMat(cur_rot_mat);
 
-            cmd_pos.set(m_afObjectPtr->m_afCmd.px,
-                        m_afObjectPtr->m_afCmd.py,
-                        m_afObjectPtr->m_afCmd.pz);
+            cmd_pos.set(m_afObjectPtr->m_objectCommand.px,
+                        m_afObjectPtr->m_objectCommand.py,
+                        m_afObjectPtr->m_objectCommand.pz);
 
-            cmd_rot.x = m_afObjectPtr->m_afCmd.qx;
-            cmd_rot.y = m_afObjectPtr->m_afCmd.qy;
-            cmd_rot.z = m_afObjectPtr->m_afCmd.qz;
-            cmd_rot.w = m_afObjectPtr->m_afCmd.qw;
+            cmd_rot.x = m_afObjectPtr->m_objectCommand.qx;
+            cmd_rot.y = m_afObjectPtr->m_objectCommand.qy;
+            cmd_rot.z = m_afObjectPtr->m_objectCommand.qz;
+            cmd_rot.w = m_afObjectPtr->m_objectCommand.qw;
             cmd_rot.toRotMat(cmd_rot_mat);
 
             m_dpos_prev = m_dpos;
@@ -743,23 +743,23 @@ void afRigidBody::afObjectCommandExecute(double dt){
             cur_rot_mat.mul(torque);
         }
         else{
-            force.set(m_afObjectPtr->m_afCmd.Fx,
-                      m_afObjectPtr->m_afCmd.Fy,
-                      m_afObjectPtr->m_afCmd.Fz);
-            torque.set(m_afObjectPtr->m_afCmd.Nx,
-                       m_afObjectPtr->m_afCmd.Ny,
-                       m_afObjectPtr->m_afCmd.Nz);
+            force.set(m_afObjectPtr->m_objectCommand.Fx,
+                      m_afObjectPtr->m_objectCommand.Fy,
+                      m_afObjectPtr->m_objectCommand.Fz);
+            torque.set(m_afObjectPtr->m_objectCommand.Nx,
+                       m_afObjectPtr->m_objectCommand.Ny,
+                       m_afObjectPtr->m_objectCommand.Nz);
         }
         addExternalForce(force);
         addExternalTorque(torque);
-        size_t jntCmdSize = m_afObjectPtr->m_afCmd.size_J_cmd;
+        size_t jntCmdSize = m_afObjectPtr->m_objectCommand.size_J_cmd;
         if (jntCmdSize > 0 && m_parentBodies.size() == 0){
             size_t jntCnt = m_joints.size() < jntCmdSize ? m_joints.size() : jntCmdSize;
             for (size_t jnt = 0 ; jnt < jntCnt ; jnt++){
-                if (m_afObjectPtr->m_afCmd.enable_position_controller)
-                    m_joints[jnt]->commandPosition(m_afObjectPtr->m_afCmd.J_cmd[jnt]);
+                if (m_afObjectPtr->m_objectCommand.enable_position_controller)
+                    m_joints[jnt]->commandPosition(m_afObjectPtr->m_objectCommand.J_cmd[jnt]);
                 else
-                    m_joints[jnt]->commandTorque(m_afObjectPtr->m_afCmd.J_cmd[jnt]);
+                    m_joints[jnt]->commandTorque(m_afObjectPtr->m_objectCommand.J_cmd[jnt]);
             }
 
         }

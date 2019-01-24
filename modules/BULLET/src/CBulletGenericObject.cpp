@@ -364,7 +364,7 @@ void cBulletGenericObject::afObjectCommandExecute(double dt){
     if (m_afObjectPtr.get() != nullptr){
         m_afObjectPtr->update_af_cmd();
         cVector3d force, torque;
-        if (m_afObjectPtr->m_afCmd.enable_position_controller){
+        if (m_afObjectPtr->m_objectCommand.enable_position_controller){
             cVector3d cur_pos, cmd_pos, rot_axis;
             cQuaternion cur_rot, cmd_rot;
             cMatrix3d cur_rot_mat, cmd_rot_mat;
@@ -383,14 +383,14 @@ void cBulletGenericObject::afObjectCommandExecute(double dt){
             cur_rot.w = b_trans.getRotation().getW();
             cur_rot.toRotMat(cur_rot_mat);
 
-            cmd_pos.set(m_afObjectPtr->m_afCmd.px,
-                        m_afObjectPtr->m_afCmd.py,
-                        m_afObjectPtr->m_afCmd.pz);
+            cmd_pos.set(m_afObjectPtr->m_objectCommand.px,
+                        m_afObjectPtr->m_objectCommand.py,
+                        m_afObjectPtr->m_objectCommand.pz);
 
-            cmd_rot.x = m_afObjectPtr->m_afCmd.qx;
-            cmd_rot.y = m_afObjectPtr->m_afCmd.qy;
-            cmd_rot.z = m_afObjectPtr->m_afCmd.qz;
-            cmd_rot.w = m_afObjectPtr->m_afCmd.qw;
+            cmd_rot.x = m_afObjectPtr->m_objectCommand.qx;
+            cmd_rot.y = m_afObjectPtr->m_objectCommand.qy;
+            cmd_rot.z = m_afObjectPtr->m_objectCommand.qz;
+            cmd_rot.w = m_afObjectPtr->m_objectCommand.qw;
             cmd_rot.toRotMat(cmd_rot_mat);
 
             m_dpos_prev = m_dpos;
@@ -405,12 +405,12 @@ void cBulletGenericObject::afObjectCommandExecute(double dt){
         }
         else{
 
-            force.set(m_afObjectPtr->m_afCmd.Fx,
-                      m_afObjectPtr->m_afCmd.Fy,
-                      m_afObjectPtr->m_afCmd.Fz);
-            torque.set(m_afObjectPtr->m_afCmd.Nx,
-                       m_afObjectPtr->m_afCmd.Ny,
-                       m_afObjectPtr->m_afCmd.Nz);
+            force.set(m_afObjectPtr->m_objectCommand.Fx,
+                      m_afObjectPtr->m_objectCommand.Fy,
+                      m_afObjectPtr->m_objectCommand.Fz);
+            torque.set(m_afObjectPtr->m_objectCommand.Nx,
+                       m_afObjectPtr->m_objectCommand.Ny,
+                       m_afObjectPtr->m_objectCommand.Nz);
         }
         addExternalForce(force);
         addExternalTorque(torque);
