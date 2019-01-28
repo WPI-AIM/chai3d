@@ -1143,9 +1143,6 @@ void afSoftBody::setConfigProperties(const afSoftBodyPtr a_body, const afSoftBod
 /// \brief afJoint::afJoint
 ///
 afJoint::afJoint(){
-    // Set a small value to potentiall enable position control on joint
-    m_max_motor_impulse = 0.05;
-
 }
 
 ///
@@ -1352,8 +1349,10 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
     }
 
     if(jointLimits.IsDefined()){
-        m_lower_limit = jointLimits["low"].as<double>();
-        m_higher_limit = jointLimits["high"].as<double>();
+        if (jointLimits["low"].IsDefined())
+            m_lower_limit = jointLimits["low"].as<double>();
+         if (jointLimits["high"].IsDefined())
+            m_higher_limit = jointLimits["high"].as<double>();
     }
 
     if (jointType.IsDefined()){
