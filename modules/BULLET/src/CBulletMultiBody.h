@@ -278,7 +278,9 @@ public:
     virtual bool loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBodyPtr mB, std::string name_remapping_idx = "");
     void commandTorque(double &cmd);
     void commandPosition(double &cmd);
+    inline btTypedConstraint* getConstraint(){return m_btConstraint;}
     double getPosition();
+    JointType m_jointType;
 
 protected:
 
@@ -300,7 +302,6 @@ protected:
 protected:
 
     btTypedConstraint *m_btConstraint;
-    JointType m_jointType;
 
 private:
     // Add these two pointers for faster access to constraint internals

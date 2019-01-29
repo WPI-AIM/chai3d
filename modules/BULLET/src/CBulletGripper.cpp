@@ -174,9 +174,15 @@ bool afGripper::loadMultiBody(std::string a_gripper_config_file, std::string a_g
     for (size_t i = 0; i < totalJoints; ++i) {
         tmpJoint = new afJoint();
         std::string jnt_name = multiBodyJoints[i].as<std::string>();
-//        printf("Loading body: %s \n", jnt_name.c_str());
+        //        printf("Loading body: %s \n", jnt_name.c_str());
         if (tmpJoint->loadJoint(a_gripper_config_file.c_str(), jnt_name, this)){
             m_afJointMap[jnt_name] = tmpJoint;
+            if (tmpJoint->m_jointType == JointType::revolute){
+                ((btHingeConstraint* )tmpJoint->getConstraint())->enableMotor(true);
+            }
+            else if(tmpJoint->m_jointType == JointType::prismatic){
+                // Not enabled yet
+            }
         }
     }
 

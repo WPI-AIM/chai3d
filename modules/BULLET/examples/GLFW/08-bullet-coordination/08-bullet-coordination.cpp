@@ -549,7 +549,7 @@ public:
 /// \param a_device_name
 ///
 ToolGripper::ToolGripper(cBulletWorld *a_chaiWorld): afGripper (a_chaiWorld){
-    m_gripper_angle = 3.0;
+    m_gripper_angle = 0.5;
 }
 
 ///

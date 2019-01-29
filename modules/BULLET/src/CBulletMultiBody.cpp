@@ -1224,7 +1224,7 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
     btTransform T_j_p;
     // Joint Axis
     btVector3 joint_axis(0,0,1);
-    m_enable_actuator = false;
+    m_enable_actuator = true;
     m_max_motor_impulse = 0.05;
     m_joint_offset = 0.0;
     m_lower_limit = -100;
@@ -1400,7 +1400,6 @@ bool afJoint::loadJoint(YAML::Node* jnt_node, std::string node_name, afMultiBody
 #endif
         // Don't enable motor yet, only enable when set position is called
         // this keeps the joint behave freely when it's launched
-        m_enable_actuator = true;
 
         if(jointMaxMotorImpulse.IsDefined()){
             m_max_motor_impulse = jointMaxMotorImpulse.as<double>();
